@@ -1,29 +1,47 @@
 .network-scan-page {
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  min-height: 100%;
-  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: visible;
+  position: relative;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  box-sizing: border-box;
+}
+
+.network-scan-page::-webkit-scrollbar {
+  display: none;
 }
 
 .page-header {
   background: var(--bg-secondary);
-  padding: 30px;
-  border-radius: 20px;
+  padding: 20px 30px;
+  border-radius: 15px;
   margin-bottom: 30px;
-  box-shadow: 0 10px 30px var(--shadow);
-  text-align: center;
+  box-shadow: 0 4px 15px var(--shadow);
   border: 1px solid var(--border-color);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  direction: rtl;
 }
 
 .page-header h1 {
-  font-size: 2.5rem;
+  font-size: 2rem;
   color: var(--text-primary);
-  margin-bottom: 20px;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  justify-content: center;
+  justify-self: start;
+  min-width: 0;
+  direction: rtl;
 }
 
 .header-icon {
@@ -31,21 +49,26 @@
 }
 
 .back-btn {
-  padding: 12px 24px;
+  padding: 10px 20px;
   background: var(--bg-tertiary);
   color: var(--text-primary);
-  border: none;
-  border-radius: 10px;
-  font-size: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.95rem;
   font-weight: 600;
   font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   cursor: pointer;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+  white-space: nowrap;
 }
 
 .back-btn:hover {
   background: var(--bg-hover);
-  transform: translateY(-2px);
+  border-color: var(--border-hover);
 }
 
 .scan-section {
@@ -54,17 +77,32 @@
   border-radius: 20px;
   box-shadow: 0 10px 30px var(--shadow);
   border: 1px solid var(--border-color);
+  flex: 0 1 auto;
+  overflow: visible;
+  position: relative;
+  min-height: auto;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .scan-form {
   margin-bottom: 30px;
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 20px;
+  flex: 1;
+  min-width: 200px;
 }
 
 .form-group label {
@@ -76,18 +114,26 @@
 .form-group input {
   padding: 12px;
   border: 2px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 1rem;
-  font-family: inherit;
+  font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   transition: all 0.3s ease;
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
   color: var(--text-primary);
+}
+
+.form-group input::placeholder {
+  color: var(--text-tertiary);
 }
 
 .form-group input:focus {
   outline: none;
   border-color: #4a9eff;
   box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+}
+
+[data-theme="light"] .form-group input:focus {
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.15);
 }
 
 .form-group input:disabled {
@@ -103,21 +149,26 @@
 }
 
 .scan-btn {
-  padding: 15px 30px;
+  padding: 12px 24px;
   background: #4a9eff;
   color: white;
   border: none;
   border-radius: 10px;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   cursor: pointer;
   transition: all 0.3s ease;
-  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  white-space: nowrap;
+  height: fit-content;
+}
+
+.scan-btn svg {
+  color: white;
 }
 
 .scan-btn:hover:not(:disabled) {
@@ -140,6 +191,15 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
   text-align: center;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+[data-theme="light"] .error-message {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
 }
 
 .scanning-indicator {
@@ -147,24 +207,37 @@
   padding: 40px;
   color: var(--text-tertiary);
   font-size: 1.1rem;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+[data-theme="light"] .scanning-indicator {
+  background: var(--bg-secondary);
 }
 
 .scanned-hosts {
   margin-top: 30px;
 }
 
-.hosts-header {
+.section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
   flex-wrap: wrap;
   gap: 15px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-.hosts-header h2 {
+.section-header h2 {
   color: var(--text-primary);
   font-size: 1.5rem;
+  margin: 0;
+  font-weight: 600;
 }
 
 .add-selected-btn {
@@ -183,34 +256,49 @@
   gap: 8px;
 }
 
-.add-selected-btn:hover {
+.add-selected-btn:hover:not(:disabled) {
   background: #059669;
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
 }
 
+.add-selected-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-selected-btn svg {
+  color: white;
+}
+
 .hosts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 15px;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .host-item {
   background: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
-  border-radius: 10px;
-  padding: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   display: flex;
   gap: 15px;
   align-items: flex-start;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .host-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px var(--shadow);
   border-color: var(--border-hover);
-  transform: translateY(-2px);
-  background: var(--bg-hover);
 }
 
 .host-item.selected {
@@ -260,7 +348,7 @@
 .host-info h3 {
   color: var(--text-primary);
   font-size: 1.1rem;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   font-weight: 600;
 }
 
@@ -295,18 +383,4 @@
   font-style: italic;
 }
 
-@media (max-width: 768px) {
-  .page-header h1 {
-    font-size: 2rem;
-  }
-
-  .hosts-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .hosts-grid {
-    grid-template-columns: 1fr;
-  }
-}
 

@@ -69,14 +69,15 @@ function AddHost({ theme }) {
         </button>
       </header>
 
-      {error && (
-        <div className="error-message">
-          <XCircle size={20} />
-          {error}
-        </div>
-      )}
+      <section className="add-host-section">
+        {error && (
+          <div className="error-message">
+            <XCircle size={20} />
+            {error}
+          </div>
+        )}
 
-      <form onSubmit={handleSubmit} className="add-host-form">
+        <form onSubmit={handleSubmit} className="add-host-form">
         <div className="form-group">
           <label htmlFor="name">اسم المضيف *</label>
           <input
@@ -132,6 +133,7 @@ function AddHost({ theme }) {
           </button>
         </div>
       </form>
+      </section>
     </div>
   )
 }

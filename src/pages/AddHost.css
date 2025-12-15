@@ -1,27 +1,45 @@
 .add-host-page {
   width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: visible;
+  position: relative;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.add-host-page::-webkit-scrollbar {
+  display: none;
 }
 
 .page-header {
   background: var(--bg-secondary);
-  padding: 30px;
-  border-radius: 20px;
+  padding: 20px 30px;
+  border-radius: 15px;
   margin-bottom: 30px;
-  box-shadow: 0 10px 30px var(--shadow);
-  text-align: center;
+  box-shadow: 0 4px 15px var(--shadow);
   border: 1px solid var(--border-color);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  direction: rtl;
 }
 
 .page-header h1 {
-  font-size: 2.5rem;
+  font-size: 2rem;
   color: var(--text-primary);
-  margin-bottom: 20px;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  justify-content: center;
+  justify-self: start;
+  direction: rtl;
 }
 
 .header-icon {
@@ -29,21 +47,26 @@
 }
 
 .back-btn {
-  padding: 12px 24px;
+  padding: 10px 20px;
   background: var(--bg-tertiary);
   color: var(--text-primary);
-  border: none;
-  border-radius: 10px;
-  font-size: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.95rem;
   font-weight: 600;
   font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   cursor: pointer;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+  white-space: nowrap;
 }
 
 .back-btn:hover {
   background: var(--bg-hover);
-  transform: translateY(-2px);
+  border-color: var(--border-hover);
 }
 
 .add-host-section {
@@ -52,6 +75,10 @@
   border-radius: 20px;
   box-shadow: 0 10px 30px var(--shadow);
   border: 1px solid var(--border-color);
+  flex: 1;
+  overflow: visible;
+  position: relative;
+  min-height: 0;
 }
 
 .error-message {
@@ -59,11 +86,16 @@
   color: #ef4444;
   padding: 15px;
   border-radius: 10px;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
   border: 1px solid rgba(239, 68, 68, 0.3);
   text-align: center;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
+
 
 .host-form {
   display: flex;
@@ -243,21 +275,4 @@
   color: #3a8eef;
 }
 
-@media (max-width: 768px) {
-  .page-header h1 {
-    font-size: 2rem;
-  }
-
-  .add-host-section {
-    padding: 20px;
-  }
-
-  .tags-input-container {
-    flex-direction: column;
-  }
-
-  .add-tag-btn {
-    width: 100%;
-  }
-}
 

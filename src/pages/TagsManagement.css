@@ -8,16 +8,11 @@
   position: relative;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
+  box-sizing: border-box;
 }
 
 .tags-management-page::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
-}
-
-.tags-management-page::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
-  overflow-x: visible;
-  position: relative;
 }
 
 .page-header {
@@ -27,20 +22,27 @@
   margin-bottom: 30px;
   box-shadow: 0 4px 15px var(--shadow);
   border: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  flex-wrap: wrap;
   gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  flex-wrap: nowrap;
 }
 
+.page-header h1,
 .page-header-content h1 {
   font-size: 2rem;
   color: var(--text-primary);
-  margin-bottom: 5px;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-self: start;
+  min-width: 0;
+  direction: rtl;
 }
 
 .header-icon {
@@ -67,6 +69,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-self: end;
+  white-space: nowrap;
 }
 
 .back-btn:hover {
@@ -80,10 +84,13 @@
   border-radius: 20px;
   box-shadow: 0 10px 30px var(--shadow);
   border: 1px solid var(--border-color);
-  flex: 1;
+  flex: 0 1 auto;
   overflow: visible;
   position: relative;
-  min-height: 0;
+  min-height: auto;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .error-message {
@@ -113,6 +120,9 @@
   margin-bottom: 30px;
   flex-wrap: wrap;
   gap: 15px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .section-header h2 {
@@ -159,6 +169,9 @@
   gap: 15px;
   align-items: flex-end;
   flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .tag-form input[type="text"] {
@@ -491,6 +504,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .tag-card {
@@ -502,6 +518,9 @@
   align-items: center;
   gap: 15px;
   transition: all 0.3s ease;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tag-card:hover {
@@ -592,14 +611,4 @@
   border-color: rgba(239, 68, 68, 0.25);
 }
 
-@media (max-width: 768px) {
-  .tags-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
 

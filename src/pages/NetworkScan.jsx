@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, PlusCircle, ArrowRight, Clock } from 'lucide-react'
+import { Search, Plus, PlusCircle, ArrowRight, Clock, XCircle } from 'lucide-react'
 import { API_URL } from '../constants'
 import { apiPost } from '../utils/api'
 import './NetworkScan.css'
@@ -91,10 +91,17 @@ function NetworkScan({ theme }) {
           <span>مسح الشبكة</span>
         </h1>
         <button className="back-btn" onClick={() => navigate('/')}>
-          <ArrowRight size={18} style={{ marginLeft: '8px' }} />
+          <ArrowRight size={18} />
           العودة للعرض
         </button>
       </header>
+
+      {error && (
+        <div className="error-message">
+          <XCircle size={20} />
+          {error}
+        </div>
+      )}
 
       <section className="scan-section">
         <div className="scan-form">
@@ -109,7 +116,6 @@ function NetworkScan({ theme }) {
               disabled={scanning}
             />
           </div>
-
           <button 
             className="scan-btn" 
             onClick={handleScan}
@@ -117,23 +123,17 @@ function NetworkScan({ theme }) {
           >
             {scanning ? (
               <>
-                <Clock size={18} style={{ marginLeft: '8px' }} />
-                جاري المسح...
+                <Clock size={18} />
+                <span>جاري المسح...</span>
               </>
             ) : (
               <>
-                <Search size={18} style={{ marginLeft: '8px' }} />
-                بدء المسح
+                <Search size={18} />
+                <span>بدء المسح</span>
               </>
             )}
           </button>
         </div>
-
-        {error && (
-          <div className="error-message">
-            ⚠️ {error}
-          </div>
-        )}
 
         {scanning && (
           <div className="scanning-indicator">
@@ -146,17 +146,19 @@ function NetworkScan({ theme }) {
 
         {scannedHosts.length > 0 && (
           <div className="scanned-hosts">
-            <div className="hosts-header">
+            <div className="section-header">
+              <button 
+                className="add-selected-btn" 
+                onClick={handleAddSelected}
+                disabled={selectedHosts.size === 0}
+              >
+                {theme === 'light' ? <PlusCircle size={18} /> : <Plus size={18} />}
+                إضافة المحدد ({Array.from(selectedHosts).filter(ip => {
+                  const host = scannedHosts.find(h => h.ip === ip)
+                  return host && !host.isExisting
+                }).length})
+              </button>
               <h2>الأجهزة المكتشفة ({scannedHosts.length})</h2>
-              {selectedHosts.size > 0 && (
-                <button className="add-selected-btn" onClick={handleAddSelected}>
-                  {theme === 'light' ? <PlusCircle size={18} style={{ marginLeft: '8px' }} /> : <Plus size={18} style={{ marginLeft: '8px' }} />}
-                  إضافة المحدد ({Array.from(selectedHosts).filter(ip => {
-                    const host = scannedHosts.find(h => h.ip === ip)
-                    return host && !host.isExisting
-                  }).length})
-                </button>
-              )}
             </div>
 
             <div className="hosts-grid">
