@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, Plus, Edit, Trash2, XCircle, Save } from 'lucide-react'
+import { Tag, Plus, Edit, Edit2, Trash2, Trash, XCircle, Save } from 'lucide-react'
 import { API_URL } from '../constants'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import './TagsManagement.css'
 
-function TagsManagement() {
+function TagsManagement({ theme }) {
   const navigate = useNavigate()
   const [tags, setTags] = useState([])
   const [loading, setLoading] = useState(true)
@@ -109,11 +109,11 @@ function TagsManagement() {
 
       <div className="tags-section">
         <div className="section-header">
-          <h2>الوسوم ({tags.length})</h2>
           <button className="add-tag-btn" onClick={() => { setShowAddForm(true); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
             <Plus size={18} />
             إضافة وسم جديد
           </button>
+          <h2>الوسوم ({tags.length})</h2>
         </div>
 
         {(showAddForm || editingTag) && (
@@ -131,11 +131,11 @@ function TagsManagement() {
               onChange={(e) => setFormData({ ...formData, color: e.target.value })}
             />
             <div className="form-actions">
-              <button type="submit">
+              <button type="submit" className="submit-btn">
                 <Save size={16} />
                 {editingTag ? 'حفظ التعديلات' : 'إضافة'}
               </button>
-              <button type="button" onClick={() => { setShowAddForm(false); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
+              <button type="button" className="cancel-btn" onClick={() => { setShowAddForm(false); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
                 إلغاء
               </button>
             </div>
@@ -148,14 +148,13 @@ function TagsManagement() {
               <div className="tag-color" style={{ backgroundColor: tag.color }}></div>
               <div className="tag-info">
                 <h3>{tag.name}</h3>
-                <p>{tag.color}</p>
               </div>
               <div className="tag-actions">
-                <button onClick={() => startEdit(tag)} title="تعديل">
-                  <Edit size={16} />
+                <button onClick={() => startEdit(tag)} title="تعديل" className="edit-tag-btn">
+                  {theme === 'light' ? <Edit2 size={16} /> : <Edit size={16} />}
                 </button>
-                <button onClick={() => handleDeleteTag(tag.id)} title="حذف">
-                  <Trash2 size={16} />
+                <button onClick={() => handleDeleteTag(tag.id)} title="حذف" className="delete-tag-btn">
+                  {theme === 'light' ? <Trash size={16} /> : <Trash2 size={16} />}
                 </button>
               </div>
             </div>
@@ -163,8 +162,8 @@ function TagsManagement() {
         </div>
 
         {tags.length === 0 && !showAddForm && (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            لا توجد وسوم. أضف وسم جديد للبدء.
+          <div className="empty-state">
+            <p>لا توجد وسوم. أضف وسم جديد للبدء.</p>
           </div>
         )}
       </div>

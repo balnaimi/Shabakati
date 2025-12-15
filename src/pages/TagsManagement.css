@@ -95,6 +95,31 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
   text-align: center;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+[data-theme="light"] .error-message {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.section-header h2 {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  margin: 0;
+  font-weight: 600;
 }
 
 .add-tag-btn {
@@ -111,13 +136,57 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 30px;
+  margin-bottom: 0;
 }
 
 .add-tag-btn:hover {
   background: #3a8eef;
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(74, 158, 255, 0.4);
+}
+
+.add-tag-btn svg {
+  color: white;
+}
+
+.tag-form {
+  background: var(--bg-tertiary);
+  padding: 25px;
+  border-radius: 15px;
+  margin-bottom: 30px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.tag-form input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.tag-form input[type="text"]:focus {
+  outline: none;
+  border-color: #4a9eff;
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+}
+
+.tag-form input[type="color"] {
+  width: 60px;
+  height: 44px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  background: none;
 }
 
 .tag-form-card {
@@ -260,6 +329,14 @@
   box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
 }
 
+.tag-form input[type="text"]::placeholder {
+  color: var(--text-tertiary);
+}
+
+[data-theme="light"] .tag-form input[type="text"]:focus {
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.15);
+}
+
 .color-input-group {
   display: flex;
   gap: 10px;
@@ -357,12 +434,17 @@
 .submit-btn {
   background: #4a9eff;
   color: white;
+  border: none;
 }
 
 .submit-btn:hover {
   background: #3a8eef;
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(74, 158, 255, 0.4);
+}
+
+.submit-btn svg {
+  color: white;
 }
 
 .cancel-btn {
@@ -376,17 +458,33 @@
   border-color: var(--border-hover);
 }
 
+[data-theme="light"] .cancel-btn {
+  background: var(--bg-secondary);
+}
+
 .loading-state,
 .empty-state {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1rem;
 }
 
 .empty-state .hint {
   color: var(--text-tertiary);
   font-size: 0.9rem;
   margin-top: 10px;
+}
+
+[data-theme="light"] .empty-state {
+  background: var(--bg-secondary);
 }
 
 .tags-grid {
@@ -431,11 +529,12 @@
   font-weight: 600;
 }
 
-.tag-color-code {
-  color: var(--text-tertiary);
-  font-size: 0.85rem;
-  font-family: 'Courier New', monospace;
-  margin: 0;
+.tag-color {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  border: 2px solid var(--border-color);
 }
 
 .tag-actions {
@@ -454,26 +553,43 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .edit-tag-btn {
   background: rgba(74, 158, 255, 0.2);
   color: #4a9eff;
+  border-color: rgba(74, 158, 255, 0.3);
 }
 
 .edit-tag-btn:hover {
   background: rgba(74, 158, 255, 0.3);
   transform: scale(1.1);
+  border-color: rgba(74, 158, 255, 0.5);
+}
+
+[data-theme="light"] .edit-tag-btn {
+  background: rgba(74, 158, 255, 0.15);
+  border-color: rgba(74, 158, 255, 0.25);
 }
 
 .delete-tag-btn {
   background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .delete-tag-btn:hover {
   background: rgba(239, 68, 68, 0.3);
   transform: scale(1.1);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+[data-theme="light"] .delete-tag-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.25);
 }
 
 @media (max-width: 768px) {
