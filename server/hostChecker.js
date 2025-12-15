@@ -73,11 +73,11 @@ async function checkHostPort(ip, port, timeout = 2000) {
  * @returns {Promise<boolean>} true إذا كان المضيف متصل على أي منفذ
  */
 async function checkHostStatusMultiplePorts(ip) {
-  // منافذ شائعة للتحقق
+  // منافذ شائعة للتحقق (محسّن - منافذ الأكثر شيوعاً أولاً)
   const commonPorts = [80, 443, 22, 3389, 8080, 8006];
   
-  // محاولة الاتصال بكل منفذ بالتوازي
-  const checks = commonPorts.map(port => checkHostPort(ip, port, 2000));
+  // محاولة الاتصال بكل منفذ بالتوازي (محسّن - timeout أقصر)
+  const checks = commonPorts.map(port => checkHostPort(ip, port, 1500));
   const results = await Promise.all(checks);
   
   // إذا نجح الاتصال على أي منفذ، المضيف متصل

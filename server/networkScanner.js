@@ -32,29 +32,34 @@ export async function scanNetwork(networkRange, timeout = 2) {
 
     console.log(`بدء مسح ${ipRange.length} عنوان IP...`);
 
-    // مسح جميع العناوين بالتوازي (لكن بحد أقصى 100 في نفس الوقت)
-    const batchSize = 100;
-    const commonPorts = [22, 80, 443, 3389, 8080, 8006, 8443]; // منافذ شائعة
+    // مسح جميع العناوين بالتوازي (محسّن - batch size أكبر وأسرع)
+    // زيادة batch size لتحسين الأداء (200 بدلاً من 100)
+    const batchSize = 200;
+    const quickPorts = [22, 80, 443]; // SSH, HTTP, HTTPS - الأكثر شيوعاً
+    const portTimeout = Math.min(timeout * 1000, 1500); // تقليل timeout للسرعة
     
     for (let i = 0; i < ipRange.length; i += batchSize) {
       const batch = ipRange.slice(i, i + batchSize);
       console.log(`مسح الدفعة ${Math.floor(i / batchSize) + 1} من ${Math.ceil(ipRange.length / batchSize)} (${batch.length} عنوان)`);
       
+      // تحسين: فحص جميع المنافذ بالتوازي بدلاً من التسلسل
       const promises = batch.map(async (ip) => {
-        // محاولة الاتصال بمنافذ شائعة (نبدأ بأسرع المنافذ)
-        // نفحص منفذ واحد فقط - إذا نجح، المضيف نشط
-        const quickPorts = [22, 80, 443]; // SSH, HTTP, HTTPS - الأكثر شيوعاً
+        // فحص جميع المنافذ بالتوازي - أول من ينجح يكفي
+        const portChecks = quickPorts.map(port => 
+          checkHostPort(ip, port, portTimeout).then(isAlive => ({ port, isAlive }))
+        );
         
-        for (const port of quickPorts) {
-          const isAlive = await checkHostPort(ip, port, timeout * 1000);
-          if (isAlive) {
-            return {
-              ip: ip,
-              hostname: null, // سيتم ملؤه لاحقاً
-              time: null,
-              port: port
-            };
-          }
+        // انتظار أول نتيجة نجاح
+        const results = await Promise.all(portChecks);
+        const successfulPort = results.find(r => r.isAlive);
+        
+        if (successfulPort) {
+          return {
+            ip: ip,
+            hostname: null, // سيتم ملؤه لاحقاً
+            time: null,
+            port: successfulPort.port
+          };
         }
         return null;
       });

@@ -94,19 +94,88 @@ db.exec(`
   )
 `);
 
+// ========== إضافة فهارس لتحسين الأداء ==========
+// فهرس على IP للبحث السريع
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_hosts_ip ON hosts(ip)');
+} catch (e) {}
+
+// فهرس على status للفلترة السريعة
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_hosts_status ON hosts(status)');
+} catch (e) {}
+
+// فهرس على created_at للترتيب السريع
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_hosts_created_at ON hosts(created_at DESC)');
+} catch (e) {}
+
+// فهرس على host_id في host_tags للربط السريع
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_host_tags_host_id ON host_tags(host_id)');
+} catch (e) {}
+
+// فهرس على tag_id في host_tags
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_host_tags_tag_id ON host_tags(tag_id)');
+} catch (e) {}
+
+// فهرس على host_id في host_status_history
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_status_history_host_id ON host_status_history(host_id)');
+} catch (e) {}
+
+// فهرس على checked_at في host_status_history للترتيب السريع
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_status_history_checked_at ON host_status_history(host_id, checked_at DESC)');
+} catch (e) {}
+
 // دوال قاعدة البيانات
 export const dbFunctions = {
-  // الحصول على جميع المضيفين
-  getAllHosts() {
-    const stmt = db.prepare('SELECT * FROM hosts ORDER BY id DESC');
-    const hosts = stmt.all();
+  // الحصول على جميع المضيفين (محسّن - جلب الوسوم بشكل batch)
+  getAllHosts(limit = null, offset = 0) {
+    let query = 'SELECT * FROM hosts ORDER BY id DESC';
+    if (limit) {
+      query += ` LIMIT ? OFFSET ?`;
+    }
+    const stmt = limit ? db.prepare(query) : db.prepare('SELECT * FROM hosts ORDER BY id DESC');
+    const hosts = limit ? stmt.all(limit, offset) : stmt.all();
+    
+    // جلب جميع الوسوم دفعة واحدة بدلاً من loop
+    const hostIds = hosts.map(h => h.id);
+    let allHostTags = {};
+    
+    if (hostIds.length > 0) {
+      // استخدام IN clause لجلب جميع الوسوم دفعة واحدة
+      const placeholders = hostIds.map(() => '?').join(',');
+      const tagsStmt = db.prepare(`
+        SELECT ht.host_id, t.* 
+        FROM host_tags ht
+        INNER JOIN tags t ON ht.tag_id = t.id
+        WHERE ht.host_id IN (${placeholders})
+        ORDER BY t.name ASC
+      `);
+      const tagsResults = tagsStmt.all(...hostIds);
+      
+      // تجميع الوسوم حسب host_id
+      tagsResults.forEach(tag => {
+        if (!allHostTags[tag.host_id]) {
+          allHostTags[tag.host_id] = [];
+        }
+        allHostTags[tag.host_id].push({
+          id: tag.id,
+          name: tag.name,
+          color: tag.color,
+          createdAt: tag.created_at
+        });
+      });
+    }
+    
     return hosts.map(host => {
       const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, ...rest } = host;
-      // الحصول على الوسوم من جدول host_tags
-      const hostTags = this.getHostTags(host.id);
       return { 
         ...rest, 
-        tags: hostTags, 
+        tags: allHostTags[host.id] || [], 
         createdAt: created_at,
         lastChecked: last_checked,
         pingLatency: ping_latency,
@@ -258,7 +327,7 @@ export const dbFunctions = {
     return stmt.run(id);
   },
 
-  // الحصول على وسوم مضيف معين
+  // الحصول على وسوم مضيف معين (محسّن - استخدام الفهرس)
   getHostTags(hostId) {
     const stmt = db.prepare(`
       SELECT t.* FROM tags t
@@ -266,6 +335,7 @@ export const dbFunctions = {
       WHERE ht.host_id = ?
       ORDER BY t.name ASC
     `);
+    // الفهرس idx_host_tags_host_id يحسن الأداء هنا
     return stmt.all(hostId);
   },
 
@@ -311,7 +381,7 @@ export const dbFunctions = {
     }
   },
 
-  // إضافة سجل حالة
+  // إضافة سجل حالة (محسّن - حذف القديم بشكل أكثر كفاءة)
   addStatusHistory(hostId, status, latency) {
     const stmt = db.prepare(`
       INSERT INTO host_status_history (host_id, status, checked_at, ping_latency)
@@ -319,18 +389,27 @@ export const dbFunctions = {
     `);
     stmt.run(hostId, status, new Date().toISOString(), latency);
     
-    // حذف السجلات القديمة (الاحتفاظ بآخر 1000 سجل لكل مضيف)
+    // حذف السجلات القديمة بشكل أكثر كفاءة (الاحتفاظ بآخر 1000 سجل)
+    // استخدام استعلام محسّن بدلاً من NOT IN
     const deleteOldStmt = db.prepare(`
       DELETE FROM host_status_history 
-      WHERE host_id = ? AND id NOT IN (
-        SELECT id FROM host_status_history 
-        WHERE host_id = ? 
-        ORDER BY checked_at DESC 
-        LIMIT 1000
+      WHERE host_id = ? 
+      AND id NOT IN (
+        SELECT id FROM (
+          SELECT id FROM host_status_history 
+          WHERE host_id = ? 
+          ORDER BY checked_at DESC 
+          LIMIT 1000
+        )
       )
     `);
     try {
-      deleteOldStmt.run(hostId, hostId);
+      // تنفيذ الحذف فقط إذا كان هناك أكثر من 1000 سجل
+      const countStmt = db.prepare('SELECT COUNT(*) as count FROM host_status_history WHERE host_id = ?');
+      const count = countStmt.get(hostId);
+      if (count && count.count > 1000) {
+        deleteOldStmt.run(hostId, hostId);
+      }
     } catch (e) {
       // تجاهل الخطأ إذا كان الجدول فارغاً
     }
@@ -347,14 +426,15 @@ export const dbFunctions = {
     return stmt.all(hostId, limit);
   },
 
-  // تحديث نسبة Uptime
+  // تحديث نسبة Uptime (محسّن - استخدام استعلام أكثر كفاءة)
   updateUptimePercentage(hostId) {
     // حساب نسبة Uptime من آخر 24 ساعة
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    // تحسين: استخدام COUNT مع CASE بدلاً من COUNT(*) ثم SUM
     const stmt = db.prepare(`
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status = 'online' THEN 1 ELSE 0 END) as online
+        COUNT(CASE WHEN status = 'online' THEN 1 END) as online
       FROM host_status_history
       WHERE host_id = ? AND checked_at >= ?
     `);

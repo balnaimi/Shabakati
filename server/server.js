@@ -9,15 +9,35 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // زيادة حد حجم البيانات
 
 // Routes
 
-// الحصول على جميع المضيفين
+// الحصول على جميع المضيفين (مع دعم pagination)
 app.get('/api/hosts', (req, res) => {
   try {
-    const hosts = dbFunctions.getAllHosts();
-    res.json(hosts);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || null; // null يعني جلب الكل
+    const offset = limit ? (page - 1) * limit : 0;
+    
+    const hosts = dbFunctions.getAllHosts(limit, offset);
+    
+    // إذا كان هناك pagination، أرسل معلومات إضافية
+    if (limit) {
+      const totalStmt = db.prepare('SELECT COUNT(*) as total FROM hosts');
+      const total = totalStmt.get().total;
+      res.json({
+        hosts,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      });
+    } else {
+      res.json(hosts);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

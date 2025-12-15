@@ -51,12 +51,23 @@ function HostsList({ theme, toggleTheme }) {
     status: 'online'
   })
 
-  const fetchHosts = useCallback(async () => {
+  const fetchHosts = useCallback(async (page = 1, limit = null) => {
     try {
       setLoading(true)
       setError(null)
-      const data = await apiGet('/hosts')
-      setHosts(data)
+      // استخدام pagination إذا كان مفعلاً
+      const url = limit && limit < 1000 
+        ? `/hosts?limit=${limit}&page=${page}`
+        : '/hosts'
+      const data = await apiGet(url)
+      
+      // إذا كان هناك pagination من الخادم
+      if (data.hosts) {
+        setHosts(data.hosts)
+        // يمكن تحديث pagination info إذا لزم الأمر
+      } else {
+        setHosts(data)
+      }
     } catch (err) {
       setError(err.message)
       console.error('خطأ في تحميل المضيفين:', err)
@@ -67,6 +78,7 @@ function HostsList({ theme, toggleTheme }) {
   }, [])
 
   useEffect(() => {
+    // جلب جميع البيانات مرة واحدة (pagination يتم في الواجهة)
     fetchHosts()
   }, [fetchHosts])
 
@@ -232,6 +244,9 @@ function HostsList({ theme, toggleTheme }) {
   }, [filteredHosts, currentPage, itemsPerPage])
 
   const sortedHosts = useMemo(() => {
+    // تحسين: استخدام Intl.Collator للترتيب السريع
+    const collator = new Intl.Collator('ar', { numeric: true, sensitivity: 'base' })
+    
     return [...paginationData.paginatedHosts].sort((a, b) => {
       let aValue, bValue
       switch (sortBy) {
@@ -240,9 +255,15 @@ function HostsList({ theme, toggleTheme }) {
           bValue = b.name.toLowerCase()
           break
         case 'ip':
-          aValue = a.ip.split('.').map(num => parseInt(num).toString().padStart(3, '0')).join('')
-          bValue = b.ip.split('.').map(num => parseInt(num).toString().padStart(3, '0')).join('')
-          break
+          // تحسين: ترتيب IP بشكل أكثر كفاءة
+          const aParts = a.ip.split('.').map(Number)
+          const bParts = b.ip.split('.').map(Number)
+          for (let i = 0; i < 4; i++) {
+            if (aParts[i] !== bParts[i]) {
+              return sortOrder === 'asc' ? aParts[i] - bParts[i] : bParts[i] - aParts[i]
+            }
+          }
+          return 0
         case 'status':
           aValue = a.status
           bValue = b.status
@@ -250,9 +271,10 @@ function HostsList({ theme, toggleTheme }) {
         default:
           return 0
       }
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
-      return 0
+      
+      // استخدام collator للترتيب السريع
+      const comparison = collator.compare(aValue, bValue)
+      return sortOrder === 'asc' ? comparison : -comparison
     })
   }, [paginationData.paginatedHosts, sortBy, sortOrder])
 
@@ -269,31 +291,63 @@ function HostsList({ theme, toggleTheme }) {
   return (
     <div className="hosts-list-page">
       <header className="page-header">
-        <div className="page-header-content">
-          <h1>
-            {theme === 'light' ? <Globe2 size={24} className="header-icon" /> : <Globe size={24} className="header-icon" />}
-            <span>لوحة تحكم الشبكة</span>
-          </h1>
-          <p>إدارة ومتابعة المضيفين في شبكتك</p>
+        <div className="page-header-top">
+          <div className="page-header-content">
+            <h1>
+              {theme === 'light' ? <Globe2 size={24} className="header-icon" /> : <Globe size={24} className="header-icon" />}
+              <span>لوحة تحكم الشبكة</span>
+            </h1>
+            <p>إدارة ومتابعة المضيفين في شبكتك</p>
+          </div>
+          <div className="header-actions">
+            <button className="check-all-btn" onClick={() => {}}>
+              <Search size={18} />
+              <span>التحقق من جميع الحالات</span>
+            </button>
+            <button className="scan-network-btn" onClick={() => navigate('/scan')}>
+              {theme === 'light' ? <Globe2 size={18} /> : <Globe size={18} />}
+              مسح الشبكة
+            </button>
+            <button className="add-host-btn" onClick={() => navigate('/add')}>
+              {theme === 'light' ? <PlusCircle size={18} /> : <Plus size={18} />}
+              إضافة مضيف جديد
+            </button>
+            <button className="tags-management-btn" onClick={() => navigate('/tags')}>
+              <Tag size={18} />
+              إدارة الوسوم
+            </button>
+            <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+          </div>
         </div>
-        <div className="header-actions">
-          <button className="check-all-btn" onClick={() => {}}>
-            <Search size={18} />
-            <span>التحقق من جميع الحالات</span>
-          </button>
-          <button className="scan-network-btn" onClick={() => navigate('/scan')}>
-            {theme === 'light' ? <Globe2 size={18} /> : <Globe size={18} />}
-            مسح الشبكة
-          </button>
-          <button className="add-host-btn" onClick={() => navigate('/add')}>
-            {theme === 'light' ? <PlusCircle size={18} /> : <Plus size={18} />}
-            إضافة مضيف جديد
-          </button>
-          <button className="tags-management-btn" onClick={() => navigate('/tags')}>
-            <Tag size={18} />
-            إدارة الوسوم
-          </button>
-          <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+        
+        <div className="stats-container">
+          <div className="stat-card total">
+            <div className="stat-icon">
+              <ClipboardList size={36} />
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-label">إجمالي الأجهزة</h3>
+              <p className="stat-value">{stats.total}</p>
+            </div>
+          </div>
+          <div className="stat-card online">
+            <div className="stat-icon">
+              <CheckCircle2 size={36} />
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-label">متصلة</h3>
+              <p className="stat-value">{stats.online}</p>
+            </div>
+          </div>
+          <div className="stat-card offline">
+            <div className="stat-icon">
+              <XCircle size={36} />
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-label">غير متصلة</h3>
+              <p className="stat-value">{stats.offline}</p>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -302,36 +356,6 @@ function HostsList({ theme, toggleTheme }) {
           ⚠️ {error}
         </div>
       )}
-
-      <div className="stats-container">
-        <div className="stat-card total">
-          <div className="stat-icon">
-            <ClipboardList size={36} />
-          </div>
-          <div className="stat-content">
-            <h3 className="stat-label">إجمالي الأجهزة</h3>
-            <p className="stat-value">{stats.total}</p>
-          </div>
-        </div>
-        <div className="stat-card online">
-          <div className="stat-icon">
-            <CheckCircle2 size={36} />
-          </div>
-          <div className="stat-content">
-            <h3 className="stat-label">متصلة</h3>
-            <p className="stat-value">{stats.online}</p>
-          </div>
-        </div>
-        <div className="stat-card offline">
-          <div className="stat-icon">
-            <XCircle size={36} />
-          </div>
-          <div className="stat-content">
-            <h3 className="stat-label">غير متصلة</h3>
-            <p className="stat-value">{stats.offline}</p>
-          </div>
-        </div>
-      </div>
 
       <section className="hosts-section">
         <div className="section-header">
