@@ -352,7 +352,7 @@ function HostsList({ theme, toggleTheme }) {
       </header>
 
       {error && (
-        <div className="error-message" style={{ padding: '15px', background: '#ef4444', color: 'white', borderRadius: '8px', marginBottom: '20px' }}>
+        <div className="error-message">
           ⚠️ {error}
         </div>
       )}
