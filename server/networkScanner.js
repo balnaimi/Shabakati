@@ -89,14 +89,20 @@ export async function scanNetwork(networkRange, timeout = 2) {
       
       const hostnamePromises = activeHosts.map(async (host) => {
         let hostname = null;
+        let isExisting = false;
+        let existingName = null;
         
         // أولاً: البحث في قاعدة البيانات المحلية
         try {
           const existingHost = existingHosts.find(h => h.ip === host.ip);
-          if (existingHost && existingHost.name) {
-            hostname = existingHost.name;
-            console.log(`  ✓ وجد اسم في قاعدة البيانات لـ ${host.ip}: ${hostname}`);
-            return { ...host, hostname };
+          if (existingHost) {
+            isExisting = true;
+            existingName = existingHost.name;
+            if (existingHost.name) {
+              hostname = existingHost.name;
+              console.log(`  ✓ وجد اسم في قاعدة البيانات لـ ${host.ip}: ${hostname}`);
+            }
+            return { ...host, hostname, isExisting, existingName };
           }
         } catch (error) {
           // تجاهل الأخطاء
@@ -130,12 +136,14 @@ export async function scanNetwork(networkRange, timeout = 2) {
           }
         }
         
-        return { ...host, hostname };
+        return { ...host, hostname, isExisting: isExisting || false, existingName: existingName || null };
       });
       
       const hostsWithNames = await Promise.all(hostnamePromises);
       const foundNames = hostsWithNames.filter(h => h.hostname).length;
+      const existingCount = hostsWithNames.filter(h => h.isExisting).length;
       console.log(`تم الحصول على ${foundNames} اسم من ${activeHosts.length} مضيف`);
+      console.log(`تم العثور على ${existingCount} جهاز مضاف مسبقاً`);
       return hostsWithNames;
     }
     

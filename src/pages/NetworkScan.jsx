@@ -50,18 +50,25 @@ function NetworkScan({ theme }) {
 
   const handleAddSelected = async () => {
     if (selectedHosts.size === 0) {
-      setError('يرجى اختيار مضيف واحد على الأقل')
+      setError('يرجى اختيار جهاز واحد على الأقل')
       return
     }
 
     try {
       setError(null)
       const selectedIPs = Array.from(selectedHosts)
-      const hostsToAdd = scannedHosts.filter(host => selectedIPs.includes(host.ip))
+      const hostsToAdd = scannedHosts.filter(host => 
+        selectedIPs.includes(host.ip) && !host.isExisting
+      )
+
+      if (hostsToAdd.length === 0) {
+        setError('جميع الأجهزة المحددة مضافه مسبقاً')
+        return
+      }
 
       const addPromises = hostsToAdd.map(async (host) => {
         await apiPost('/hosts', {
-          name: host.hostname || `Host ${host.ip.split('.').pop()}`,
+          name: host.hostname || host.existingName || `Host ${host.ip.split('.').pop()}`,
           ip: host.ip,
           description: `تم اكتشافه من مسح الشبكة${host.port ? ` (Port: ${host.port})` : ''}`,
           url: '',
@@ -140,42 +147,56 @@ function NetworkScan({ theme }) {
         {scannedHosts.length > 0 && (
           <div className="scanned-hosts">
             <div className="hosts-header">
-              <h2>المضيفين المكتشفين ({scannedHosts.length})</h2>
+              <h2>الأجهزة المكتشفة ({scannedHosts.length})</h2>
               {selectedHosts.size > 0 && (
                 <button className="add-selected-btn" onClick={handleAddSelected}>
                   {theme === 'light' ? <PlusCircle size={18} style={{ marginLeft: '8px' }} /> : <Plus size={18} style={{ marginLeft: '8px' }} />}
-                  إضافة المحدد ({selectedHosts.size})
+                  إضافة المحدد ({Array.from(selectedHosts).filter(ip => {
+                    const host = scannedHosts.find(h => h.ip === ip)
+                    return host && !host.isExisting
+                  }).length})
                 </button>
               )}
             </div>
 
             <div className="hosts-grid">
-              {scannedHosts.map((host, index) => (
-                <div
-                  key={index}
-                  className={`host-item ${selectedHosts.has(host.ip) ? 'selected' : ''}`}
-                  onClick={() => toggleHostSelection(host.ip)}
-                >
-                  <div className="host-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={selectedHosts.has(host.ip)}
-                      onChange={() => toggleHostSelection(host.ip)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+              {scannedHosts.map((host, index) => {
+                const isExisting = host.isExisting || false
+                const hostName = host.hostname || host.existingName || `Host ${host.ip.split('.').pop()}`
+                
+                return (
+                  <div
+                    key={index}
+                    className={`host-item ${selectedHosts.has(host.ip) && !isExisting ? 'selected' : ''} ${isExisting ? 'existing' : ''}`}
+                    onClick={() => !isExisting && toggleHostSelection(host.ip)}
+                  >
+                    <div className="host-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedHosts.has(host.ip) && !isExisting}
+                        onChange={() => !isExisting && toggleHostSelection(host.ip)}
+                        onClick={(e) => e.stopPropagation()}
+                        disabled={isExisting}
+                      />
+                    </div>
+                    <div className="host-info">
+                      <h3>{hostName}</h3>
+                      <p className="host-ip">📍 {host.ip}</p>
+                      {host.hostname && (
+                        <p className="host-hostname">🏷️ {host.hostname}</p>
+                      )}
+                      {host.port && (
+                        <p className="host-port">🔌 Port: {host.port}</p>
+                      )}
+                      {isExisting && (
+                        <p className="host-existing" style={{ color: '#10b981', fontWeight: '600', marginTop: '8px' }}>
+                          ✓ الجهاز مضاف مسبقاً
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="host-info">
-                    <h3>{host.hostname || `Host ${host.ip.split('.').pop()}`}</h3>
-                    <p className="host-ip">📍 {host.ip}</p>
-                    {host.hostname && (
-                      <p className="host-hostname">🏷️ {host.hostname}</p>
-                    )}
-                    {host.port && (
-                      <p className="host-port">🔌 Port: {host.port}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}

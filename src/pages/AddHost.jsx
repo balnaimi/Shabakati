@@ -61,7 +61,7 @@ function AddHost({ theme }) {
       <header className="page-header">
         <h1>
           <PlusCircle size={28} className="header-icon" />
-          <span>إضافة مضيف جديد</span>
+          <span>إضافة جهاز جديد</span>
         </h1>
         <button className="back-btn" onClick={() => navigate('/')}>
           <ArrowRight size={18} style={{ marginLeft: '8px' }} />

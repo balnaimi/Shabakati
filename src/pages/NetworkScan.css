@@ -218,6 +218,30 @@
   background: rgba(16, 185, 129, 0.1);
 }
 
+.host-item.existing {
+  opacity: 0.7;
+  cursor: not-allowed;
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.host-item.existing:hover {
+  transform: none;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.host-item.existing .host-checkbox input[type="checkbox"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.host-existing {
+  color: #10b981;
+  font-weight: 600;
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
 .host-checkbox {
   margin-top: 5px;
 }

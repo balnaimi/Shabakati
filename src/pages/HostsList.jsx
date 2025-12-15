@@ -10,14 +10,12 @@ import {
   ClipboardList, Clipboard,
   CheckCircle2, XCircle,
   ArrowUp, ArrowDown,
-  Tag, Download, Upload, BarChart3, Filter,
-  Eye, EyeOff, Info, X, Save
+  Tag, Filter,
+  Eye, EyeOff, X, Save
 } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { format } from 'date-fns'
 import { API_URL } from '../constants'
-import { apiGet, apiDelete, apiPatch, apiPut, apiPost } from '../utils/api'
+import { apiGet, apiDelete, apiPut, apiPost } from '../utils/api'
 import ThemeToggle from '../components/ThemeToggle'
 import './HostsList.css'
 
@@ -35,9 +33,6 @@ function HostsList({ theme, toggleTheme }) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
-  const [showStats, setShowStats] = useState(false)
-  const [selectedHostForStats, setSelectedHostForStats] = useState(null)
-  const [statusHistory, setStatusHistory] = useState([])
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(false)
   const [autoCheckInterval, setAutoCheckInterval] = useState(300000)
   const [checkingAll, setCheckingAll] = useState(false)
@@ -53,26 +48,14 @@ function HostsList({ theme, toggleTheme }) {
     status: 'online'
   })
 
-  const fetchHosts = useCallback(async (page = 1, limit = null) => {
+  const fetchHosts = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      // استخدام pagination إذا كان مفعلاً
-      const url = limit && limit < 1000 
-        ? `/hosts?limit=${limit}&page=${page}`
-        : '/hosts'
-      const data = await apiGet(url)
-      
-      // إذا كان هناك pagination من الخادم
-      if (data.hosts) {
-        setHosts(data.hosts)
-        // يمكن تحديث pagination info إذا لزم الأمر
-      } else {
-        setHosts(data)
-      }
+      const data = await apiGet('/hosts')
+      setHosts(data.hosts || data)
     } catch (err) {
       setError(err.message)
-      console.error('خطأ في تحميل الأجهزة:', err)
       toast.error('فشل في تحميل الأجهزة: ' + err.message)
     } finally {
       setLoading(false)
@@ -80,47 +63,36 @@ function HostsList({ theme, toggleTheme }) {
   }, [])
 
   useEffect(() => {
-    // جلب جميع البيانات مرة واحدة (pagination يتم في الواجهة)
     fetchHosts()
   }, [fetchHosts])
 
-  // التحقق التلقائي
   useEffect(() => {
     if (!autoCheckEnabled) return
 
     const checkAllHosts = async () => {
       try {
-        // جلب قائمة الأجهزة الحالية
         const currentHosts = await apiGet('/hosts')
         const hostsList = currentHosts.hosts || currentHosts
         
-        // التحقق من جميع الأجهزة
         const checkPromises = hostsList.map(host => 
-          apiPost(`/hosts/${host.id}/check-status`, {}).catch(err => {
-            console.error(`خطأ في التحقق من ${host.name}:`, err)
-            return null
-          })
+          apiPost(`/hosts/${host.id}/check-status`, {}).catch(() => null)
         )
         
         const results = await Promise.all(checkPromises)
         const updatedHosts = results.filter(Boolean)
         
         if (updatedHosts.length > 0) {
-          // تحديث الأجهزة
           setHosts(prev => prev.map(host => {
             const updated = updatedHosts.find(u => u.id === host.id)
             return updated || host
           }))
         }
       } catch (err) {
-        console.error('خطأ في التحقق التلقائي:', err)
+        // Silent fail for auto-check
       }
     }
 
-    // التحقق الفوري عند التفعيل
     checkAllHosts()
-
-    // ثم التحقق بشكل دوري
     const interval = setInterval(checkAllHosts, autoCheckInterval)
 
     return () => clearInterval(interval)
@@ -136,7 +108,7 @@ function HostsList({ theme, toggleTheme }) {
           setAvailableTags(tags)
         }
       } catch (err) {
-        console.error('خطأ في تحميل الوسوم:', err)
+        // Silent fail for tags
       } finally {
         setLoadingTags(false)
       }
@@ -151,20 +123,6 @@ function HostsList({ theme, toggleTheme }) {
       await apiDelete(`/hosts/${id}`)
       setHosts(prev => prev.filter(host => host.id !== id))
       toast.success('تم حذف الجهاز بنجاح')
-    } catch (err) {
-      setError(err.message)
-      toast.error(err.message)
-    }
-  }, [])
-
-  const handleToggleStatus = useCallback(async (id) => {
-    try {
-      setError(null)
-      const updatedHost = await apiPatch(`/hosts/${id}/toggle-status`)
-      setHosts(prev => prev.map(host => 
-        host.id === id ? updatedHost : host
-      ))
-      toast.success('تم تغيير الحالة بنجاح')
     } catch (err) {
       setError(err.message)
       toast.error(err.message)
@@ -199,7 +157,6 @@ function HostsList({ theme, toggleTheme }) {
       let successCount = 0
       let failCount = 0
       
-      // التحقق من جميع الأجهزة بشكل متسلسل لعرض التقدم
       for (let i = 0; i < hosts.length; i++) {
         const host = hosts[i]
         setCheckProgress({ current: i + 1, total: hosts.length })
@@ -209,7 +166,6 @@ function HostsList({ theme, toggleTheme }) {
           setHosts(prev => prev.map(h => h.id === host.id ? updatedHost : h))
           successCount++
         } catch (err) {
-          console.error(`خطأ في التحقق من ${host.name}:`, err)
           failCount++
         }
       }
@@ -228,7 +184,7 @@ function HostsList({ theme, toggleTheme }) {
       setCheckingAll(false)
       setTimeout(() => setCheckProgress({ current: 0, total: 0 }), 1000)
     }
-  }, [hosts, checkingAll])
+  }, [hosts])
 
   const handleViewHost = useCallback((host) => {
     setViewingHost(host)
@@ -332,19 +288,16 @@ function HostsList({ theme, toggleTheme }) {
   }, [filteredHosts, currentPage, itemsPerPage])
 
   const sortedHosts = useMemo(() => {
-    // تحسين: استخدام Intl.Collator للترتيب السريع
     const collator = new Intl.Collator('ar', { numeric: true, sensitivity: 'base' })
     
     return [...paginationData.paginatedHosts].sort((a, b) => {
-      let aValue, bValue
       switch (sortBy) {
         case 'name':
-          aValue = a.name.toLowerCase()
-          bValue = b.name.toLowerCase()
+          const aValue = a.name.toLowerCase()
+          const bValue = b.name.toLowerCase()
           const nameComparison = collator.compare(aValue, bValue)
           return sortOrder === 'asc' ? nameComparison : -nameComparison
         case 'ip':
-          // تحسين: ترتيب IP بشكل أكثر كفاءة
           const aParts = a.ip.split('.').map(Number)
           const bParts = b.ip.split('.').map(Number)
           for (let i = 0; i < 4; i++) {
@@ -358,12 +311,12 @@ function HostsList({ theme, toggleTheme }) {
           bValue = b.status === 'online' ? 1 : 0
           return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
         case 'created_at':
-          aValue = a.created_at ? new Date(a.created_at).getTime() : 0
-          bValue = b.created_at ? new Date(b.created_at).getTime() : 0
+          aValue = (a.createdAt || a.created_at) ? new Date(a.createdAt || a.created_at).getTime() : 0
+          bValue = (b.createdAt || b.created_at) ? new Date(b.createdAt || b.created_at).getTime() : 0
           return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
         case 'last_checked':
-          aValue = a.last_checked ? new Date(a.last_checked).getTime() : 0
-          bValue = b.last_checked ? new Date(b.last_checked).getTime() : 0
+          aValue = (a.lastChecked || a.last_checked) ? new Date(a.lastChecked || a.last_checked).getTime() : 0
+          bValue = (b.lastChecked || b.last_checked) ? new Date(b.lastChecked || b.last_checked).getTime() : 0
           return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
         default:
           return 0
@@ -376,6 +329,19 @@ function HostsList({ theme, toggleTheme }) {
     const offline = hosts.filter(h => h.status === 'offline').length
     return { total: hosts.length, online, offline }
   }, [hosts])
+
+  const formatDate = useCallback((dateValue) => {
+    if (!dateValue) return null
+    const date = new Date(dateValue)
+    if (isNaN(date.getTime())) return null
+    return date.toLocaleDateString('ar-SA', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }, [])
 
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>جاري التحميل...</div>
@@ -393,6 +359,18 @@ function HostsList({ theme, toggleTheme }) {
             <p>إدارة ومتابعة الأجهزة في شبكتك</p>
           </div>
           <div className="header-actions">
+            <button className="add-host-btn" onClick={() => navigate('/add')}>
+              {theme === 'light' ? <PlusCircle size={18} /> : <Plus size={18} />}
+              إضافة جهاز جديد
+            </button>
+            <button className="scan-network-btn" onClick={() => navigate('/scan')}>
+              <Globe2 size={18} />
+              مسح الشبكة
+            </button>
+            <button className="tags-management-btn" onClick={() => navigate('/tags')}>
+              <Tag size={18} />
+              إدارة الوسوم
+            </button>
             <button 
               className="check-all-btn" 
               onClick={handleCheckAllHosts}
@@ -409,18 +387,6 @@ function HostsList({ theme, toggleTheme }) {
                   <span>التحقق من جميع الحالات</span>
                 </>
               )}
-            </button>
-            <button className="scan-network-btn" onClick={() => navigate('/scan')}>
-              <Globe2 size={18} />
-              مسح الشبكة
-            </button>
-            <button className="add-host-btn" onClick={() => navigate('/add')}>
-              {theme === 'light' ? <PlusCircle size={18} /> : <Plus size={18} />}
-              إضافة مضيف جديد
-            </button>
-            <button className="tags-management-btn" onClick={() => navigate('/tags')}>
-              <Tag size={18} />
-              إدارة الوسوم
             </button>
             <button 
               className={`auto-check-btn ${autoCheckEnabled ? 'active' : ''}`}
@@ -650,34 +616,32 @@ function HostsList({ theme, toggleTheme }) {
                       </span>
                     </td>
                     <td className="host-date-cell">
-                      {host.created_at ? (
-                        <span className="date-text" title={new Date(host.created_at).toLocaleString('ar-SA')}>
-                          {new Date(host.created_at).toLocaleDateString('ar-SA', { 
-                            year: 'numeric', 
-                            month: '2-digit', 
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      ) : (
-                        <span className="no-date">-</span>
-                      )}
+                      {(() => {
+                        const dateValue = host.createdAt || host.created_at
+                        const formattedDate = formatDate(dateValue)
+                        if (formattedDate) {
+                          return (
+                            <span className="date-text" title={new Date(dateValue).toLocaleString('ar-SA')}>
+                              {formattedDate}
+                            </span>
+                          )
+                        }
+                        return <span className="no-date">لم يتم إضافة تاريخ</span>
+                      })()}
                     </td>
                     <td className="host-date-cell">
-                      {host.last_checked ? (
-                        <span className="date-text" title={new Date(host.last_checked).toLocaleString('ar-SA')}>
-                          {new Date(host.last_checked).toLocaleDateString('ar-SA', { 
-                            year: 'numeric', 
-                            month: '2-digit', 
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      ) : (
-                        <span className="no-date">-</span>
-                      )}
+                      {(() => {
+                        const dateValue = host.lastChecked || host.last_checked
+                        const formattedDate = formatDate(dateValue)
+                        if (formattedDate) {
+                          return (
+                            <span className="date-text" title={new Date(dateValue).toLocaleString('ar-SA')}>
+                              {formattedDate}
+                            </span>
+                          )
+                        }
+                        return <span className="no-date">لم يتم إضافة تاريخ</span>
+                      })()}
                     </td>
                     <td>
                       <div className="action-buttons">
@@ -796,18 +760,24 @@ function HostsList({ theme, toggleTheme }) {
                   </div>
                 </div>
               )}
-              {viewingHost.lastChecked && (
-                <div className="info-row">
-                  <label>آخر فحص:</label>
-                  <span>{new Date(viewingHost.lastChecked).toLocaleString('ar-SA')}</span>
-                </div>
-              )}
-              {viewingHost.createdAt && (
-                <div className="info-row">
-                  <label>تاريخ الإضافة:</label>
-                  <span>{new Date(viewingHost.createdAt).toLocaleString('ar-SA')}</span>
-                </div>
-              )}
+              {(() => {
+                const lastChecked = formatDate(viewingHost.lastChecked)
+                return (
+                  <div className="info-row">
+                    <label>آخر فحص:</label>
+                    <span>{lastChecked || 'لم يتم إضافة تاريخ'}</span>
+                  </div>
+                )
+              })()}
+              {(() => {
+                const createdAt = formatDate(viewingHost.createdAt)
+                return (
+                  <div className="info-row">
+                    <label>تاريخ الإضافة:</label>
+                    <span>{createdAt || 'لم يتم إضافة تاريخ'}</span>
+                  </div>
+                )
+              })()}
             </div>
             <div className="modal-footer">
               <button className="modal-btn primary" onClick={() => { setViewingHost(null); handleEditHost(viewingHost); }}>

@@ -115,17 +115,24 @@ app.post('/api/hosts', async (req, res) => {
     const { name, ip, description, url, tagIds } = req.body;
     
     if (!name || !ip) {
-      return res.status(400).json({ error: 'اسم المضيف وعنوان IP مطلوبان' });
+      return res.status(400).json({ error: 'اسم الجهاز وعنوان IP مطلوبان' });
+    }
+
+    // التحقق من وجود جهاز بنفس IP
+    const existingHosts = dbFunctions.getAllHosts();
+    const existingHost = existingHosts.find(h => h.ip === ip);
+    if (existingHost) {
+      return res.status(400).json({ error: `الجهاز موجود مسبقاً: ${existingHost.name} (${ip})` });
     }
 
     // التحقق تلقائياً من حالة المضيف
-    let status = 'offline';
+    let checkResult = { status: 'offline', latency: null, packetLoss: 100 };
     try {
-      status = await checkHost(ip, url || null);
+      checkResult = await checkHost(ip, url || null);
     } catch (error) {
       console.error('خطأ في التحقق من حالة المضيف:', error);
       // في حالة الخطأ، نضع offline كحالة افتراضية
-      status = 'offline';
+      checkResult = { status: 'offline', latency: null, packetLoss: 100 };
     }
 
     const newHost = {
@@ -134,8 +141,11 @@ app.post('/api/hosts', async (req, res) => {
       description: description || '',
       url: url || '',
       tagIds: tagIds || [],
-      status: status,
-      createdAt: new Date().toLocaleString('ar-SA')
+      status: checkResult.status || 'offline',
+      createdAt: new Date().toISOString(),
+      lastChecked: new Date().toISOString(),
+      pingLatency: checkResult.latency || null,
+      packetLoss: checkResult.packetLoss || null
     };
 
     const host = dbFunctions.addHost(newHost);

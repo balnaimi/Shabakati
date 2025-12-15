@@ -190,10 +190,18 @@ export const dbFunctions = {
     const stmt = db.prepare('SELECT * FROM hosts WHERE id = ?');
     const host = stmt.get(id);
     if (!host) return null;
-    const { created_at, tags, tag, ...rest } = host;
+    const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, ...rest } = host;
     // الحصول على الوسوم من جدول host_tags
     const hostTags = this.getHostTags(id);
-    return { ...rest, tags: hostTags, createdAt: created_at };
+    return { 
+      ...rest, 
+      tags: hostTags, 
+      createdAt: created_at,
+      lastChecked: last_checked,
+      pingLatency: ping_latency,
+      packetLoss: packet_loss,
+      uptimePercentage: uptime_percentage || 100.0
+    };
   },
 
   // إضافة مضيف جديد
