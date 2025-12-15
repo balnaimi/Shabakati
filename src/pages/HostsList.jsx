@@ -294,7 +294,7 @@ function HostsList({ theme, toggleTheme }) {
         <div className="page-header-top">
           <div className="page-header-content">
             <h1>
-              {theme === 'light' ? <Globe2 size={24} className="header-icon" /> : <Globe size={24} className="header-icon" />}
+              <Globe2 size={24} className="header-icon" />
               <span>لوحة تحكم الشبكة</span>
             </h1>
             <p>إدارة ومتابعة المضيفين في شبكتك</p>
@@ -305,7 +305,7 @@ function HostsList({ theme, toggleTheme }) {
               <span>التحقق من جميع الحالات</span>
             </button>
             <button className="scan-network-btn" onClick={() => navigate('/scan')}>
-              {theme === 'light' ? <Globe2 size={18} /> : <Globe size={18} />}
+              <Globe2 size={18} />
               مسح الشبكة
             </button>
             <button className="add-host-btn" onClick={() => navigate('/add')}>
@@ -326,7 +326,7 @@ function HostsList({ theme, toggleTheme }) {
               <ClipboardList size={36} />
             </div>
             <div className="stat-content">
-              <h3 className="stat-label">إجمالي الأجهزة</h3>
+              <p className="stat-label">إجمالي الأجهزة</p>
               <p className="stat-value">{stats.total}</p>
             </div>
           </div>
@@ -335,7 +335,7 @@ function HostsList({ theme, toggleTheme }) {
               <CheckCircle2 size={36} />
             </div>
             <div className="stat-content">
-              <h3 className="stat-label">متصلة</h3>
+              <p className="stat-label">متصلة</p>
               <p className="stat-value">{stats.online}</p>
             </div>
           </div>
@@ -344,7 +344,7 @@ function HostsList({ theme, toggleTheme }) {
               <XCircle size={36} />
             </div>
             <div className="stat-content">
-              <h3 className="stat-label">غير متصلة</h3>
+              <p className="stat-label">غير متصلة</p>
               <p className="stat-value">{stats.offline}</p>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, PlusCircle, ArrowRight, XCircle } from 'lucide-react'
+import { PlusCircle, ArrowRight, XCircle } from 'lucide-react'
 import { API_URL } from '../constants'
 import { apiPost } from '../utils/api'
 import './AddHost.css'
@@ -60,7 +60,7 @@ function AddHost({ theme }) {
     <div className="add-host-page">
       <header className="page-header">
         <h1>
-          {theme === 'light' ? <PlusCircle size={28} className="header-icon" /> : <Plus size={28} className="header-icon" />}
+          <PlusCircle size={28} className="header-icon" />
           <span>إضافة مضيف جديد</span>
         </h1>
         <button className="back-btn" onClick={() => navigate('/')}>

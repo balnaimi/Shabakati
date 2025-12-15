@@ -96,6 +96,11 @@
   letter-spacing: -0.5px;
 }
 
+.header-icon {
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
 .page-header p {
   font-size: 0.95rem;
   color: var(--text-secondary);
@@ -279,20 +284,28 @@
 
 .stat-content {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: inherit;
+}
+
+.stat-content p {
+  font-size: inherit;
 }
 
 .stat-label {
-  font-size: 0.85rem;
+  font-size: 28px !important;
   color: var(--text-secondary);
-  margin-bottom: 6px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  margin: 0;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .stat-value {
-  font-size: 2rem;
-  font-weight: 800;
+  font-size: 28px !important;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
   line-height: 1;
@@ -300,6 +313,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  white-space: nowrap;
 }
 
 .hosts-section {
