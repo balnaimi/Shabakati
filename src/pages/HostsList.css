@@ -116,7 +116,7 @@
   margin-top: 0;
 }
 
-.check-all-btn, .scan-network-btn, .add-host-btn, .tags-management-btn {
+.check-all-btn, .scan-network-btn, .add-host-btn, .tags-management-btn, .auto-check-btn {
   padding: 12px 24px;
   border-radius: 12px;
   font-size: 0.95rem;
@@ -135,12 +135,22 @@
   overflow: hidden;
 }
 
+.check-all-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.check-all-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 [data-theme="light"] .check-all-btn,
 [data-theme="light"] .tags-management-btn {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.check-all-btn::before, .scan-network-btn::before, .add-host-btn::before, .tags-management-btn::before {
+.check-all-btn::before, .scan-network-btn::before, .add-host-btn::before, .tags-management-btn::before, .auto-check-btn::before {
   content: '';
   position: absolute;
   top: 0;
@@ -151,23 +161,44 @@
   transition: left 0.5s;
 }
 
-.check-all-btn:hover::before, .scan-network-btn:hover::before, .add-host-btn:hover::before, .tags-management-btn:hover::before {
+.check-all-btn:hover::before, .scan-network-btn:hover::before, .add-host-btn:hover::before, .tags-management-btn:hover::before, .auto-check-btn:hover::before {
   left: 100%;
 }
 
-.check-all-btn:hover, .scan-network-btn:hover, .add-host-btn:hover, .tags-management-btn:hover {
+.check-all-btn:hover, .scan-network-btn:hover, .add-host-btn:hover, .tags-management-btn:hover, .auto-check-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 [data-theme="light"] .check-all-btn:hover, 
 [data-theme="light"] .scan-network-btn:hover, 
-[data-theme="light"] .tags-management-btn:hover {
+[data-theme="light"] .tags-management-btn:hover,
+[data-theme="light"] .auto-check-btn:hover {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
-.check-all-btn:active, .scan-network-btn:active, .add-host-btn:active, .tags-management-btn:active {
+.check-all-btn:active, .scan-network-btn:active, .add-host-btn:active, .tags-management-btn:active, .auto-check-btn:active {
   transform: translateY(0);
+}
+
+.auto-check-btn.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.auto-check-btn.active .spinning,
+.check-all-btn .spinning {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .scan-network-btn {
@@ -424,6 +455,23 @@
   text-align: right;
 }
 
+.tag-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-tertiary);
+  padding: 10px 12px 10px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  min-width: 140px;
+  direction: rtl;
+}
+
+.tag-filter .filter-select {
+  flex: 1;
+  text-align: right;
+}
+
 .filter-select {
   border: none;
   background: transparent;
@@ -592,6 +640,78 @@
   text-align: center;
 }
 
+.host-tags-cell {
+  min-width: 150px;
+}
+
+.tags-list-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.tag-badge-inline {
+  padding: 4px 10px;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.no-tags {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.host-url-cell {
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.host-url-link {
+  display: inline-flex;
+  align-items: center;
+  color: #4a9eff;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  word-break: break-all;
+}
+
+.host-url-link:hover {
+  color: #3a8eef;
+  text-decoration: underline;
+}
+
+.url-text {
+  font-size: 0.85rem;
+  direction: ltr;
+  text-align: left;
+  display: inline-block;
+}
+
+.no-url {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.host-date-cell {
+  min-width: 150px;
+  font-size: 0.85rem;
+}
+
+.date-text {
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.no-date {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
 
 .status-badge {
   padding: 5px 10px;
@@ -627,8 +747,7 @@
 }
 
 .status-badge.online::before {
-  background: #10b981;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  display: none;
 }
 
 .status-badge.offline {

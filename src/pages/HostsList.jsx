@@ -40,6 +40,8 @@ function HostsList({ theme, toggleTheme }) {
   const [statusHistory, setStatusHistory] = useState([])
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(false)
   const [autoCheckInterval, setAutoCheckInterval] = useState(300000)
+  const [checkingAll, setCheckingAll] = useState(false)
+  const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0 })
   const [viewingHost, setViewingHost] = useState(null)
   const [editingHostId, setEditingHostId] = useState(null)
   const [editFormData, setEditFormData] = useState({
@@ -70,8 +72,8 @@ function HostsList({ theme, toggleTheme }) {
       }
     } catch (err) {
       setError(err.message)
-      console.error('خطأ في تحميل المضيفين:', err)
-      toast.error('فشل في تحميل المضيفين: ' + err.message)
+      console.error('خطأ في تحميل الأجهزة:', err)
+      toast.error('فشل في تحميل الأجهزة: ' + err.message)
     } finally {
       setLoading(false)
     }
@@ -81,6 +83,48 @@ function HostsList({ theme, toggleTheme }) {
     // جلب جميع البيانات مرة واحدة (pagination يتم في الواجهة)
     fetchHosts()
   }, [fetchHosts])
+
+  // التحقق التلقائي
+  useEffect(() => {
+    if (!autoCheckEnabled) return
+
+    const checkAllHosts = async () => {
+      try {
+        // جلب قائمة الأجهزة الحالية
+        const currentHosts = await apiGet('/hosts')
+        const hostsList = currentHosts.hosts || currentHosts
+        
+        // التحقق من جميع الأجهزة
+        const checkPromises = hostsList.map(host => 
+          apiPost(`/hosts/${host.id}/check-status`, {}).catch(err => {
+            console.error(`خطأ في التحقق من ${host.name}:`, err)
+            return null
+          })
+        )
+        
+        const results = await Promise.all(checkPromises)
+        const updatedHosts = results.filter(Boolean)
+        
+        if (updatedHosts.length > 0) {
+          // تحديث الأجهزة
+          setHosts(prev => prev.map(host => {
+            const updated = updatedHosts.find(u => u.id === host.id)
+            return updated || host
+          }))
+        }
+      } catch (err) {
+        console.error('خطأ في التحقق التلقائي:', err)
+      }
+    }
+
+    // التحقق الفوري عند التفعيل
+    checkAllHosts()
+
+    // ثم التحقق بشكل دوري
+    const interval = setInterval(checkAllHosts, autoCheckInterval)
+
+    return () => clearInterval(interval)
+  }, [autoCheckEnabled, autoCheckInterval])
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -101,12 +145,12 @@ function HostsList({ theme, toggleTheme }) {
   }, [])
 
   const handleDelete = useCallback(async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا المضيف؟')) return
+      if (!window.confirm('هل أنت متأكد من حذف هذا الجهاز؟')) return
     try {
       setError(null)
       await apiDelete(`/hosts/${id}`)
       setHosts(prev => prev.filter(host => host.id !== id))
-      toast.success('تم حذف المضيف بنجاح')
+      toast.success('تم حذف الجهاز بنجاح')
     } catch (err) {
       setError(err.message)
       toast.error(err.message)
@@ -142,6 +186,50 @@ function HostsList({ theme, toggleTheme }) {
     }
   }, [])
 
+  const handleCheckAllHosts = useCallback(async () => {
+    if (checkingAll) return
+    
+    try {
+      setCheckingAll(true)
+      setError(null)
+      setCheckProgress({ current: 0, total: hosts.length })
+      
+      toast.info(`بدء التحقق من ${hosts.length} جهاز...`, { autoClose: 2000 })
+      
+      let successCount = 0
+      let failCount = 0
+      
+      // التحقق من جميع الأجهزة بشكل متسلسل لعرض التقدم
+      for (let i = 0; i < hosts.length; i++) {
+        const host = hosts[i]
+        setCheckProgress({ current: i + 1, total: hosts.length })
+        
+        try {
+          const updatedHost = await apiPost(`/hosts/${host.id}/check-status`, {})
+          setHosts(prev => prev.map(h => h.id === host.id ? updatedHost : h))
+          successCount++
+        } catch (err) {
+          console.error(`خطأ في التحقق من ${host.name}:`, err)
+          failCount++
+        }
+      }
+      
+      setCheckProgress({ current: hosts.length, total: hosts.length })
+      
+      if (failCount === 0) {
+        toast.success(`تم التحقق من جميع الأجهزة بنجاح (${successCount})`)
+      } else {
+        toast.warning(`تم التحقق من ${successCount} جهاز، فشل ${failCount} جهاز`)
+      }
+    } catch (err) {
+      setError(err.message)
+      toast.error('حدث خطأ أثناء التحقق من الأجهزة: ' + err.message)
+    } finally {
+      setCheckingAll(false)
+      setTimeout(() => setCheckProgress({ current: 0, total: 0 }), 1000)
+    }
+  }, [hosts, checkingAll])
+
   const handleViewHost = useCallback((host) => {
     setViewingHost(host)
   }, [])
@@ -164,7 +252,7 @@ function HostsList({ theme, toggleTheme }) {
   const handleUpdateHost = useCallback(async (e) => {
     e.preventDefault()
     if (!editFormData.name.trim() || !editFormData.ip.trim()) {
-      toast.error('اسم المضيف وعنوان IP مطلوبان')
+      toast.error('اسم الجهاز وعنوان IP مطلوبان')
       return
     }
 
@@ -183,7 +271,7 @@ function HostsList({ theme, toggleTheme }) {
         tagIds: [],
         status: 'online'
       })
-      toast.success('تم تحديث المضيف بنجاح')
+      toast.success('تم تحديث الجهاز بنجاح')
     } catch (err) {
       setError(err.message)
       toast.error(err.message)
@@ -253,7 +341,8 @@ function HostsList({ theme, toggleTheme }) {
         case 'name':
           aValue = a.name.toLowerCase()
           bValue = b.name.toLowerCase()
-          break
+          const nameComparison = collator.compare(aValue, bValue)
+          return sortOrder === 'asc' ? nameComparison : -nameComparison
         case 'ip':
           // تحسين: ترتيب IP بشكل أكثر كفاءة
           const aParts = a.ip.split('.').map(Number)
@@ -265,16 +354,20 @@ function HostsList({ theme, toggleTheme }) {
           }
           return 0
         case 'status':
-          aValue = a.status
-          bValue = b.status
-          break
+          aValue = a.status === 'online' ? 1 : 0
+          bValue = b.status === 'online' ? 1 : 0
+          return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
+        case 'created_at':
+          aValue = a.created_at ? new Date(a.created_at).getTime() : 0
+          bValue = b.created_at ? new Date(b.created_at).getTime() : 0
+          return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
+        case 'last_checked':
+          aValue = a.last_checked ? new Date(a.last_checked).getTime() : 0
+          bValue = b.last_checked ? new Date(b.last_checked).getTime() : 0
+          return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
         default:
           return 0
       }
-      
-      // استخدام collator للترتيب السريع
-      const comparison = collator.compare(aValue, bValue)
-      return sortOrder === 'asc' ? comparison : -comparison
     })
   }, [paginationData.paginatedHosts, sortBy, sortOrder])
 
@@ -297,12 +390,25 @@ function HostsList({ theme, toggleTheme }) {
               <Globe2 size={24} className="header-icon" />
               <span>لوحة تحكم الشبكة</span>
             </h1>
-            <p>إدارة ومتابعة المضيفين في شبكتك</p>
+            <p>إدارة ومتابعة الأجهزة في شبكتك</p>
           </div>
           <div className="header-actions">
-            <button className="check-all-btn" onClick={() => {}}>
-              <Search size={18} />
-              <span>التحقق من جميع الحالات</span>
+            <button 
+              className="check-all-btn" 
+              onClick={handleCheckAllHosts}
+              disabled={checkingAll || hosts.length === 0}
+            >
+              {checkingAll ? (
+                <>
+                  <RefreshCw size={18} className="spinning" />
+                  <span>جاري التحقق... ({checkProgress.current}/{checkProgress.total})</span>
+                </>
+              ) : (
+                <>
+                  <Search size={18} />
+                  <span>التحقق من جميع الحالات</span>
+                </>
+              )}
             </button>
             <button className="scan-network-btn" onClick={() => navigate('/scan')}>
               <Globe2 size={18} />
@@ -315,6 +421,17 @@ function HostsList({ theme, toggleTheme }) {
             <button className="tags-management-btn" onClick={() => navigate('/tags')}>
               <Tag size={18} />
               إدارة الوسوم
+            </button>
+            <button 
+              className={`auto-check-btn ${autoCheckEnabled ? 'active' : ''}`}
+              onClick={() => {
+                setAutoCheckEnabled(!autoCheckEnabled)
+                toast.info(!autoCheckEnabled ? 'تم تفعيل التحقق التلقائي' : 'تم إيقاف التحقق التلقائي')
+              }}
+              title={autoCheckEnabled ? 'إيقاف التحقق التلقائي' : 'تفعيل التحقق التلقائي'}
+            >
+              {autoCheckEnabled ? <RefreshCw size={18} className="spinning" /> : <RefreshCw size={18} />}
+              <span>التحقق التلقائي</span>
             </button>
             <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
           </div>
@@ -361,7 +478,7 @@ function HostsList({ theme, toggleTheme }) {
         <div className="section-header">
           <h2>
             {theme === 'light' ? <Clipboard size={20} className="section-icon" /> : <ClipboardList size={20} className="section-icon" />}
-            <span>المضيفين ({filteredHosts.length})</span>
+            <span>الأجهزة ({filteredHosts.length})</span>
           </h2>
           <div className="header-controls">
             <div className="search-bar">
@@ -392,28 +509,89 @@ function HostsList({ theme, toggleTheme }) {
                 <option value="offline">غير متصل</option>
               </select>
             </div>
+            <div className="tag-filter">
+              <Tag size={18} />
+              <select
+                value={selectedTag || 'all'}
+                onChange={(e) => {
+                  setSelectedTag(e.target.value === 'all' ? null : e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="filter-select"
+              >
+                <option value="all">جميع الوسوم</option>
+                {availableTags.map(tag => (
+                  <option key={tag.id} value={tag.name}>{tag.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
         {sortedHosts.length === 0 ? (
           <div className="empty-state">
             <ClipboardList size={64} style={{ opacity: 0.3, marginBottom: '16px' }} />
-            <h3 style={{ marginBottom: '8px', color: 'var(--text-primary)' }}>لا توجد مضيفين</h3>
-            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>ابدأ بإضافة مضيف جديد أو قم بمسح الشبكة</p>
+            <h3 style={{ marginBottom: '8px', color: 'var(--text-primary)' }}>لا توجد أجهزة</h3>
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>ابدأ بإضافة جهاز جديد أو قم بمسح الشبكة</p>
           </div>
         ) : (
           <div className="hosts-table-container">
             <table className="hosts-table">
               <thead>
                 <tr>
-                  <th onClick={() => setSortBy('name')}>
+                  <th onClick={() => {
+                    if (sortBy === 'name') {
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortBy('name')
+                      setSortOrder('asc')
+                    }
+                  }}>
                     الاسم {sortBy === 'name' && (sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
                   </th>
-                  <th onClick={() => setSortBy('ip')}>
+                  <th onClick={() => {
+                    if (sortBy === 'ip') {
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortBy('ip')
+                      setSortOrder('asc')
+                    }
+                  }}>
                     IP {sortBy === 'ip' && (sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
                   </th>
                   <th>الوصف</th>
-                  <th>الحالة</th>
+                  <th>الوسوم</th>
+                  <th>URL</th>
+                  <th onClick={() => {
+                    if (sortBy === 'status') {
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortBy('status')
+                      setSortOrder('asc')
+                    }
+                  }}>
+                    الحالة {sortBy === 'status' && (sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                  </th>
+                  <th onClick={() => {
+                    if (sortBy === 'created_at') {
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortBy('created_at')
+                      setSortOrder('asc')
+                    }
+                  }}>
+                    تاريخ الإضافة {sortBy === 'created_at' && (sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                  </th>
+                  <th onClick={() => {
+                    if (sortBy === 'last_checked') {
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                    } else {
+                      setSortBy('last_checked')
+                      setSortOrder('asc')
+                    }
+                  }}>
+                    آخر تحقق {sortBy === 'last_checked' && (sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                  </th>
                   <th>الإجراءات</th>
                 </tr>
               </thead>
@@ -422,11 +600,6 @@ function HostsList({ theme, toggleTheme }) {
                   <tr key={host.id}>
                     <td className="host-name-cell">
                       <strong>{host.name}</strong>
-                      {host.url && (
-                        <a href={host.url} target="_blank" rel="noopener noreferrer" className="host-url-link">
-                          <Globe size={14} />
-                        </a>
-                      )}
                     </td>
                     <td className="host-ip-cell">{host.ip}</td>
                     <td className="host-description-cell">
@@ -438,10 +611,73 @@ function HostsList({ theme, toggleTheme }) {
                         <span className="no-description">-</span>
                       )}
                     </td>
+                    <td className="host-tags-cell">
+                      {host.tags && host.tags.length > 0 ? (
+                        <div className="tags-list-inline">
+                          {host.tags.map((tag, idx) => (
+                            <span 
+                              key={idx} 
+                              className="tag-badge-inline" 
+                              style={{ backgroundColor: typeof tag === 'object' ? tag.color : '#4a9eff' }}
+                            >
+                              {typeof tag === 'object' ? tag.name : tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="no-tags">-</span>
+                      )}
+                    </td>
+                    <td className="host-url-cell">
+                      {host.url ? (
+                        <a 
+                          href={host.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="host-url-link"
+                          title={host.url}
+                        >
+                          <Globe size={16} style={{ marginLeft: '6px', verticalAlign: 'middle' }} />
+                          <span className="url-text">{host.url.length > 30 ? `${host.url.substring(0, 30)}...` : host.url}</span>
+                        </a>
+                      ) : (
+                        <span className="no-url">-</span>
+                      )}
+                    </td>
                     <td>
                       <span className={`status-badge ${host.status}`}>
                         {host.status === 'online' ? 'متصل' : 'غير متصل'}
                       </span>
+                    </td>
+                    <td className="host-date-cell">
+                      {host.created_at ? (
+                        <span className="date-text" title={new Date(host.created_at).toLocaleString('ar-SA')}>
+                          {new Date(host.created_at).toLocaleDateString('ar-SA', { 
+                            year: 'numeric', 
+                            month: '2-digit', 
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      ) : (
+                        <span className="no-date">-</span>
+                      )}
+                    </td>
+                    <td className="host-date-cell">
+                      {host.last_checked ? (
+                        <span className="date-text" title={new Date(host.last_checked).toLocaleString('ar-SA')}>
+                          {new Date(host.last_checked).toLocaleDateString('ar-SA', { 
+                            year: 'numeric', 
+                            month: '2-digit', 
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      ) : (
+                        <span className="no-date">-</span>
+                      )}
                     </td>
                     <td>
                       <div className="action-buttons">
@@ -461,7 +697,7 @@ function HostsList({ theme, toggleTheme }) {
                         </button>
                         <button 
                           onClick={() => handleCheckStatus(host.id)} 
-                          title="تدقيق على الحالة"
+                          title="تحقق من الحالة"
                           className="action-btn check-btn"
                         >
                           {theme === 'light' ? <RefreshCcw size={18} /> : <RefreshCw size={18} />}
@@ -492,7 +728,7 @@ function HostsList({ theme, toggleTheme }) {
               السابق
             </button>
             <span className="pagination-info">
-              صفحة {currentPage} من {paginationData.totalPages} ({filteredHosts.length} مضيف)
+              صفحة {currentPage} من {paginationData.totalPages} ({filteredHosts.length} جهاز)
             </span>
             <button
               className="pagination-btn"
@@ -607,7 +843,7 @@ function HostsList({ theme, toggleTheme }) {
                   value={editFormData.name}
                   onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                   required
-                  placeholder="اسم المضيف"
+                  placeholder="اسم الجهاز"
                 />
               </div>
               <div className="form-group">
@@ -625,7 +861,7 @@ function HostsList({ theme, toggleTheme }) {
                 <textarea
                   value={editFormData.description}
                   onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                  placeholder="وصف اختياري للمضيف"
+                  placeholder="وصف اختياري للجهاز"
                   rows="3"
                 />
               </div>
