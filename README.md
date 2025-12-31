@@ -33,6 +33,37 @@
 
 ---
 
+## ⚡ الطريقة السريعة (Quick Start)
+
+أسهل طريقة لتشغيل البرنامج في وضع التطوير:
+
+### Linux / macOS:
+```bash
+# 1. تثبيت Node.js والمتطلبات
+./scripts/install-nodejs.sh
+
+# 2. تشغيل البرنامج في وضع التطوير
+./scripts/dev.sh
+```
+
+### Windows:
+```powershell
+# 1. تثبيت Node.js والمتطلبات (شغّل PowerShell كمسؤول)
+.\scripts\install-nodejs.ps1
+
+# 2. تشغيل البرنامج في وضع التطوير
+.\scripts\dev.ps1
+```
+
+بعد تشغيل السكريبتات، البرنامج سيكون متاحاً على:
+- **الواجهة:** http://localhost:5173
+- **API:** http://localhost:3001/api
+- **من الشبكة المحلية:** http://<SERVER_IP>:5173
+
+**ملاحظة:** إذا كنت تفضل التثبيت اليدوي، راجع الأقسام التالية.
+
+---
+
 ## 🚀 التثبيت والتشغيل
 
 ### المتطلبات
@@ -40,6 +71,132 @@
 - Node.js (الإصدار 20 أو أحدث - موصى به: v22.x.x LTS)
 - npm أو yarn
 - نظام Linux أو Windows أو macOS
+
+### تثبيت Node.js v22 LTS
+
+**⚠️ مهم:** البرنامج يعتمد على Node.js v22.x.x LTS. تأكد من تثبيت الإصدار الصحيح.
+
+#### الطريقة السريعة: استخدام السكريبتات التلقائية
+
+**Linux / macOS:**
+```bash
+./scripts/install-nodejs.sh
+```
+
+هذا السكريبت يقوم تلقائياً بـ:
+- التحقق من البرامج المطلوبة (curl, git, build tools)
+- تثبيتها إذا لم تكن موجودة
+- تثبيت nvm
+- تثبيت Node.js v22 LTS
+- تثبيت جميع متطلبات المشروع (npm install)
+
+**Windows:**
+```powershell
+# شغّل PowerShell كمسؤول (Administrator)
+.\scripts\install-nodejs.ps1
+```
+
+هذا السكريبت يقوم تلقائياً بـ:
+- تثبيت nvm-windows
+- تثبيت Node.js v22 LTS
+- تثبيت جميع متطلبات المشروع
+
+#### الطريقة اليدوية: استخدام nvm (Node Version Manager)
+
+nvm يسمح لك بإدارة وإزالة إصدارات Node.js بسهولة:
+
+**Linux / macOS:**
+```bash
+# تثبيت nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# إعادة تحميل terminal أو تشغيل:
+source ~/.bashrc  # أو ~/.zshrc حسب shell الخاص بك
+
+# تثبيت Node.js v22 LTS
+nvm install 22
+
+# استخدام Node.js v22 كإصدار افتراضي
+nvm use 22
+nvm alias default 22
+
+# التحقق من التثبيت
+node --version  # يجب أن يظهر v22.x.x
+npm --version
+```
+
+**Windows:**
+استخدم [nvm-windows](https://github.com/coreybutler/nvm-windows):
+1. حمّل وتثبت من: https://github.com/coreybutler/nvm-windows/releases
+2. افتح Command Prompt أو PowerShell كمسؤول (Administrator)
+3. شغل:
+```cmd
+nvm install 22
+nvm use 22
+node --version
+```
+
+#### تثبيت مباشر بدون nvm
+
+**Linux (Ubuntu/Debian):**
+```bash
+# إضافة NodeSource repository
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+
+# تثبيت Node.js
+sudo apt-get install -y nodejs
+
+# التحقق من التثبيت
+node --version
+npm --version
+```
+
+**Linux (Fedora/RHEL/CentOS):**
+```bash
+# إضافة NodeSource repository
+curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -
+
+# تثبيت Node.js
+sudo dnf install -y nodejs
+
+# التحقق من التثبيت
+node --version
+npm --version
+```
+
+**macOS:**
+```bash
+# باستخدام Homebrew (إذا كان مثبتاً)
+brew install node@22
+
+# أو حمّل من الموقع الرسمي:
+# https://nodejs.org/en/download/
+# اختر "macOS Installer (.pkg)" للإصدار v22 LTS
+```
+
+**Windows:**
+1. اذهب إلى: https://nodejs.org/
+2. حمّل الإصدار LTS (v22.x.x)
+3. شغّل ملف التثبيت (.msi)
+4. اتبع خطوات التثبيت
+5. افتح Command Prompt جديد واختبر:
+```cmd
+node --version
+npm --version
+```
+
+#### التحقق من التثبيت
+
+بعد التثبيت، تأكد من أن الإصدار صحيح:
+```bash
+node --version  # يجب أن يظهر v22.x.x أو أحدث
+npm --version   # يجب أن يظهر إصدار npm
+```
+
+إذا ظهر إصدار قديم، تأكد من:
+- إعادة فتح terminal/command prompt
+- التحقق من PATH environment variable
+- إذا استخدمت nvm، تأكد من تشغيل `nvm use 22`
 
 ### الخطوات السريعة
 
@@ -79,7 +236,24 @@ sudo dnf install python3-devel
 
 ## 💻 التشغيل في وضع التطوير (Development)
 
-### الخطوات:
+### الطريقة السريعة: استخدام السكريبت
+
+**Linux / macOS:**
+```bash
+./scripts/dev.sh
+```
+
+**Windows:**
+```powershell
+.\scripts\dev.ps1
+```
+
+هذا السكريبت يقوم تلقائياً بـ:
+- تشغيل السيرفر (Backend) على المنفذ 3001
+- تشغيل الواجهة (Frontend) على المنفذ 5173
+- عرض الروابط والرسائل التوضيحية
+
+### الطريقة اليدوية:
 
 #### Terminal 1 - تشغيل Backend Server
 

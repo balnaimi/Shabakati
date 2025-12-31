@@ -33,6 +33,37 @@ A modern dashboard for managing and monitoring devices on your network with SQLi
 
 ---
 
+## ⚡ Quick Start
+
+The easiest way to run the application in development mode:
+
+### Linux / macOS:
+```bash
+# 1. Install Node.js and dependencies
+./scripts/install-nodejs.sh
+
+# 2. Run the application in development mode
+./scripts/dev.sh
+```
+
+### Windows:
+```powershell
+# 1. Install Node.js and dependencies (run PowerShell as Administrator)
+.\scripts\install-nodejs.ps1
+
+# 2. Run the application in development mode
+.\scripts\dev.ps1
+```
+
+After running the scripts, the application will be available at:
+- **Frontend:** http://localhost:5173
+- **API:** http://localhost:3001/api
+- **From local network:** http://<SERVER_IP>:5173
+
+**Note:** If you prefer manual installation, see the sections below.
+
+---
+
 ## 🚀 Installation and Setup
 
 ### Requirements
@@ -40,6 +71,132 @@ A modern dashboard for managing and monitoring devices on your network with SQLi
 - Node.js (Version 20 or later - Recommended: v22.x.x LTS)
 - npm or yarn
 - Linux, Windows, or macOS
+
+### Installing Node.js v22 LTS
+
+**⚠️ Important:** The application requires Node.js v22.x.x LTS. Make sure you install the correct version.
+
+#### Quick Method: Using Automated Scripts
+
+**Linux / macOS:**
+```bash
+./scripts/install-nodejs.sh
+```
+
+This script automatically:
+- Checks for required programs (curl, git, build tools)
+- Installs them if missing
+- Installs nvm
+- Installs Node.js v22 LTS
+- Installs all project dependencies (npm install)
+
+**Windows:**
+```powershell
+# Run PowerShell as Administrator
+.\scripts\install-nodejs.ps1
+```
+
+This script automatically:
+- Installs nvm-windows
+- Installs Node.js v22 LTS
+- Installs all project dependencies
+
+#### Manual Method: Using nvm (Node Version Manager)
+
+nvm allows you to easily manage and switch between Node.js versions:
+
+**Linux / macOS:**
+```bash
+# Install nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# Reload terminal or run:
+source ~/.bashrc  # or ~/.zshrc depending on your shell
+
+# Install Node.js v22 LTS
+nvm install 22
+
+# Use Node.js v22 as default
+nvm use 22
+nvm alias default 22
+
+# Verify installation
+node --version  # Should show v22.x.x
+npm --version
+```
+
+**Windows:**
+Use [nvm-windows](https://github.com/coreybutler/nvm-windows):
+1. Download and install from: https://github.com/coreybutler/nvm-windows/releases
+2. Open Command Prompt or PowerShell as Administrator
+3. Run:
+```cmd
+nvm install 22
+nvm use 22
+node --version
+```
+
+#### Direct Installation (without nvm)
+
+**Linux (Ubuntu/Debian):**
+```bash
+# Add NodeSource repository
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+
+# Install Node.js
+sudo apt-get install -y nodejs
+
+# Verify installation
+node --version
+npm --version
+```
+
+**Linux (Fedora/RHEL/CentOS):**
+```bash
+# Add NodeSource repository
+curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -
+
+# Install Node.js
+sudo dnf install -y nodejs
+
+# Verify installation
+node --version
+npm --version
+```
+
+**macOS:**
+```bash
+# Using Homebrew (if installed)
+brew install node@22
+
+# Or download from official website:
+# https://nodejs.org/en/download/
+# Choose "macOS Installer (.pkg)" for v22 LTS version
+```
+
+**Windows:**
+1. Go to: https://nodejs.org/
+2. Download the LTS version (v22.x.x)
+3. Run the installer (.msi file)
+4. Follow the installation steps
+5. Open a new Command Prompt and test:
+```cmd
+node --version
+npm --version
+```
+
+#### Verifying Installation
+
+After installation, make sure the version is correct:
+```bash
+node --version  # Should show v22.x.x or later
+npm --version   # Should show npm version
+```
+
+If an older version appears, make sure to:
+- Reopen terminal/command prompt
+- Check PATH environment variable
+- If using nvm, make sure to run `nvm use 22`
 
 ### Quick Steps
 
@@ -79,7 +236,24 @@ sudo dnf install python3-devel
 
 ## 💻 Development Mode
 
-### Steps:
+### Quick Method: Using Script
+
+**Linux / macOS:**
+```bash
+./scripts/dev.sh
+```
+
+**Windows:**
+```powershell
+.\scripts\dev.ps1
+```
+
+This script automatically:
+- Starts the backend server on port 3001
+- Starts the frontend server on port 5173
+- Displays links and helpful messages
+
+### Manual Method:
 
 #### Terminal 1 - Run Backend Server
 
