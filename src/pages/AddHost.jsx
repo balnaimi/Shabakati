@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PlusCircle, ArrowRight, XCircle } from 'lucide-react'
 import { API_URL } from '../constants'
 import { apiPost } from '../utils/api'
-import './AddHost.css'
 
-function AddHost({ theme }) {
+function AddHost() {
   const navigate = useNavigate()
   const [error, setError] = useState(null)
   const [availableTags, setAvailableTags] = useState([])
@@ -56,28 +54,29 @@ function AddHost({ theme }) {
     }
   }
 
+  const handleTagToggle = (tagId) => {
+    setFormData(prev => ({
+      ...prev,
+      tagIds: prev.tagIds.includes(tagId)
+        ? prev.tagIds.filter(id => id !== tagId)
+        : [...prev.tagIds, tagId]
+    }))
+  }
+
   return (
-    <div className="add-host-page">
-      <header className="page-header">
-        <h1>
-          <PlusCircle size={28} className="header-icon" />
-          <span>إضافة جهاز جديد</span>
-        </h1>
-        <button className="back-btn" onClick={() => navigate('/')}>
-          <ArrowRight size={18} style={{ marginLeft: '8px' }} />
-          العودة للعرض
-        </button>
-      </header>
+    <div className="container">
+      <div className="header">
+        <h1>إضافة جهاز جديد</h1>
+        <button onClick={() => navigate('/')}>العودة للعرض</button>
+      </div>
 
-      <section className="add-host-section">
-        {error && (
-          <div className="error-message">
-            <XCircle size={20} />
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="error-message">
+          {error}
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="add-host-form">
+      <form className="form" onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="name">اسم المضيف *</label>
           <input
@@ -124,19 +123,35 @@ function AddHost({ theme }) {
           />
         </div>
 
+        {!loadingTags && availableTags.length > 0 && (
+          <div className="form-group">
+            <label>الوسوم</label>
+            <div>
+              {availableTags.map(tag => (
+                <label key={tag.id}>
+                  <input
+                    type="checkbox"
+                    checked={formData.tagIds.includes(tag.id)}
+                    onChange={() => handleTagToggle(tag.id)}
+                  />
+                  {tag.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="form-actions">
-          <button type="submit" className="submit-btn" disabled={checking}>
+          <button type="submit" disabled={checking}>
             {checking ? 'جاري الإضافة...' : 'إضافة المضيف'}
           </button>
-          <button type="button" className="cancel-btn" onClick={() => navigate('/')}>
+          <button type="button" onClick={() => navigate('/')}>
             إلغاء
           </button>
         </div>
       </form>
-      </section>
     </div>
   )
 }
 
 export default AddHost
-

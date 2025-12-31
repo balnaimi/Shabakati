@@ -1,6 +1,7 @@
 import { createConnection } from 'net';
 import { lookup, reverse } from 'dns';
 import { promisify } from 'util';
+import ping from 'ping';
 import { dbFunctions } from './database.js';
 
 const dnsLookup = promisify(lookup);
@@ -35,30 +36,85 @@ export async function scanNetwork(networkRange, timeout = 2) {
     // مسح جميع العناوين بالتوازي (محسّن - batch size أكبر وأسرع)
     // زيادة batch size لتحسين الأداء (200 بدلاً من 100)
     const batchSize = 200;
-    const quickPorts = [22, 80, 443]; // SSH, HTTP, HTTPS - الأكثر شيوعاً
+    
+    // قائمة شاملة من البورتات المشهورة (Linux, Windows, خدمات مشهورة)
+    const commonPorts = [
+      // Linux
+      22,   // SSH
+      80,   // HTTP
+      443,  // HTTPS
+      21,   // FTP
+      25,   // SMTP
+      53,   // DNS
+      110,  // POP3
+      143,  // IMAP
+      993,  // IMAPS
+      995,  // POP3S
+      3306, // MySQL
+      5432, // PostgreSQL
+      8080, // HTTP Alternate
+      8443, // HTTPS Alternate
+      // Windows
+      135,  // RPC Endpoint Mapper
+      139,  // NetBIOS Session Service
+      445,  // SMB/CIFS
+      3389, // RDP
+      5985, // WinRM HTTP
+      5986, // WinRM HTTPS
+      // خدمات مشهورة
+      23,    // Telnet
+      5900,  // VNC
+      27017, // MongoDB
+      6379,  // Redis
+      9200   // Elasticsearch
+    ];
+    
     const portTimeout = Math.min(timeout * 1000, 1500); // تقليل timeout للسرعة
+    const pingTimeout = timeout; // timeout لـ ping بالثواني
     
     for (let i = 0; i < ipRange.length; i += batchSize) {
       const batch = ipRange.slice(i, i + batchSize);
       console.log(`مسح الدفعة ${Math.floor(i / batchSize) + 1} من ${Math.ceil(ipRange.length / batchSize)} (${batch.length} عنوان)`);
       
-      // تحسين: فحص جميع المنافذ بالتوازي بدلاً من التسلسل
+      // تحسين: فحص ping وجميع المنافذ بالتوازي
       const promises = batch.map(async (ip) => {
-        // فحص جميع المنافذ بالتوازي - أول من ينجح يكفي
-        const portChecks = quickPorts.map(port => 
+        // بدء ping وفحص جميع المنافذ بالتوازي
+        const pingCheck = checkHostPing(ip, pingTimeout);
+        const portChecks = commonPorts.map(port => 
           checkHostPort(ip, port, portTimeout).then(isAlive => ({ port, isAlive }))
         );
         
-        // انتظار أول نتيجة نجاح
-        const results = await Promise.all(portChecks);
-        const successfulPort = results.find(r => r.isAlive);
+        // استخدام Promise.allSettled للتحقق من جميع النتائج (أكثر موثوقية)
+        // هذا يضمن أننا نحصل على جميع النتائج حتى لو فشل بعضها
+        const allChecks = [pingCheck, ...portChecks];
+        const results = await Promise.allSettled(allChecks);
         
-        if (successfulPort) {
+        // استخراج نتائج ping
+        const pingResult = results[0].status === 'fulfilled' ? results[0].value : { alive: false };
+        
+        // استخراج نتائج البورتات
+        const portResults = results.slice(1).map((result, index) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          }
+          return { port: commonPorts[index], isAlive: false };
+        });
+        
+        const successfulPort = portResults.find(r => r.isAlive);
+        const detectionMethod = pingResult.alive && successfulPort ? 'both' 
+                              : pingResult.alive ? 'ping' 
+                              : successfulPort ? 'port' 
+                              : null;
+        
+        // إذا نجح ping أو أي بورت، الجهاز نشط
+        if (pingResult.alive || successfulPort) {
           return {
             ip: ip,
             hostname: null, // سيتم ملؤه لاحقاً
             time: null,
-            port: successfulPort.port
+            port: successfulPort ? successfulPort.port : null,
+            pingLatency: pingResult.alive ? pingResult.latency : null,
+            detectionMethod: detectionMethod
           };
         }
         return null;
@@ -217,6 +273,28 @@ function parseRange(range) {
   }
 
   return ipRange;
+}
+
+/**
+ * التحقق من المضيف باستخدام ping (ICMP)
+ * @param {string} ip - عنوان IP
+ * @param {number} timeout - الوقت الأقصى بالثواني
+ * @returns {Promise<{alive: boolean, latency?: number}>}
+ */
+async function checkHostPing(ip, timeout = 2) {
+  try {
+    const result = await ping.promise.probe(ip, {
+      timeout: timeout,
+      min_reply: 1,
+    });
+
+    return {
+      alive: result.alive,
+      latency: result.alive ? parseFloat(result.time) : null
+    };
+  } catch (error) {
+    return { alive: false };
+  }
 }
 
 /**

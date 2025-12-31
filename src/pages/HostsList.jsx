@@ -1,25 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Globe, Globe2, 
-  Plus, PlusCircle,
-  Search,
-  Edit, Edit2,
-  Trash2, Trash,
-  RefreshCw, RefreshCcw,
-  ClipboardList, Clipboard,
-  CheckCircle2, XCircle,
-  ArrowUp, ArrowDown,
-  Tag, Filter,
-  Eye, EyeOff, X, Save
-} from 'lucide-react'
-import { toast } from 'react-toastify'
 import { API_URL } from '../constants'
 import { apiGet, apiDelete, apiPut, apiPost } from '../utils/api'
-import ThemeToggle from '../components/ThemeToggle'
-import './HostsList.css'
 
-function HostsList({ theme, toggleTheme }) {
+function HostsList() {
   const navigate = useNavigate()
   const [hosts, setHosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,7 +40,6 @@ function HostsList({ theme, toggleTheme }) {
       setHosts(data.hosts || data)
     } catch (err) {
       setError(err.message)
-      toast.error('فشل في تحميل الأجهزة: ' + err.message)
     } finally {
       setLoading(false)
     }
@@ -122,25 +105,20 @@ function HostsList({ theme, toggleTheme }) {
       setError(null)
       await apiDelete(`/hosts/${id}`)
       setHosts(prev => prev.filter(host => host.id !== id))
-      toast.success('تم حذف الجهاز بنجاح')
     } catch (err) {
       setError(err.message)
-      toast.error(err.message)
     }
   }, [])
 
   const handleCheckStatus = useCallback(async (id) => {
     try {
       setError(null)
-      toast.info('جاري التحقق من الحالة...', { autoClose: 2000 })
       const updatedHost = await apiPost(`/hosts/${id}/check-status`, {})
       setHosts(prev => prev.map(host => 
         host.id === id ? updatedHost : host
       ))
-      toast.success(`تم التحقق من حالة ${updatedHost.name} بنجاح`)
     } catch (err) {
       setError(err.message)
-      toast.error(err.message)
     }
   }, [])
 
@@ -151,8 +129,6 @@ function HostsList({ theme, toggleTheme }) {
       setCheckingAll(true)
       setError(null)
       setCheckProgress({ current: 0, total: hosts.length })
-      
-      toast.info(`بدء التحقق من ${hosts.length} جهاز...`, { autoClose: 2000 })
       
       let successCount = 0
       let failCount = 0
@@ -171,15 +147,8 @@ function HostsList({ theme, toggleTheme }) {
       }
       
       setCheckProgress({ current: hosts.length, total: hosts.length })
-      
-      if (failCount === 0) {
-        toast.success(`تم التحقق من جميع الأجهزة بنجاح (${successCount})`)
-      } else {
-        toast.warning(`تم التحقق من ${successCount} جهاز، فشل ${failCount} جهاز`)
-      }
     } catch (err) {
       setError(err.message)
-      toast.error('حدث خطأ أثناء التحقق من الأجهزة: ' + err.message)
     } finally {
       setCheckingAll(false)
       setTimeout(() => setCheckProgress({ current: 0, total: 0 }), 1000)
@@ -208,7 +177,7 @@ function HostsList({ theme, toggleTheme }) {
   const handleUpdateHost = useCallback(async (e) => {
     e.preventDefault()
     if (!editFormData.name.trim() || !editFormData.ip.trim()) {
-      toast.error('اسم الجهاز وعنوان IP مطلوبان')
+      setError('اسم الجهاز وعنوان IP مطلوبان')
       return
     }
 
@@ -227,10 +196,8 @@ function HostsList({ theme, toggleTheme }) {
         tagIds: [],
         status: 'online'
       })
-      toast.success('تم تحديث الجهاز بنجاح')
     } catch (err) {
       setError(err.message)
-      toast.error(err.message)
     }
   }, [editFormData, editingHostId])
 
@@ -291,10 +258,11 @@ function HostsList({ theme, toggleTheme }) {
     const collator = new Intl.Collator('ar', { numeric: true, sensitivity: 'base' })
     
     return [...paginationData.paginatedHosts].sort((a, b) => {
+      let aValue, bValue
       switch (sortBy) {
         case 'name':
-          const aValue = a.name.toLowerCase()
-          const bValue = b.name.toLowerCase()
+          aValue = a.name.toLowerCase()
+          bValue = b.name.toLowerCase()
           const nameComparison = collator.compare(aValue, bValue)
           return sortOrder === 'asc' ? nameComparison : -nameComparison
         case 'ip':
@@ -344,165 +312,104 @@ function HostsList({ theme, toggleTheme }) {
   }, [])
 
   if (loading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>جاري التحميل...</div>
+    return <div className="loading">جاري التحميل...</div>
   }
 
   return (
-    <div className="hosts-list-page">
-      <header className="page-header">
-        <div className="page-header-top">
-          <div className="page-header-content">
-            <h1>
-              <Globe2 size={24} className="header-icon" />
-              <span>لوحة تحكم الشبكة</span>
-            </h1>
-            <p>إدارة ومتابعة الأجهزة في شبكتك</p>
-          </div>
-          <div className="header-actions">
-            <button className="add-host-btn" onClick={() => navigate('/add')}>
-              {theme === 'light' ? <PlusCircle size={18} /> : <Plus size={18} />}
-              إضافة جهاز جديد
-            </button>
-            <button className="scan-network-btn" onClick={() => navigate('/scan')}>
-              <Globe2 size={18} />
-              مسح الشبكة
-            </button>
-            <button className="tags-management-btn" onClick={() => navigate('/tags')}>
-              <Tag size={18} />
-              إدارة الوسوم
-            </button>
-            <button 
-              className="check-all-btn" 
-              onClick={handleCheckAllHosts}
-              disabled={checkingAll || hosts.length === 0}
-            >
-              {checkingAll ? (
-                <>
-                  <RefreshCw size={18} className="spinning" />
-                  <span>جاري التحقق... ({checkProgress.current}/{checkProgress.total})</span>
-                </>
-              ) : (
-                <>
-                  <Search size={18} />
-                  <span>التحقق من جميع الحالات</span>
-                </>
-              )}
-            </button>
-            <button 
-              className={`auto-check-btn ${autoCheckEnabled ? 'active' : ''}`}
-              onClick={() => {
-                setAutoCheckEnabled(!autoCheckEnabled)
-                toast.info(!autoCheckEnabled ? 'تم تفعيل التحقق التلقائي' : 'تم إيقاف التحقق التلقائي')
-              }}
-              title={autoCheckEnabled ? 'إيقاف التحقق التلقائي' : 'تفعيل التحقق التلقائي'}
-            >
-              {autoCheckEnabled ? <RefreshCw size={18} className="spinning" /> : <RefreshCw size={18} />}
-              <span>التحقق التلقائي</span>
-            </button>
-            <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-          </div>
+    <div className="container">
+      <div className="header">
+        <div>
+          <h1>لوحة تحكم الشبكة</h1>
+          <p>إدارة ومتابعة الأجهزة في شبكتك</p>
+        </div>
+        <div className="controls">
+          <button onClick={() => navigate('/add')}>إضافة جهاز جديد</button>
+          <button onClick={() => navigate('/scan')}>مسح الشبكة</button>
+          <button onClick={() => navigate('/tags')}>إدارة الوسوم</button>
+          <button 
+            onClick={handleCheckAllHosts}
+            disabled={checkingAll || hosts.length === 0}
+          >
+            {checkingAll ? `جاري التحقق... (${checkProgress.current}/${checkProgress.total})` : 'التحقق من جميع الحالات'}
+          </button>
+          <button 
+            onClick={() => {
+              setAutoCheckEnabled(!autoCheckEnabled)
+            }}
+          >
+            التحقق التلقائي {autoCheckEnabled ? '(مفعل)' : '(معطل)'}
+          </button>
         </div>
         
-        <div className="stats-container">
-          <div className="stat-card total">
-            <div className="stat-icon">
-              <ClipboardList size={36} />
-            </div>
-            <div className="stat-content">
-              <p className="stat-label">إجمالي الأجهزة</p>
-              <p className="stat-value">{stats.total}</p>
-            </div>
+        <div className="stats">
+          <div className="stat-item">
+            <p>إجمالي الأجهزة</p>
+            <p>{stats.total}</p>
           </div>
-          <div className="stat-card online">
-            <div className="stat-icon">
-              <CheckCircle2 size={36} />
-            </div>
-            <div className="stat-content">
-              <p className="stat-label">متصلة</p>
-              <p className="stat-value">{stats.online}</p>
-            </div>
+          <div className="stat-item">
+            <p>متصلة</p>
+            <p>{stats.online}</p>
           </div>
-          <div className="stat-card offline">
-            <div className="stat-icon">
-              <XCircle size={36} />
-            </div>
-            <div className="stat-content">
-              <p className="stat-label">غير متصلة</p>
-              <p className="stat-value">{stats.offline}</p>
-            </div>
+          <div className="stat-item">
+            <p>غير متصلة</p>
+            <p>{stats.offline}</p>
           </div>
         </div>
-      </header>
+      </div>
 
       {error && (
         <div className="error-message">
-          ⚠️ {error}
+          {error}
         </div>
       )}
 
-      <section className="hosts-section">
-        <div className="section-header">
-          <h2>
-            {theme === 'light' ? <Clipboard size={20} className="section-icon" /> : <ClipboardList size={20} className="section-icon" />}
-            <span>الأجهزة ({filteredHosts.length})</span>
-          </h2>
-          <div className="header-controls">
-            <div className="search-bar">
-              <Search size={18} />
-              <input
-                type="text"
-                placeholder="بحث (اسم، IP، وصف)..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="search-input"
-              />
-            </div>
-            <div className="status-filter">
-              <Filter size={18} />
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="filter-select"
-              >
-                <option value="all">جميع الحالات</option>
-                <option value="online">متصل</option>
-                <option value="offline">غير متصل</option>
-              </select>
-            </div>
-            <div className="tag-filter">
-              <Tag size={18} />
-              <select
-                value={selectedTag || 'all'}
-                onChange={(e) => {
-                  setSelectedTag(e.target.value === 'all' ? null : e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="filter-select"
-              >
-                <option value="all">جميع الوسوم</option>
-                {availableTags.map(tag => (
-                  <option key={tag.id} value={tag.name}>{tag.name}</option>
-                ))}
-              </select>
-            </div>
+      <div>
+        <div>
+          <h2>الأجهزة ({filteredHosts.length})</h2>
+          <div className="filters">
+            <input
+              type="text"
+              placeholder="بحث (اسم، IP، وصف)..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setCurrentPage(1)
+              }}
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value)
+                setCurrentPage(1)
+              }}
+            >
+              <option value="all">جميع الحالات</option>
+              <option value="online">متصل</option>
+              <option value="offline">غير متصل</option>
+            </select>
+            <select
+              value={selectedTag || 'all'}
+              onChange={(e) => {
+                setSelectedTag(e.target.value === 'all' ? null : e.target.value)
+                setCurrentPage(1)
+              }}
+            >
+              <option value="all">جميع الوسوم</option>
+              {availableTags.map(tag => (
+                <option key={tag.id} value={tag.name}>{tag.name}</option>
+              ))}
+            </select>
           </div>
         </div>
 
         {sortedHosts.length === 0 ? (
           <div className="empty-state">
-            <ClipboardList size={64} style={{ opacity: 0.3, marginBottom: '16px' }} />
-            <h3 style={{ marginBottom: '8px', color: 'var(--text-primary)' }}>لا توجد أجهزة</h3>
-            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>ابدأ بإضافة جهاز جديد أو قم بمسح الشبكة</p>
+            <h3>لا توجد أجهزة</h3>
+            <p>ابدأ بإضافة جهاز جديد أو قم بمسح الشبكة</p>
           </div>
         ) : (
-          <div className="hosts-table-container">
-            <table className="hosts-table">
+          <div className="table-container">
+            <table>
               <thead>
                 <tr>
                   <th onClick={() => {
@@ -513,7 +420,7 @@ function HostsList({ theme, toggleTheme }) {
                       setSortOrder('asc')
                     }
                   }}>
-                    الاسم {sortBy === 'name' && (sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                    الاسم {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th onClick={() => {
                     if (sortBy === 'ip') {
@@ -523,7 +430,7 @@ function HostsList({ theme, toggleTheme }) {
                       setSortOrder('asc')
                     }
                   }}>
-                    IP {sortBy === 'ip' && (sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                    IP {sortBy === 'ip' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th>الوصف</th>
                   <th>الوسوم</th>
@@ -536,7 +443,7 @@ function HostsList({ theme, toggleTheme }) {
                       setSortOrder('asc')
                     }
                   }}>
-                    الحالة {sortBy === 'status' && (sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                    الحالة {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th onClick={() => {
                     if (sortBy === 'created_at') {
@@ -546,7 +453,7 @@ function HostsList({ theme, toggleTheme }) {
                       setSortOrder('asc')
                     }
                   }}>
-                    تاريخ الإضافة {sortBy === 'created_at' && (sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                    تاريخ الإضافة {sortBy === 'created_at' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th onClick={() => {
                     if (sortBy === 'last_checked') {
@@ -556,7 +463,7 @@ function HostsList({ theme, toggleTheme }) {
                       setSortOrder('asc')
                     }
                   }}>
-                    آخر تحقق {sortBy === 'last_checked' && (sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                    آخر تحقق {sortBy === 'last_checked' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th>الإجراءات</th>
                 </tr>
@@ -564,115 +471,69 @@ function HostsList({ theme, toggleTheme }) {
               <tbody>
                 {sortedHosts.map(host => (
                   <tr key={host.id}>
-                    <td className="host-name-cell">
+                    <td>
                       <strong>{host.name}</strong>
                     </td>
-                    <td className="host-ip-cell">{host.ip}</td>
-                    <td className="host-description-cell">
+                    <td>{host.ip}</td>
+                    <td>
                       {host.description ? (
-                        <span className="description-text" title={host.description}>
+                        <span title={host.description}>
                           {host.description.length > 50 ? `${host.description.substring(0, 50)}...` : host.description}
                         </span>
                       ) : (
-                        <span className="no-description">-</span>
+                        <span>-</span>
                       )}
                     </td>
-                    <td className="host-tags-cell">
+                    <td>
                       {host.tags && host.tags.length > 0 ? (
-                        <div className="tags-list-inline">
+                        <div className="tags-inline">
                           {host.tags.map((tag, idx) => (
-                            <span 
-                              key={idx} 
-                              className="tag-badge-inline" 
-                              style={{ backgroundColor: typeof tag === 'object' ? tag.color : '#4a9eff' }}
-                            >
-                              {typeof tag === 'object' ? tag.name : tag}
+                            <span key={idx}>
+                              {typeof tag === 'object' ? tag.name : tag}{idx < host.tags.length - 1 ? ', ' : ''}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="no-tags">-</span>
+                        <span>-</span>
                       )}
                     </td>
-                    <td className="host-url-cell">
+                    <td>
                       {host.url ? (
                         <a 
                           href={host.url} 
                           target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="host-url-link"
+                          rel="noopener noreferrer"
                           title={host.url}
                         >
-                          <Globe size={16} style={{ marginLeft: '6px', verticalAlign: 'middle' }} />
-                          <span className="url-text">{host.url.length > 30 ? `${host.url.substring(0, 30)}...` : host.url}</span>
+                          {host.url.length > 30 ? `${host.url.substring(0, 30)}...` : host.url}
                         </a>
                       ) : (
-                        <span className="no-url">-</span>
+                        <span>-</span>
                       )}
                     </td>
                     <td>
-                      <span className={`status-badge ${host.status}`}>
-                        {host.status === 'online' ? 'متصل' : 'غير متصل'}
-                      </span>
+                      {host.status === 'online' ? 'متصل' : 'غير متصل'}
                     </td>
-                    <td className="host-date-cell">
+                    <td>
                       {(() => {
                         const dateValue = host.createdAt || host.created_at
                         const formattedDate = formatDate(dateValue)
-                        if (formattedDate) {
-                          return (
-                            <span className="date-text" title={new Date(dateValue).toLocaleString('ar-SA')}>
-                              {formattedDate}
-                            </span>
-                          )
-                        }
-                        return <span className="no-date">لم يتم إضافة تاريخ</span>
-                      })()}
-                    </td>
-                    <td className="host-date-cell">
-                      {(() => {
-                        const dateValue = host.lastChecked || host.last_checked
-                        const formattedDate = formatDate(dateValue)
-                        if (formattedDate) {
-                          return (
-                            <span className="date-text" title={new Date(dateValue).toLocaleString('ar-SA')}>
-                              {formattedDate}
-                            </span>
-                          )
-                        }
-                        return <span className="no-date">لم يتم إضافة تاريخ</span>
+                        return formattedDate || 'لم يتم إضافة تاريخ'
                       })()}
                     </td>
                     <td>
-                      <div className="action-buttons">
-                        <button 
-                          onClick={() => handleViewHost(host)} 
-                          title="عرض معلومات الجهاز"
-                          className="action-btn view-btn"
-                        >
-                          {theme === 'light' ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                        <button 
-                          onClick={() => handleEditHost(host)} 
-                          title="تعديل معلومات الجهاز"
-                          className="action-btn edit-btn"
-                        >
-                          {theme === 'light' ? <Edit2 size={18} /> : <Edit size={18} />}
-                        </button>
-                        <button 
-                          onClick={() => handleCheckStatus(host.id)} 
-                          title="تحقق من الحالة"
-                          className="action-btn check-btn"
-                        >
-                          {theme === 'light' ? <RefreshCcw size={18} /> : <RefreshCw size={18} />}
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(host.id)} 
-                          title="حذف الجهاز"
-                          className="action-btn delete-btn"
-                        >
-                          {theme === 'light' ? <Trash size={18} /> : <Trash2 size={18} />}
-                        </button>
+                      {(() => {
+                        const dateValue = host.lastChecked || host.last_checked
+                        const formattedDate = formatDate(dateValue)
+                        return formattedDate || 'لم يتم إضافة تاريخ'
+                      })()}
+                    </td>
+                    <td>
+                      <div className="tag-actions">
+                        <button onClick={() => handleViewHost(host)}>عرض</button>
+                        <button onClick={() => handleEditHost(host)}>تعديل</button>
+                        <button onClick={() => handleCheckStatus(host.id)}>تحقق</button>
+                        <button onClick={() => handleDelete(host.id)}>حذف</button>
                       </div>
                     </td>
                   </tr>
@@ -685,17 +546,15 @@ function HostsList({ theme, toggleTheme }) {
         {paginationData.totalPages > 1 && (
           <div className="pagination">
             <button
-              className="pagination-btn"
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
             >
               السابق
             </button>
-            <span className="pagination-info">
+            <span>
               صفحة {currentPage} من {paginationData.totalPages} ({filteredHosts.length} جهاز)
             </span>
             <button
-              className="pagination-btn"
               onClick={() => setCurrentPage(prev => Math.min(paginationData.totalPages, prev + 1))}
               disabled={currentPage === paginationData.totalPages}
             >
@@ -703,20 +562,14 @@ function HostsList({ theme, toggleTheme }) {
             </button>
           </div>
         )}
-      </section>
+      </div>
 
-      {/* Modal عرض معلومات الجهاز */}
       {viewingHost && (
         <div className="modal-overlay" onClick={() => setViewingHost(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>
-                <Info size={24} />
-                <span>معلومات الجهاز</span>
-              </h2>
-              <button className="modal-close-btn" onClick={() => setViewingHost(null)}>
-                <X size={20} />
-              </button>
+              <h2>معلومات الجهاز</h2>
+              <button onClick={() => setViewingHost(null)}>إغلاق</button>
             </div>
             <div className="modal-body">
               <div className="info-row">
@@ -725,7 +578,7 @@ function HostsList({ theme, toggleTheme }) {
               </div>
               <div className="info-row">
                 <label>عنوان IP:</label>
-                <span className="ip-value">{viewingHost.ip}</span>
+                <span>{viewingHost.ip}</span>
               </div>
               {viewingHost.description && (
                 <div className="info-row">
@@ -736,55 +589,43 @@ function HostsList({ theme, toggleTheme }) {
               {viewingHost.url && (
                 <div className="info-row">
                   <label>URL:</label>
-                  <a href={viewingHost.url} target="_blank" rel="noopener noreferrer" className="url-link">
+                  <a href={viewingHost.url} target="_blank" rel="noopener noreferrer">
                     {viewingHost.url}
-                    <Globe size={16} />
                   </a>
                 </div>
               )}
               <div className="info-row">
                 <label>الحالة:</label>
-                <span className={`status-badge ${viewingHost.status}`}>
+                <span>
                   {viewingHost.status === 'online' ? 'متصل' : 'غير متصل'}
                 </span>
               </div>
               {viewingHost.tags && viewingHost.tags.length > 0 && (
                 <div className="info-row">
                   <label>الوسوم:</label>
-                  <div className="tags-list">
+                  <div className="tags-inline">
                     {viewingHost.tags.map((tag, idx) => (
-                      <span key={idx} className="tag-badge" style={{ backgroundColor: typeof tag === 'object' ? tag.color : '#4a9eff' }}>
-                        {typeof tag === 'object' ? tag.name : tag}
+                      <span key={idx}>
+                        {typeof tag === 'object' ? tag.name : tag}{idx < viewingHost.tags.length - 1 ? ', ' : ''}
                       </span>
                     ))}
                   </div>
                 </div>
               )}
-              {(() => {
-                const lastChecked = formatDate(viewingHost.lastChecked)
-                return (
-                  <div className="info-row">
-                    <label>آخر فحص:</label>
-                    <span>{lastChecked || 'لم يتم إضافة تاريخ'}</span>
-                  </div>
-                )
-              })()}
-              {(() => {
-                const createdAt = formatDate(viewingHost.createdAt)
-                return (
-                  <div className="info-row">
-                    <label>تاريخ الإضافة:</label>
-                    <span>{createdAt || 'لم يتم إضافة تاريخ'}</span>
-                  </div>
-                )
-              })()}
+              <div className="info-row">
+                <label>آخر فحص:</label>
+                <span>{formatDate(viewingHost.lastChecked) || 'لم يتم إضافة تاريخ'}</span>
+              </div>
+              <div className="info-row">
+                <label>تاريخ الإضافة:</label>
+                <span>{formatDate(viewingHost.createdAt) || 'لم يتم إضافة تاريخ'}</span>
+              </div>
             </div>
             <div className="modal-footer">
-              <button className="modal-btn primary" onClick={() => { setViewingHost(null); handleEditHost(viewingHost); }}>
-                <Edit size={18} />
+              <button onClick={() => { setViewingHost(null); handleEditHost(viewingHost); }}>
                 تعديل
               </button>
-              <button className="modal-btn" onClick={() => setViewingHost(null)}>
+              <button onClick={() => setViewingHost(null)}>
                 إغلاق
               </button>
             </div>
@@ -792,20 +633,14 @@ function HostsList({ theme, toggleTheme }) {
         </div>
       )}
 
-      {/* Modal تعديل الجهاز */}
       {editingHostId && (
         <div className="modal-overlay" onClick={handleCancelEdit}>
-          <div className="modal-content edit-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>
-                <Edit size={24} />
-                <span>تعديل معلومات الجهاز</span>
-              </h2>
-              <button className="modal-close-btn" onClick={handleCancelEdit}>
-                <X size={20} />
-              </button>
+              <h2>تعديل معلومات الجهاز</h2>
+              <button onClick={handleCancelEdit}>إغلاق</button>
             </div>
-            <form onSubmit={handleUpdateHost} className="modal-body">
+            <form className="form" onSubmit={handleUpdateHost}>
               <div className="form-group">
                 <label>الاسم *</label>
                 <input
@@ -846,9 +681,9 @@ function HostsList({ theme, toggleTheme }) {
               </div>
               <div className="form-group">
                 <label>الوسوم</label>
-                <div className="tags-selector">
+                <div>
                   {availableTags.map(tag => (
-                    <label key={tag.id} className="tag-checkbox">
+                    <label key={tag.id}>
                       <input
                         type="checkbox"
                         checked={editFormData.tagIds.includes(tag.id)}
@@ -860,19 +695,16 @@ function HostsList({ theme, toggleTheme }) {
                           }
                         }}
                       />
-                      <span className="tag-label" style={{ backgroundColor: tag.color }}>
-                        {tag.name}
-                      </span>
+                      {tag.name}
                     </label>
                   ))}
                 </div>
               </div>
-              <div className="modal-footer">
-                <button type="submit" className="modal-btn primary">
-                  <Save size={18} />
+              <div className="form-actions">
+                <button type="submit">
                   حفظ التعديلات
                 </button>
-                <button type="button" className="modal-btn" onClick={handleCancelEdit}>
+                <button type="button" onClick={handleCancelEdit}>
                   إلغاء
                 </button>
               </div>

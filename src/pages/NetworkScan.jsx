@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, PlusCircle, ArrowRight, Clock, XCircle } from 'lucide-react'
 import { API_URL } from '../constants'
 import { apiPost } from '../utils/api'
-import './NetworkScan.css'
 
-function NetworkScan({ theme }) {
+function NetworkScan() {
   const navigate = useNavigate()
   const [networkRange, setNetworkRange] = useState('192.168.30.1-254')
   const [scanning, setScanning] = useState(false)
@@ -84,84 +82,60 @@ function NetworkScan({ theme }) {
   }
 
   return (
-    <div className="network-scan-page">
-      <header className="page-header">
-        <h1>
-          <Search size={28} className="header-icon" />
-          <span>مسح الشبكة</span>
-        </h1>
-        <button className="back-btn" onClick={() => navigate('/')}>
-          <ArrowRight size={18} />
-          العودة للعرض
-        </button>
-      </header>
+    <div className="container">
+      <div className="header">
+        <h1>مسح الشبكة</h1>
+        <button onClick={() => navigate('/')}>العودة للعرض</button>
+      </div>
 
       {error && (
         <div className="error-message">
-          <XCircle size={20} />
           {error}
         </div>
       )}
 
-      <section className="scan-section">
-        <div className="scan-form">
-          <div className="form-group">
-            <label htmlFor="networkRange">نطاق الشبكة:</label>
-            <input
-              type="text"
-              id="networkRange"
-              value={networkRange}
-              onChange={(e) => setNetworkRange(e.target.value)}
-              placeholder="مثال: 192.168.30.1-254 أو 192.168.30.0/24"
-              disabled={scanning}
-            />
-          </div>
-          <button 
-            className="scan-btn" 
-            onClick={handleScan}
+      <div className="scan-form">
+        <div className="form-group">
+          <label htmlFor="networkRange">نطاق الشبكة:</label>
+          <input
+            type="text"
+            id="networkRange"
+            value={networkRange}
+            onChange={(e) => setNetworkRange(e.target.value)}
+            placeholder="مثال: 192.168.30.1-254 أو 192.168.30.0/24"
             disabled={scanning}
-          >
-            {scanning ? (
-              <>
-                <Clock size={18} />
-                <span>جاري المسح...</span>
-              </>
-            ) : (
-              <>
-                <Search size={18} />
-                <span>بدء المسح</span>
-              </>
-            )}
-          </button>
+          />
         </div>
+        <button 
+          onClick={handleScan}
+          disabled={scanning}
+        >
+          {scanning ? 'جاري المسح...' : 'بدء المسح'}
+        </button>
+      </div>
 
-        {scanning && (
-          <div className="scanning-indicator">
-            <p>
-              <Clock size={18} style={{ marginLeft: '8px', display: 'inline-block', verticalAlign: 'middle' }} />
-              جاري مسح الشبكة... قد يستغرق هذا بعض الوقت
-            </p>
-          </div>
-        )}
+      {scanning && (
+        <div className="loading">
+          <p>جاري مسح الشبكة... قد يستغرق هذا بعض الوقت</p>
+        </div>
+      )}
 
         {scannedHosts.length > 0 && (
-          <div className="scanned-hosts">
-            <div className="section-header">
+          <div>
+            <div className="controls">
               <button 
-                className="add-selected-btn" 
                 onClick={handleAddSelected}
                 disabled={selectedHosts.size === 0}
               >
-                {theme === 'light' ? <PlusCircle size={18} /> : <Plus size={18} />}
                 إضافة المحدد ({Array.from(selectedHosts).filter(ip => {
                   const host = scannedHosts.find(h => h.ip === ip)
                   return host && !host.isExisting
                 }).length})
               </button>
-              <h2>الأجهزة المكتشفة ({scannedHosts.length})</h2>
             </div>
+            <h2>الأجهزة المكتشفة ({scannedHosts.length})</h2>
 
-            <div className="hosts-grid">
+            <div className="hosts-list">
               {scannedHosts.map((host, index) => {
                 const isExisting = host.isExisting || false
                 const hostName = host.hostname || host.existingName || `Host ${host.ip.split('.').pop()}`
@@ -169,10 +143,10 @@ function NetworkScan({ theme }) {
                 return (
                   <div
                     key={index}
-                    className={`host-item ${selectedHosts.has(host.ip) && !isExisting ? 'selected' : ''} ${isExisting ? 'existing' : ''}`}
+                    className="host-item"
                     onClick={() => !isExisting && toggleHostSelection(host.ip)}
                   >
-                    <div className="host-checkbox">
+                    <div>
                       <input
                         type="checkbox"
                         checked={selectedHosts.has(host.ip) && !isExisting}
@@ -181,19 +155,17 @@ function NetworkScan({ theme }) {
                         disabled={isExisting}
                       />
                     </div>
-                    <div className="host-info">
+                    <div>
                       <h3>{hostName}</h3>
-                      <p className="host-ip">📍 {host.ip}</p>
+                      <p>IP: {host.ip}</p>
                       {host.hostname && (
-                        <p className="host-hostname">🏷️ {host.hostname}</p>
+                        <p>Hostname: {host.hostname}</p>
                       )}
                       {host.port && (
-                        <p className="host-port">🔌 Port: {host.port}</p>
+                        <p>Port: {host.port}</p>
                       )}
                       {isExisting && (
-                        <p className="host-existing" style={{ color: '#10b981', fontWeight: '600', marginTop: '8px' }}>
-                          ✓ الجهاز مضاف مسبقاً
-                        </p>
+                        <p>✓ الجهاز مضاف مسبقاً</p>
                       )}
                     </div>
                   </div>
@@ -202,10 +174,8 @@ function NetworkScan({ theme }) {
             </div>
           </div>
         )}
-      </section>
     </div>
   )
 }
 
 export default NetworkScan
-
