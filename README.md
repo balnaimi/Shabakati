@@ -1,5 +1,7 @@
 # لوحة تحكم الشبكة 🌐
 
+**For English version, see [README_EN.md](README_EN.md)**
+
 لوحة تحكم حديثة لإدارة ومتابعة الأجهزة في شبكتك مع قاعدة بيانات SQLite.
 
 ## المميزات
@@ -40,7 +42,7 @@
 ### Linux / macOS:
 ```bash
 # 1. Clone المشروع
-git clone <repository-url>
+git clone https://github.com/balnaimi/Shabakati.git
 cd Shabakati
 
 # 2. تثبيت Node.js والمتطلبات
@@ -53,7 +55,7 @@ cd Shabakati
 ### Windows:
 ```powershell
 # 1. Clone المشروع
-git clone <repository-url>
+git clone https://github.com/balnaimi/Shabakati.git
 cd Shabakati
 
 # 2. تثبيت Node.js والمتطلبات (شغّل PowerShell كمسؤول)
@@ -77,11 +79,9 @@ cd Shabakati
 قبل البدء، يجب عليك clone المشروع من مستودع Git:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/balnaimi/Shabakati.git
 cd Shabakati
 ```
-
-**ملاحظة:** استبدل `<repository-url>` برابط مستودع Git الخاص بك (مثال: `https://github.com/username/Shabakati.git` أو `git@github.com:username/Shabakati.git`).
 
 بعد clone المشروع، اتبع تعليمات التثبيت والتشغيل أدناه.
 
@@ -94,6 +94,8 @@ cd Shabakati
 - Node.js (الإصدار 20 أو أحدث - موصى به: v22.x.x LTS)
 - npm أو yarn
 - نظام Linux أو Windows أو macOS
+
+**ملاحظة:** البرنامج تم تجريبه على Debian 13 (trixie). يعمل أيضاً على Ubuntu, Fedora, macOS, و Windows.
 
 ### تثبيت Node.js v22 LTS
 

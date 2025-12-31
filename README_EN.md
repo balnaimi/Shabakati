@@ -40,7 +40,7 @@ The easiest way to run the application in development mode:
 ### Linux / macOS:
 ```bash
 # 1. Clone the repository
-git clone <repository-url>
+git clone https://github.com/balnaimi/Shabakati.git
 cd Shabakati
 
 # 2. Install Node.js and dependencies
@@ -53,7 +53,7 @@ cd Shabakati
 ### Windows:
 ```powershell
 # 1. Clone the repository
-git clone <repository-url>
+git clone https://github.com/balnaimi/Shabakati.git
 cd Shabakati
 
 # 2. Install Node.js and dependencies (run PowerShell as Administrator)
@@ -77,11 +77,9 @@ After running the scripts, the application will be available at:
 Before starting, you need to clone the project from the Git repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/balnaimi/Shabakati.git
 cd Shabakati
 ```
-
-**Note:** Replace `<repository-url>` with your Git repository URL (example: `https://github.com/username/Shabakati.git` or `git@github.com:username/Shabakati.git`).
 
 After cloning the project, follow the installation and setup instructions below.
 
@@ -94,6 +92,8 @@ After cloning the project, follow the installation and setup instructions below.
 - Node.js (Version 20 or later - Recommended: v22.x.x LTS)
 - npm or yarn
 - Linux, Windows, or macOS
+
+**Note:** The application has been tested on Debian 13 (trixie). It also works on Ubuntu, Fedora, macOS, and Windows.
 
 ### Installing Node.js v22 LTS
 
