@@ -88,7 +88,7 @@ cd /path/to/Shabakati/server
 npm run dev
 ```
 
-✅ **Server will run on:** `http://localhost:3001`
+✅ **Server will run on:** `http://0.0.0.0:3001` (accessible from all interfaces)
 
 **⚠️ Keep this terminal open!**
 
@@ -101,14 +101,24 @@ cd /path/to/Shabakati
 npm run dev
 ```
 
-✅ **Frontend will run on:** `http://localhost:5173`
+✅ **Frontend will run on:** `http://0.0.0.0:5173` (accessible from all interfaces)
 
 #### Open the Application
 
+**From the same server:**
 Open your browser and go to:
 ```
 http://localhost:5173
 ```
+
+**From any device on the local network:**
+Open your browser and go to:
+```
+http://<SERVER_IP>:5173
+```
+where `<SERVER_IP>` is the server's IP address on the network (example: `http://192.168.1.100:5173`)
+
+**Note:** Make sure the firewall allows connections on ports 3001 and 5173.
 
 ---
 
@@ -504,4 +514,5 @@ See `LICENSE` file for details.
 ---
 
 **Last Updated:** 2024
+
 

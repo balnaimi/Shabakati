@@ -2,21 +2,21 @@ import { createConnection } from 'net';
 import ping from 'ping';
 
 /**
- * التحقق من حالة اتصال المضيف باستخدام ping
- * @param {string} ip - عنوان IP للتحقق منه
- * @param {number} timeout - الوقت الأقصى للانتظار بالثواني (افتراضي: 3)
- * @returns {Promise<{alive: boolean, latency?: number, packetLoss?: number}>} معلومات الاتصال
+ * Check host connection status using ping
+ * @param {string} ip - IP address to check
+ * @param {number} timeout - Maximum wait time in seconds (default: 3)
+ * @returns {Promise<{alive: boolean, latency?: number, packetLoss?: number}>} Connection information
  */
 export async function checkHostStatus(ip, timeout = 3) {
   try {
     const cleanIP = ip.trim();
     
-    // التحقق من صحة عنوان IP
+    // Validate IP address
     if (!isValidIP(cleanIP)) {
       return { alive: false };
     }
 
-    // استخدام مكتبة ping
+    // Use ping library
     const result = await ping.promise.probe(cleanIP, {
       timeout: timeout,
       min_reply: 1,
@@ -28,23 +28,23 @@ export async function checkHostStatus(ip, timeout = 3) {
       packetLoss: result.packetLoss ? parseFloat(result.packetLoss) : 0
     };
   } catch (error) {
-    console.error('خطأ في ping:', error.message);
+    console.error('Error in ping:', error.message);
     return { alive: false };
   }
 }
 
 /**
- * التحقق من حالة اتصال المضيف بمحاولة الاتصال بمنفذ
- * @param {string} ip - عنوان IP للتحقق منه
- * @param {number} port - المنفذ للتحقق
- * @param {number} timeout - الوقت الأقصى للانتظار بالمللي ثانية (افتراضي: 2000)
- * @returns {Promise<boolean>} true إذا كان المضيف متصل، false إذا كان غير متصل
+ * Check host connection status by attempting connection to port
+ * @param {string} ip - IP address to check
+ * @param {number} port - Port to check
+ * @param {number} timeout - Maximum wait time in milliseconds (default: 2000)
+ * @returns {Promise<boolean>} true if host is connected, false if disconnected
  */
 async function checkHostPort(ip, port, timeout = 2000) {
   return new Promise((resolve) => {
     const cleanIP = ip.trim();
     
-    // التحقق من صحة عنوان IP
+    // Validate IP address
     if (!isValidIP(cleanIP)) {
       resolve(false);
       return;
@@ -68,25 +68,25 @@ async function checkHostPort(ip, port, timeout = 2000) {
 }
 
 /**
- * محاولة التحقق من المضيف على عدة منافذ شائعة
- * @param {string} ip - عنوان IP للتحقق منه
- * @returns {Promise<boolean>} true إذا كان المضيف متصل على أي منفذ
+ * Attempt to check host on multiple common ports
+ * @param {string} ip - IP address to check
+ * @returns {Promise<boolean>} true if host is connected on any port
  */
 async function checkHostStatusMultiplePorts(ip) {
-  // منافذ شائعة للتحقق (محسّن - منافذ الأكثر شيوعاً أولاً)
+  // Common ports to check (optimized - most common ports first)
   const commonPorts = [80, 443, 22, 3389, 8080, 8006];
   
-  // محاولة الاتصال بكل منفذ بالتوازي (محسّن - timeout أقصر)
+  // Attempt connection to each port in parallel (optimized - shorter timeout)
   const checks = commonPorts.map(port => checkHostPort(ip, port, 1500));
   const results = await Promise.all(checks);
   
-  // إذا نجح الاتصال على أي منفذ، المضيف متصل
+  // If connection succeeds on any port, host is connected
   return results.some(result => result === true);
 }
 
 /**
- * التحقق من صحة عنوان IP
- * @param {string} ip - عنوان IP للتحقق
+ * Validate IP address
+ * @param {string} ip - IP address to validate
  * @returns {boolean}
  */
 function isValidIP(ip) {
@@ -103,23 +103,23 @@ function isValidIP(ip) {
 }
 
 /**
- * التحقق من حالة اتصال URL
- * @param {string} url - رابط URL للتحقق
- * @param {number} timeout - الوقت الأقصى للانتظار بالثواني (افتراضي: 5)
- * @returns {Promise<boolean>} true إذا كان الرابط متاح، false إذا كان غير متاح
+ * Check URL connection status
+ * @param {string} url - URL to check
+ * @param {number} timeout - Maximum wait time in seconds (default: 5)
+ * @returns {Promise<boolean>} true if URL is available, false if unavailable
  */
 export async function checkURLStatus(url, timeout = 5) {
   try {
     const cleanURL = url.trim();
     if (!cleanURL) return false;
     
-    // استخدام URL كما هو (لا نضيف http:// تلقائياً للـ HTTPS)
+    // Use URL as is (don't automatically add http:// for HTTPS)
     let fullURL = cleanURL;
     if (!cleanURL.startsWith('http://') && !cleanURL.startsWith('https://')) {
       fullURL = `http://${cleanURL}`;
     }
 
-    // استخدام fetch (متاح في Node.js 18+)
+    // Use fetch (available in Node.js 18+)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
 
@@ -128,17 +128,17 @@ export async function checkURLStatus(url, timeout = 5) {
         method: 'HEAD',
         signal: controller.signal,
         redirect: 'follow',
-        // تجاهل SSL errors للـ HTTPS
+        // Ignore SSL errors for HTTPS
         // agent: new https.Agent({ rejectUnauthorized: false })
       });
 
       clearTimeout(timeoutId);
       
-      // إذا كان status code بين 200-499 (حتى لو كان خطأ، يعني الخادم متاح)
+      // If status code is between 200-499 (even if error, means server is available)
       return response.status >= 200 && response.status < 500;
     } catch (fetchError) {
       clearTimeout(timeoutId);
-      // إذا كان الخطأ متعلق بـ SSL، جرب مرة أخرى مع GET
+      // If error is related to SSL, try again with GET
       if (fetchError.message.includes('certificate') || fetchError.message.includes('SSL')) {
         try {
           const controller2 = new AbortController();
@@ -162,22 +162,22 @@ export async function checkURLStatus(url, timeout = 5) {
 }
 
 /**
- * التحقق من حالة المضيف (IP أو URL)
- * @param {string} ip - عنوان IP
- * @param {string} url - رابط URL (اختياري)
- * @returns {Promise<{status: string, latency?: number, packetLoss?: number}>} معلومات الاتصال
+ * Check host status (IP or URL)
+ * @param {string} ip - IP address
+ * @param {string} url - URL (optional)
+ * @returns {Promise<{status: string, latency?: number, packetLoss?: number}>} Connection information
  */
 export async function checkHost(ip, url = null) {
   let pingInfo = { alive: false };
   
-  // إذا كان هناك URL، نتحقق منه أولاً (هذا الأكثر موثوقية)
+  // If URL exists, check it first (most reliable)
   if (url && url.trim()) {
     try {
-      console.log(`التحقق من URL: ${url}`);
+      console.log(`Checking URL: ${url}`);
       const urlStatus = await checkURLStatus(url, 5);
       if (urlStatus) {
-        console.log(`URL متاح: ${url}`);
-        // جرب ping للحصول على latency
+        console.log(`URL available: ${url}`);
+        // Try ping to get latency
         pingInfo = await checkHostStatus(ip, 3);
         return {
           status: 'online',
@@ -185,44 +185,44 @@ export async function checkHost(ip, url = null) {
           packetLoss: pingInfo.packetLoss || 0
         };
       }
-      console.log(`URL غير متاح: ${url}`);
+      console.log(`URL unavailable: ${url}`);
     } catch (error) {
-      console.error('خطأ في التحقق من URL:', error.message);
+      console.error('Error checking URL:', error.message);
     }
   }
 
-  // التحقق من IP باستخدام ping أولاً
+  // Check IP using ping first
   try {
-    console.log(`التحقق من IP باستخدام ping: ${ip}`);
+    console.log(`Checking IP using ping: ${ip}`);
     pingInfo = await checkHostStatus(ip, 3);
     if (pingInfo.alive) {
-      console.log(`Ping نجح: ${ip}`);
+      console.log(`Ping succeeded: ${ip}`);
       return {
         status: 'online',
         latency: pingInfo.latency,
         packetLoss: pingInfo.packetLoss || 0
       };
     }
-    console.log(`Ping فشل: ${ip}`);
+    console.log(`Ping failed: ${ip}`);
   } catch (error) {
-    console.error('خطأ في ping:', error.message);
+    console.error('Error in ping:', error.message);
   }
 
-  // إذا فشل ping، جرب الاتصال على منافذ شائعة
+  // If ping failed, try connection on common ports
   try {
-    console.log(`التحقق من IP على منافذ شائعة: ${ip}`);
+    console.log(`Checking IP on common ports: ${ip}`);
     const portStatus = await checkHostStatusMultiplePorts(ip);
     if (portStatus) {
-      console.log(`الاتصال على منفذ نجح: ${ip}`);
+      console.log(`Port connection succeeded: ${ip}`);
       return {
         status: 'online',
         latency: null,
-        packetLoss: 100 // لا يمكن قياس packet loss من port check
+        packetLoss: 100 // Cannot measure packet loss from port check
       };
     }
-    console.log(`الاتصال على منافذ فشل: ${ip}`);
+    console.log(`Port connection failed: ${ip}`);
   } catch (error) {
-    console.error('خطأ في التحقق من المنافذ:', error.message);
+    console.error('Error checking ports:', error.message);
   }
 
   return {

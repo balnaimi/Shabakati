@@ -1,10 +1,10 @@
 /**
- * دوال مساعدة للتعامل مع الشبكات وعناوين IP
+ * Helper functions for working with networks and IP addresses
  */
 
 /**
- * التحقق من صحة عنوان IP
- * @param {string} ip - عنوان IP للتحقق
+ * Validate IP address
+ * @param {string} ip - IP address to validate
  * @returns {boolean}
  */
 export function isValidIP(ip) {
@@ -17,8 +17,8 @@ export function isValidIP(ip) {
 }
 
 /**
- * تحويل IP إلى رقم
- * @param {string} ip - عنوان IP
+ * Convert IP to number
+ * @param {string} ip - IP address
  * @returns {number}
  */
 function ipToNumber(ip) {
@@ -27,8 +27,8 @@ function ipToNumber(ip) {
 }
 
 /**
- * تحويل رقم إلى IP
- * @param {number} num - الرقم
+ * Convert number to IP
+ * @param {number} num - Number
  * @returns {string}
  */
 function numberToIP(num) {
@@ -41,20 +41,20 @@ function numberToIP(num) {
 }
 
 /**
- * حساب CIDR notation من Network ID و Subnet
- * @param {string} networkId - Network ID (مثل: 192.168.1.0)
- * @param {number} subnet - Subnet mask (مثل: 24, 16, 8)
- * @returns {string} CIDR notation (مثل: 192.168.1.0/24)
+ * Calculate CIDR notation from Network ID and Subnet
+ * @param {string} networkId - Network ID (example: 192.168.1.0)
+ * @param {number} subnet - Subnet mask (example: 24, 16, 8)
+ * @returns {string} CIDR notation (example: 192.168.1.0/24)
  */
 export function getNetworkCIDR(networkId, subnet) {
   return `${networkId}/${subnet}`;
 }
 
 /**
- * التحقق إذا كان IP ضمن الشبكة
- * @param {string} ip - عنوان IP للتحقق
- * @param {string} networkId - Network ID (مثل: 192.168.1.0)
- * @param {number} subnet - Subnet mask (مثل: 24)
+ * Check if IP is within network
+ * @param {string} ip - IP address to check
+ * @param {string} networkId - Network ID (example: 192.168.1.0)
+ * @param {number} subnet - Subnet mask (example: 24)
  * @returns {boolean}
  */
 export function isIPInNetwork(ip, networkId, subnet) {
@@ -71,9 +71,9 @@ export function isIPInNetwork(ip, networkId, subnet) {
 }
 
 /**
- * حساب نطاق IP بناءً على Network ID و Subnet
- * @param {string} networkId - Network ID (مثل: 192.168.1.0)
- * @param {number} subnet - Subnet mask (مثل: 24)
+ * Calculate IP range based on Network ID and Subnet
+ * @param {string} networkId - Network ID (example: 192.168.1.0)
+ * @param {number} subnet - Subnet mask (example: 24)
  * @returns {Object} { start: string, end: string, count: number, range: Array<string> }
  */
 export function calculateIPRange(networkId, subnet) {
@@ -83,7 +83,7 @@ export function calculateIPRange(networkId, subnet) {
 
   const networkNum = ipToNumber(networkId);
   const hostBits = 32 - subnet;
-  const hostCount = Math.pow(2, hostBits) - 2; // نستثني network و broadcast
+  const hostCount = Math.pow(2, hostBits) - 2; // Exclude network and broadcast
 
   // Network address
   const mask = 0xFFFFFFFF << hostBits;
@@ -112,8 +112,8 @@ export function calculateIPRange(networkId, subnet) {
 }
 
 /**
- * استخراج آخر رقم من IP
- * @param {string} ip - عنوان IP
+ * Extract last octet from IP
+ * @param {string} ip - IP address
  * @returns {number|null}
  */
 export function getLastOctet(ip) {
@@ -123,9 +123,9 @@ export function getLastOctet(ip) {
 }
 
 /**
- * بناء IP من Network ID و آخر رقم
- * @param {string} networkId - Network ID (مثل: 192.168.1.0)
- * @param {number} lastOctet - آخر رقم (مثل: 10)
+ * Build IP from Network ID and last octet
+ * @param {string} networkId - Network ID (example: 192.168.1.0)
+ * @param {number} lastOctet - Last octet (example: 10)
  * @returns {string}
  */
 export function buildIPFromNetwork(networkId, lastOctet) {

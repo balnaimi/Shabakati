@@ -8,36 +8,36 @@ const dnsLookup = promisify(lookup);
 const dnsReverse = promisify(reverse);
 
 /**
- * مسح نطاق IP للعثور على المضيفين النشطين
- * @param {string} networkRange - نطاق الشبكة (مثال: "192.168.30.0/24" أو "192.168.30.1-254")
- * @param {number} timeout - الوقت الأقصى للانتظار بالثواني (افتراضي: 2)
- * @returns {Promise<Array>} قائمة بعناوين IP النشطة
+ * Scan IP range to find active hosts
+ * @param {string} networkRange - Network range (example: "192.168.30.0/24" or "192.168.30.1-254")
+ * @param {number} timeout - Maximum wait time in seconds (default: 2)
+ * @returns {Promise<Array>} List of active IP addresses
  */
 export async function scanNetwork(networkRange, timeout = 2) {
   const activeHosts = [];
   
   try {
-    // تحليل نطاق الشبكة
+    // Parse network range
     let ipRange = [];
     
     if (networkRange.includes('/')) {
-      // CIDR notation (مثال: 192.168.30.0/24)
+      // CIDR notation (example: 192.168.30.0/24)
       ipRange = parseCIDR(networkRange);
     } else if (networkRange.includes('-')) {
-      // Range notation (مثال: 192.168.30.1-254)
+      // Range notation (example: 192.168.30.1-254)
       ipRange = parseRange(networkRange);
     } else {
-      // IP واحد فقط
+      // Single IP only
       ipRange = [networkRange];
     }
 
-    console.log(`بدء مسح ${ipRange.length} عنوان IP...`);
+    console.log(`Starting scan of ${ipRange.length} IP addresses...`);
 
-    // مسح جميع العناوين بالتوازي (محسّن - batch size أكبر وأسرع)
-    // زيادة batch size لتحسين الأداء (200 بدلاً من 100)
+    // Scan all addresses in parallel (optimized - larger batch size and faster)
+    // Increased batch size for better performance (200 instead of 100)
     const batchSize = 200;
     
-    // قائمة شاملة من البورتات المشهورة (Linux, Windows, خدمات مشهورة)
+    // Comprehensive list of common ports (Linux, Windows, popular services)
     const commonPorts = [
       // Linux
       22,   // SSH
@@ -61,7 +61,7 @@ export async function scanNetwork(networkRange, timeout = 2) {
       3389, // RDP
       5985, // WinRM HTTP
       5986, // WinRM HTTPS
-      // خدمات مشهورة
+      // Popular services
       23,    // Telnet
       5900,  // VNC
       27017, // MongoDB
@@ -69,30 +69,30 @@ export async function scanNetwork(networkRange, timeout = 2) {
       9200   // Elasticsearch
     ];
     
-    const portTimeout = Math.min(timeout * 1000, 1500); // تقليل timeout للسرعة
-    const pingTimeout = timeout; // timeout لـ ping بالثواني
+    const portTimeout = Math.min(timeout * 1000, 1500); // Reduce timeout for speed
+    const pingTimeout = timeout; // timeout for ping in seconds
     
     for (let i = 0; i < ipRange.length; i += batchSize) {
       const batch = ipRange.slice(i, i + batchSize);
-      console.log(`مسح الدفعة ${Math.floor(i / batchSize) + 1} من ${Math.ceil(ipRange.length / batchSize)} (${batch.length} عنوان)`);
+      console.log(`Scanning batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(ipRange.length / batchSize)} (${batch.length} addresses)`);
       
-      // تحسين: فحص ping وجميع المنافذ بالتوازي
+      // Optimization: check ping and all ports in parallel
       const promises = batch.map(async (ip) => {
-        // بدء ping وفحص جميع المنافذ بالتوازي
+        // Start ping and check all ports in parallel
         const pingCheck = checkHostPing(ip, pingTimeout);
         const portChecks = commonPorts.map(port => 
           checkHostPort(ip, port, portTimeout).then(isAlive => ({ port, isAlive }))
         );
         
-        // استخدام Promise.allSettled للتحقق من جميع النتائج (أكثر موثوقية)
-        // هذا يضمن أننا نحصل على جميع النتائج حتى لو فشل بعضها
+        // Use Promise.allSettled to check all results (more reliable)
+        // This ensures we get all results even if some fail
         const allChecks = [pingCheck, ...portChecks];
         const results = await Promise.allSettled(allChecks);
         
-        // استخراج نتائج ping
+        // Extract ping results
         const pingResult = results[0].status === 'fulfilled' ? results[0].value : { alive: false };
         
-        // استخراج نتائج البورتات
+        // Extract port results
         const portResults = results.slice(1).map((result, index) => {
           if (result.status === 'fulfilled') {
             return result.value;
@@ -106,11 +106,11 @@ export async function scanNetwork(networkRange, timeout = 2) {
                               : successfulPort ? 'port' 
                               : null;
         
-        // إذا نجح ping أو أي بورت، الجهاز نشط
+        // If ping or any port succeeds, host is active
         if (pingResult.alive || successfulPort) {
           return {
             ip: ip,
-            hostname: null, // سيتم ملؤه لاحقاً
+            hostname: null, // Will be filled later
             time: null,
             port: successfulPort ? successfulPort.port : null,
             pingLatency: pingResult.alive ? pingResult.latency : null,
@@ -125,22 +125,22 @@ export async function scanNetwork(networkRange, timeout = 2) {
       activeHosts.push(...active);
       
       if (active.length > 0) {
-        console.log(`  ✓ تم العثور على ${active.length} مضيف نشط في هذه الدفعة`);
+        console.log(`  ✓ Found ${active.length} active hosts in this batch`);
       }
     }
 
-    console.log(`تم العثور على ${activeHosts.length} مضيف نشط`);
+    console.log(`Found ${activeHosts.length} active hosts`);
     
-    // الآن نحصل على أسماء المضيفين بشكل متوازي
+    // Now get hostnames in parallel
     if (activeHosts.length > 0) {
-      console.log(`جاري الحصول على أسماء المضيفين من DNS لـ ${activeHosts.length} مضيف...`);
+      console.log(`Getting hostnames from DNS for ${activeHosts.length} hosts...`);
       
-      // الحصول على جميع المضيفين من قاعدة البيانات مرة واحدة
+      // Get all hosts from database once
       let existingHosts = [];
       try {
         existingHosts = dbFunctions.getAllHosts();
       } catch (error) {
-        console.error('خطأ في قراءة قاعدة البيانات:', error);
+        console.error('Error reading database:', error);
       }
       
       const hostnamePromises = activeHosts.map(async (host) => {
@@ -148,7 +148,7 @@ export async function scanNetwork(networkRange, timeout = 2) {
         let isExisting = false;
         let existingName = null;
         
-        // أولاً: البحث في قاعدة البيانات المحلية
+        // First: search in local database
         try {
           const existingHost = existingHosts.find(h => h.ip === host.ip);
           if (existingHost) {
@@ -156,16 +156,16 @@ export async function scanNetwork(networkRange, timeout = 2) {
             existingName = existingHost.name;
             if (existingHost.name) {
               hostname = existingHost.name;
-              console.log(`  ✓ وجد اسم في قاعدة البيانات لـ ${host.ip}: ${hostname}`);
+              console.log(`  ✓ Found name in database for ${host.ip}: ${hostname}`);
             }
             return { ...host, hostname, isExisting, existingName };
           }
         } catch (error) {
-          // تجاهل الأخطاء
+          // Ignore errors
         }
         
-        // إذا لم نجد في قاعدة البيانات، جرب DNS reverse lookup فقط
-        // (forward lookup يحتاج hostname وليس IP)
+        // If not found in database, try DNS reverse lookup only
+        // (forward lookup needs hostname not IP)
         if (!hostname) {
           try {
             const hostnames = await Promise.race([
@@ -174,21 +174,21 @@ export async function scanNetwork(networkRange, timeout = 2) {
             ]);
             if (hostnames && hostnames.length > 0) {
               hostname = hostnames[0];
-              // إزالة النقطة الأخيرة إذا كانت موجودة
+              // Remove trailing dot if present
               if (hostname.endsWith('.')) {
                 hostname = hostname.slice(0, -1);
               }
-              // إزالة domain suffix إذا كان موجوداً (مثل .local أو .lan)
+              // Remove domain suffix if present (like .local or .lan)
               if (hostname.includes('.')) {
                 hostname = hostname.split('.')[0];
               }
-              console.log(`  ✓ DNS reverse lookup نجح لـ ${host.ip}: ${hostname}`);
+              console.log(`  ✓ DNS reverse lookup succeeded for ${host.ip}: ${hostname}`);
             } else {
-              // لا نطبع رسالة فشل لكل IP لتقليل الضوضاء
+              // Don't print failure message for each IP to reduce noise
             }
           } catch (error) {
-            // لا نطبع رسالة فشل لكل IP لتقليل الضوضاء
-            // معظم الأجهزة لا تحتوي على PTR records وهذا طبيعي
+            // Don't print failure message for each IP to reduce noise
+            // Most devices don't have PTR records and this is normal
           }
         }
         
@@ -198,34 +198,34 @@ export async function scanNetwork(networkRange, timeout = 2) {
       const hostsWithNames = await Promise.all(hostnamePromises);
       const foundNames = hostsWithNames.filter(h => h.hostname).length;
       const existingCount = hostsWithNames.filter(h => h.isExisting).length;
-      console.log(`تم الحصول على ${foundNames} اسم من ${activeHosts.length} مضيف`);
-      console.log(`تم العثور على ${existingCount} جهاز مضاف مسبقاً`);
+      console.log(`Got ${foundNames} names from ${activeHosts.length} hosts`);
+      console.log(`Found ${existingCount} previously added devices`);
       return hostsWithNames;
     }
     
     return activeHosts;
   } catch (error) {
-    console.error('خطأ في مسح الشبكة:', error);
+    console.error('Error scanning network:', error);
     throw error;
   }
 }
 
 /**
- * تحليل CIDR notation
- * @param {string} cidr - مثال: "192.168.30.0/24"
- * @returns {Array<string>} قائمة بعناوين IP
+ * Parse CIDR notation
+ * @param {string} cidr - Example: "192.168.30.0/24"
+ * @returns {Array<string>} List of IP addresses
  */
 function parseCIDR(cidr) {
   const [ip, prefix] = cidr.split('/');
   const prefixLength = parseInt(prefix);
   
   if (prefixLength < 24 || prefixLength > 30) {
-    throw new Error('نطاق CIDR يجب أن يكون بين /24 و /30');
+    throw new Error('CIDR range must be between /24 and /30');
   }
 
   const ipParts = ip.split('.').map(Number);
   const hostBits = 32 - prefixLength;
-  const hostCount = Math.pow(2, hostBits) - 2; // نستثني network و broadcast
+  const hostCount = Math.pow(2, hostBits) - 2; // Exclude network and broadcast
 
   const ipRange = [];
   const baseIP = (ipParts[0] << 24) + (ipParts[1] << 16) + (ipParts[2] << 8) + ipParts[3];
@@ -244,14 +244,14 @@ function parseCIDR(cidr) {
 }
 
 /**
- * تحليل Range notation
- * @param {string} range - مثال: "192.168.30.1-254"
- * @returns {Array<string>} قائمة بعناوين IP
+ * Parse Range notation
+ * @param {string} range - Example: "192.168.30.1-254"
+ * @returns {Array<string>} List of IP addresses
  */
 function parseRange(range) {
   const parts = range.split('-');
   if (parts.length !== 2) {
-    throw new Error('تنسيق النطاق غير صحيح. استخدم: 192.168.30.1-254');
+    throw new Error('Invalid range format. Use: 192.168.30.1-254');
   }
 
   const baseIP = parts[0].trim();
@@ -259,12 +259,12 @@ function parseRange(range) {
   
   const ipParts = baseIP.split('.').map(Number);
   if (ipParts.length !== 4) {
-    throw new Error('عنوان IP غير صحيح');
+    throw new Error('Invalid IP address');
   }
 
   const startNum = ipParts[3];
   if (startNum >= endNum || endNum > 254) {
-    throw new Error('نطاق IP غير صحيح');
+    throw new Error('Invalid IP range');
   }
 
   const ipRange = [];
@@ -276,9 +276,9 @@ function parseRange(range) {
 }
 
 /**
- * التحقق من المضيف باستخدام ping (ICMP)
- * @param {string} ip - عنوان IP
- * @param {number} timeout - الوقت الأقصى بالثواني
+ * Check host using ping (ICMP)
+ * @param {string} ip - IP address
+ * @param {number} timeout - Maximum time in seconds
  * @returns {Promise<{alive: boolean, latency?: number}>}
  */
 async function checkHostPing(ip, timeout = 2) {
@@ -298,10 +298,10 @@ async function checkHostPing(ip, timeout = 2) {
 }
 
 /**
- * التحقق من المضيف بمحاولة الاتصال بمنفذ
- * @param {string} ip - عنوان IP
- * @param {number} port - المنفذ
- * @param {number} timeout - الوقت الأقصى بالمللي ثانية
+ * Check host by attempting connection to port
+ * @param {string} ip - IP address
+ * @param {number} port - Port number
+ * @param {number} timeout - Maximum time in milliseconds
  * @returns {Promise<boolean>}
  */
 function checkHostPort(ip, port, timeout = 2000) {

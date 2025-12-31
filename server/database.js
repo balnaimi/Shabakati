@@ -5,10 +5,10 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// إنشاء اتصال بقاعدة البيانات
+// Create database connection
 const db = new Database(join(__dirname, 'network.db'));
 
-// إنشاء الجدول إذا لم يكن موجوداً
+// Create table if it doesn't exist
 db.exec(`
   CREATE TABLE IF NOT EXISTS hosts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,7 +26,7 @@ db.exec(`
   )
 `);
 
-// إضافة الأعمدة الجديدة للقواعد الموجودة
+// Add new columns to existing databases
 try {
   db.exec('ALTER TABLE hosts ADD COLUMN last_checked TEXT');
 } catch (e) {}
@@ -40,7 +40,7 @@ try {
   db.exec('ALTER TABLE hosts ADD COLUMN uptime_percentage REAL DEFAULT 100.0');
 } catch (e) {}
 
-// إنشاء جدول لتاريخ الحالات (للإحصائيات)
+// Create status history table (for statistics)
 db.exec(`
   CREATE TABLE IF NOT EXISTS host_status_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +52,7 @@ db.exec(`
   )
 `);
 
-// إنشاء جدول networks
+// Create networks table
 db.exec(`
   CREATE TABLE IF NOT EXISTS networks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,14 +64,14 @@ db.exec(`
   )
 `);
 
-// إضافة عمود tags إذا لم يكن موجوداً (للقواعد الموجودة)
+// Add tags column if it doesn't exist (for existing databases)
 try {
   db.exec('ALTER TABLE hosts ADD COLUMN tags TEXT');
 } catch (e) {
-  // العمود موجود بالفعل
+  // Column already exists
 }
 
-// ترحيل البيانات من tag إلى tags (إذا كان tag موجوداً)
+// Migrate data from tag to tags (if tag column exists)
 try {
   db.exec(`
     UPDATE hosts 
@@ -82,10 +82,10 @@ try {
     WHERE tags IS NULL OR tags = ''
   `);
 } catch (e) {
-  // تجاهل الخطأ
+  // Ignore error
 }
 
-// إنشاء جدول tags
+// Create tags table
 db.exec(`
   CREATE TABLE IF NOT EXISTS tags (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,7 +95,7 @@ db.exec(`
   )
 `);
 
-// إنشاء جدول host_tags للربط بين hosts و tags
+// Create host_tags table to link hosts and tags
 db.exec(`
   CREATE TABLE IF NOT EXISTS host_tags (
     host_id INTEGER NOT NULL,
@@ -106,45 +106,45 @@ db.exec(`
   )
 `);
 
-// ========== إضافة فهارس لتحسين الأداء ==========
-// فهرس على IP للبحث السريع
+// ========== Add indexes for performance improvement ==========
+// Index on IP for fast search
 try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_hosts_ip ON hosts(ip)');
 } catch (e) {}
 
-// فهرس على status للفلترة السريعة
+// Index on status for fast filtering
 try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_hosts_status ON hosts(status)');
 } catch (e) {}
 
-// فهرس على created_at للترتيب السريع
+// Index on created_at for fast sorting
 try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_hosts_created_at ON hosts(created_at DESC)');
 } catch (e) {}
 
-// فهرس على host_id في host_tags للربط السريع
+// Index on host_id in host_tags for fast linking
 try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_host_tags_host_id ON host_tags(host_id)');
 } catch (e) {}
 
-// فهرس على tag_id في host_tags
+// Index on tag_id in host_tags
 try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_host_tags_tag_id ON host_tags(tag_id)');
 } catch (e) {}
 
-// فهرس على host_id في host_status_history
+// Index on host_id in host_status_history
 try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_status_history_host_id ON host_status_history(host_id)');
 } catch (e) {}
 
-// فهرس على checked_at في host_status_history للترتيب السريع
+// Index on checked_at in host_status_history for fast sorting
 try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_status_history_checked_at ON host_status_history(host_id, checked_at DESC)');
 } catch (e) {}
 
-// دوال قاعدة البيانات
+// Database functions
 export const dbFunctions = {
-  // الحصول على جميع المضيفين (محسّن - جلب الوسوم بشكل batch)
+  // Get all hosts (optimized - fetch tags in batch)
   getAllHosts(limit = null, offset = 0) {
     let query = 'SELECT * FROM hosts ORDER BY id DESC';
     if (limit) {
@@ -153,12 +153,12 @@ export const dbFunctions = {
     const stmt = limit ? db.prepare(query) : db.prepare('SELECT * FROM hosts ORDER BY id DESC');
     const hosts = limit ? stmt.all(limit, offset) : stmt.all();
     
-    // جلب جميع الوسوم دفعة واحدة بدلاً من loop
+    // Fetch all tags at once instead of loop
     const hostIds = hosts.map(h => h.id);
     let allHostTags = {};
     
     if (hostIds.length > 0) {
-      // استخدام IN clause لجلب جميع الوسوم دفعة واحدة
+      // Use IN clause to fetch all tags at once
       const placeholders = hostIds.map(() => '?').join(',');
       const tagsStmt = db.prepare(`
         SELECT ht.host_id, t.* 
@@ -169,7 +169,7 @@ export const dbFunctions = {
       `);
       const tagsResults = tagsStmt.all(...hostIds);
       
-      // تجميع الوسوم حسب host_id
+      // Group tags by host_id
       tagsResults.forEach(tag => {
         if (!allHostTags[tag.host_id]) {
           allHostTags[tag.host_id] = [];
@@ -197,13 +197,13 @@ export const dbFunctions = {
     });
   },
 
-  // الحصول على مضيف واحد
+  // Get single host
   getHostById(id) {
     const stmt = db.prepare('SELECT * FROM hosts WHERE id = ?');
     const host = stmt.get(id);
     if (!host) return null;
     const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, ...rest } = host;
-    // الحصول على الوسوم من جدول host_tags
+    // Get tags from host_tags table
     const hostTags = this.getHostTags(id);
     return { 
       ...rest, 
@@ -216,7 +216,7 @@ export const dbFunctions = {
     };
   },
 
-  // إضافة مضيف جديد
+  // Add new host
   addHost(host) {
     const stmt = db.prepare(`
       INSERT INTO hosts (name, ip, description, url, status, tags, created_at, last_checked, ping_latency, packet_loss)
@@ -228,7 +228,7 @@ export const dbFunctions = {
       host.description || null,
       host.url || null,
       host.status || 'online',
-      '[]', // نترك tags فارغة في hosts، نستخدم host_tags
+      '[]', // Leave tags empty in hosts, use host_tags
       host.createdAt || new Date().toISOString(),
       host.lastChecked || null,
       host.pingLatency || null,
@@ -236,12 +236,12 @@ export const dbFunctions = {
     );
     const hostId = result.lastInsertRowid;
     
-    // ربط الوسوم بالمضيف
+    // Link tags to host
     if (host.tagIds && Array.isArray(host.tagIds) && host.tagIds.length > 0) {
       this.updateHostTags(hostId, host.tagIds);
     }
     
-    // حفظ تاريخ الحالة الأولية
+    // Save initial status history
     if (host.status) {
       this.addStatusHistory(hostId, host.status, host.pingLatency);
     }
@@ -249,7 +249,7 @@ export const dbFunctions = {
     return this.getHostById(hostId);
   },
 
-  // تحديث مضيف
+  // Update host
   updateHost(id, host) {
     const stmt = db.prepare(`
       UPDATE hosts 
@@ -263,32 +263,32 @@ export const dbFunctions = {
       host.description || null,
       host.url || null,
       host.status,
-      '[]', // نترك tags فارغة في hosts، نستخدم host_tags
+      '[]', // Leave tags empty in hosts, use host_tags
       host.lastChecked || null,
       host.pingLatency || null,
       host.packetLoss || null,
       id
     );
     
-    // تحديث وسوم المضيف
+    // Update host tags
     if (host.tagIds !== undefined) {
       const tagIds = Array.isArray(host.tagIds) ? host.tagIds : [];
       this.updateHostTags(id, tagIds);
     }
     
-    // تحديث uptime_percentage
+    // Update uptime_percentage
     this.updateUptimePercentage(id);
     
     return this.getHostById(id);
   },
 
-  // حذف مضيف
+  // Delete host
   deleteHost(id) {
     const stmt = db.prepare('DELETE FROM hosts WHERE id = ?');
     return stmt.run(id);
   },
 
-  // تغيير حالة المضيف
+  // Toggle host status
   toggleHostStatus(id) {
     const host = this.getHostById(id);
     if (!host) return null;
@@ -296,27 +296,27 @@ export const dbFunctions = {
     return this.updateHost(id, { ...host, status: newStatus });
   },
 
-  // ========== دوال الوسوم ==========
+  // ========== Tags functions ==========
   
-  // الحصول على جميع الوسوم
+  // Get all tags
   getAllTags() {
     const stmt = db.prepare('SELECT * FROM tags ORDER BY name ASC');
     return stmt.all();
   },
 
-  // الحصول على وسم واحد
+  // Get single tag
   getTagById(id) {
     const stmt = db.prepare('SELECT * FROM tags WHERE id = ?');
     return stmt.get(id);
   },
 
-  // الحصول على وسم بالاسم
+  // Get tag by name
   getTagByName(name) {
     const stmt = db.prepare('SELECT * FROM tags WHERE name = ?');
     return stmt.get(name);
   },
 
-  // إضافة وسم جديد
+  // Add new tag
   addTag(tag) {
     const stmt = db.prepare(`
       INSERT INTO tags (name, color, created_at)
@@ -330,7 +330,7 @@ export const dbFunctions = {
     return this.getTagById(result.lastInsertRowid);
   },
 
-  // تحديث وسم
+  // Update tag
   updateTag(id, tag) {
     const stmt = db.prepare(`
       UPDATE tags 
@@ -341,13 +341,13 @@ export const dbFunctions = {
     return this.getTagById(id);
   },
 
-  // حذف وسم
+  // Delete tag
   deleteTag(id) {
     const stmt = db.prepare('DELETE FROM tags WHERE id = ?');
     return stmt.run(id);
   },
 
-  // الحصول على وسوم مضيف معين (محسّن - استخدام الفهرس)
+  // Get tags for a specific host (optimized - uses index)
   getHostTags(hostId) {
     const stmt = db.prepare(`
       SELECT t.* FROM tags t
@@ -355,11 +355,11 @@ export const dbFunctions = {
       WHERE ht.host_id = ?
       ORDER BY t.name ASC
     `);
-    // الفهرس idx_host_tags_host_id يحسن الأداء هنا
+    // Index idx_host_tags_host_id improves performance here
     return stmt.all(hostId);
   },
 
-  // ربط وسم بمضيف
+  // Link tag to host
   addTagToHost(hostId, tagId) {
     try {
       const stmt = db.prepare(`
@@ -369,12 +369,12 @@ export const dbFunctions = {
       stmt.run(hostId, tagId);
       return true;
     } catch (e) {
-      // الرابط موجود بالفعل
+      // Link already exists
       return false;
     }
   },
 
-  // إزالة وسم من مضيف
+  // Remove tag from host
   removeTagFromHost(hostId, tagId) {
     const stmt = db.prepare(`
       DELETE FROM host_tags
@@ -383,13 +383,13 @@ export const dbFunctions = {
     return stmt.run(hostId, tagId);
   },
 
-  // تحديث وسوم مضيف
+  // Update host tags
   updateHostTags(hostId, tagIds) {
-    // حذف جميع الروابط الحالية
+    // Delete all current links
     const deleteStmt = db.prepare('DELETE FROM host_tags WHERE host_id = ?');
     deleteStmt.run(hostId);
     
-    // إضافة الروابط الجديدة
+    // Add new links
     if (tagIds && tagIds.length > 0) {
       const insertStmt = db.prepare('INSERT INTO host_tags (host_id, tag_id) VALUES (?, ?)');
       const insertMany = db.transaction((hostId, tagIds) => {
@@ -401,7 +401,7 @@ export const dbFunctions = {
     }
   },
 
-  // إضافة سجل حالة (محسّن - حذف القديم بشكل أكثر كفاءة)
+  // Add status history record (optimized - more efficient old record deletion)
   addStatusHistory(hostId, status, latency) {
     const stmt = db.prepare(`
       INSERT INTO host_status_history (host_id, status, checked_at, ping_latency)
@@ -409,8 +409,8 @@ export const dbFunctions = {
     `);
     stmt.run(hostId, status, new Date().toISOString(), latency);
     
-    // حذف السجلات القديمة بشكل أكثر كفاءة (الاحتفاظ بآخر 1000 سجل)
-    // استخدام استعلام محسّن بدلاً من NOT IN
+    // Delete old records more efficiently (keep last 1000 records)
+    // Use optimized query instead of NOT IN
     const deleteOldStmt = db.prepare(`
       DELETE FROM host_status_history 
       WHERE host_id = ? 
@@ -424,18 +424,18 @@ export const dbFunctions = {
       )
     `);
     try {
-      // تنفيذ الحذف فقط إذا كان هناك أكثر من 1000 سجل
+      // Execute deletion only if there are more than 1000 records
       const countStmt = db.prepare('SELECT COUNT(*) as count FROM host_status_history WHERE host_id = ?');
       const count = countStmt.get(hostId);
       if (count && count.count > 1000) {
         deleteOldStmt.run(hostId, hostId);
       }
     } catch (e) {
-      // تجاهل الخطأ إذا كان الجدول فارغاً
+      // Ignore error if table is empty
     }
   },
 
-  // الحصول على تاريخ الحالات لمضيف
+  // Get status history for a host
   getStatusHistory(hostId, limit = 100) {
     const stmt = db.prepare(`
       SELECT * FROM host_status_history 
@@ -446,11 +446,11 @@ export const dbFunctions = {
     return stmt.all(hostId, limit);
   },
 
-  // تحديث نسبة Uptime (محسّن - استخدام استعلام أكثر كفاءة)
+  // Update Uptime percentage (optimized - use more efficient query)
   updateUptimePercentage(hostId) {
-    // حساب نسبة Uptime من آخر 24 ساعة
+    // Calculate Uptime percentage from last 24 hours
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    // تحسين: استخدام COUNT مع CASE بدلاً من COUNT(*) ثم SUM
+    // Optimization: use COUNT with CASE instead of COUNT(*) then SUM
     const stmt = db.prepare(`
       SELECT 
         COUNT(*) as total,
@@ -468,21 +468,21 @@ export const dbFunctions = {
     updateStmt.run(uptimePercentage, hostId);
   },
 
-  // ========== دوال الشبكات ==========
+  // ========== Networks functions ==========
   
-  // الحصول على جميع الشبكات
+  // Get all networks
   getAllNetworks() {
     const stmt = db.prepare('SELECT * FROM networks ORDER BY created_at DESC');
     return stmt.all();
   },
 
-  // الحصول على شبكة بالـ ID
+  // Get network by ID
   getNetworkById(id) {
     const stmt = db.prepare('SELECT * FROM networks WHERE id = ?');
     return stmt.get(id);
   },
 
-  // إضافة شبكة جديدة
+  // Add new network
   addNetwork(network) {
     const stmt = db.prepare(`
       INSERT INTO networks (name, network_id, subnet, created_at, last_scanned)
@@ -498,7 +498,7 @@ export const dbFunctions = {
     return this.getNetworkById(result.lastInsertRowid);
   },
 
-  // تحديث شبكة
+  // Update network
   updateNetwork(id, network) {
     const stmt = db.prepare(`
       UPDATE networks 
@@ -515,7 +515,7 @@ export const dbFunctions = {
     return this.getNetworkById(id);
   },
 
-  // حذف شبكة
+  // Delete network
   deleteNetwork(id) {
     const stmt = db.prepare('DELETE FROM networks WHERE id = ?');
     return stmt.run(id);

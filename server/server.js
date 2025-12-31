@@ -10,23 +10,23 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // زيادة حد حجم البيانات
+app.use(express.json({ limit: '10mb' })); // Increase data size limit
 
 // Routes
 
-// الحصول على جميع المضيفين (مع دعم pagination)
+// Get all hosts (with pagination support)
 app.get('/api/hosts', (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || null; // null يعني جلب الكل
+    const limit = parseInt(req.query.limit) || null; // null means fetch all
     const offset = limit ? (page - 1) * limit : 0;
     
     const hosts = dbFunctions.getAllHosts(limit, offset);
     
-    // إذا كان هناك pagination، أرسل معلومات إضافية
+    // If pagination is enabled, send additional info
     if (limit) {
-      const totalStmt = db.prepare('SELECT COUNT(*) as total FROM hosts');
-      const total = totalStmt.get().total;
+      const allHosts = dbFunctions.getAllHosts();
+      const total = allHosts.length;
       res.json({
         hosts,
         pagination: {
@@ -44,7 +44,7 @@ app.get('/api/hosts', (req, res) => {
   }
 });
 
-// التحقق من حالة مضيف معين (يجب أن يكون قبل /api/hosts/:id)
+// Check host status (must be before /api/hosts/:id)
 app.post('/api/hosts/:id/check-status', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -54,19 +54,19 @@ app.post('/api/hosts/:id/check-status', async (req, res) => {
       return res.status(404).json({ error: 'المضيف غير موجود' });
     }
 
-    // التحقق من حالة المضيف
+    // Check host status
     let checkResult = { status: 'offline', latency: null, packetLoss: 100 };
     try {
       checkResult = await checkHost(host.ip, host.url || null);
     } catch (error) {
-      console.error('خطأ في التحقق من حالة المضيف:', error);
+      console.error('Error checking host status:', error);
       checkResult = { status: 'offline', latency: null, packetLoss: 100 };
     }
 
-    // حفظ تاريخ الحالة
+    // Save status history
     dbFunctions.addStatusHistory(id, checkResult.status, checkResult.latency);
 
-    // تحديث الحالة في قاعدة البيانات
+    // Update status in database
     const updatedHost = dbFunctions.updateHost(id, {
       ...host,
       status: checkResult.status,
@@ -81,7 +81,7 @@ app.post('/api/hosts/:id/check-status', async (req, res) => {
   }
 });
 
-// تغيير حالة المضيف (يجب أن يكون قبل /api/hosts/:id)
+// Toggle host status (must be before /api/hosts/:id)
 app.patch('/api/hosts/:id/toggle-status', (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -97,7 +97,7 @@ app.patch('/api/hosts/:id/toggle-status', (req, res) => {
   }
 });
 
-// الحصول على مضيف واحد
+// Get single host
 app.get('/api/hosts/:id', (req, res) => {
   try {
     const host = dbFunctions.getHostById(parseInt(req.params.id));
@@ -110,7 +110,7 @@ app.get('/api/hosts/:id', (req, res) => {
   }
 });
 
-// إضافة مضيف جديد
+// Add new host
 app.post('/api/hosts', async (req, res) => {
   try {
     const { name, ip, description, url, tagIds } = req.body;
@@ -119,20 +119,20 @@ app.post('/api/hosts', async (req, res) => {
       return res.status(400).json({ error: 'اسم الجهاز وعنوان IP مطلوبان' });
     }
 
-    // التحقق من وجود جهاز بنفس IP
+    // Check for existing host with same IP
     const existingHosts = dbFunctions.getAllHosts();
     const existingHost = existingHosts.find(h => h.ip === ip);
     if (existingHost) {
       return res.status(400).json({ error: `الجهاز موجود مسبقاً: ${existingHost.name} (${ip})` });
     }
 
-    // التحقق تلقائياً من حالة المضيف
+    // Automatically check host status
     let checkResult = { status: 'offline', latency: null, packetLoss: 100 };
     try {
       checkResult = await checkHost(ip, url || null);
     } catch (error) {
-      console.error('خطأ في التحقق من حالة المضيف:', error);
-      // في حالة الخطأ، نضع offline كحالة افتراضية
+      console.error('Error checking host status:', error);
+      // On error, set offline as default status
       checkResult = { status: 'offline', latency: null, packetLoss: 100 };
     }
 
@@ -156,24 +156,24 @@ app.post('/api/hosts', async (req, res) => {
   }
 });
 
-// تحديث مضيف
+// Update host
 app.put('/api/hosts/:id', (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { name, ip, description, url, status, tagIds } = req.body;
-    console.log('استقبال طلب تحديث:', { id, tagIds, body: req.body });
+    console.log('Received update request:', { id, tagIds, body: req.body });
 
     if (!name || !ip) {
       return res.status(400).json({ error: 'اسم المضيف وعنوان IP مطلوبان' });
     }
 
-    // جلب الجهاز الحالي للحفاظ على القيم الموجودة
+    // Get current host to preserve existing values
     const existingHost = dbFunctions.getHostById(id);
     if (!existingHost) {
       return res.status(404).json({ error: 'المضيف غير موجود' });
     }
 
-    // التأكد من أن tagIds مصفوفة
+    // Ensure tagIds is an array
     const tagIdsArray = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds] : []);
 
     const updatedHost = dbFunctions.updateHost(id, {
@@ -198,7 +198,7 @@ app.put('/api/hosts/:id', (req, res) => {
   }
 });
 
-// حذف مضيف
+// Delete host
 app.delete('/api/hosts/:id', (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -215,9 +215,9 @@ app.delete('/api/hosts/:id', (req, res) => {
 });
 
 
-// ========== API للوسوم ==========
+// ========== Tags API ==========
 
-// الحصول على جميع الوسوم
+// Get all tags
 app.get('/api/tags', (req, res) => {
   try {
     const tags = dbFunctions.getAllTags();
@@ -227,7 +227,7 @@ app.get('/api/tags', (req, res) => {
   }
 });
 
-// الحصول على وسم واحد
+// Get single tag
 app.get('/api/tags/:id', (req, res) => {
   try {
     const tag = dbFunctions.getTagById(parseInt(req.params.id));
@@ -240,7 +240,7 @@ app.get('/api/tags/:id', (req, res) => {
   }
 });
 
-// إضافة وسم جديد
+// Add new tag
 app.post('/api/tags', (req, res) => {
   try {
     const { name, color } = req.body;
@@ -249,7 +249,7 @@ app.post('/api/tags', (req, res) => {
       return res.status(400).json({ error: 'اسم الوسم مطلوب' });
     }
 
-    // التحقق من وجود وسم بنفس الاسم
+    // Check for existing tag with same name
     const existingTag = dbFunctions.getTagByName(name.trim());
     if (existingTag) {
       return res.status(400).json({ error: 'الوسم موجود بالفعل' });
@@ -268,7 +268,7 @@ app.post('/api/tags', (req, res) => {
   }
 });
 
-// تحديث وسم
+// Update tag
 app.put('/api/tags/:id', (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -283,7 +283,7 @@ app.put('/api/tags/:id', (req, res) => {
       return res.status(404).json({ error: 'الوسم غير موجود' });
     }
 
-    // التحقق من وجود وسم آخر بنفس الاسم
+    // Check for another tag with same name
     const tagWithSameName = dbFunctions.getTagByName(name.trim());
     if (tagWithSameName && tagWithSameName.id !== id) {
       return res.status(400).json({ error: 'الوسم موجود بالفعل' });
@@ -300,7 +300,7 @@ app.put('/api/tags/:id', (req, res) => {
   }
 });
 
-// حذف وسم
+// Delete tag
 app.delete('/api/tags/:id', (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -316,7 +316,7 @@ app.delete('/api/tags/:id', (req, res) => {
   }
 });
 
-// الحصول على تاريخ الحالات لمضيف
+// Get host status history
 app.get('/api/hosts/:id/history', (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -328,7 +328,7 @@ app.get('/api/hosts/:id/history', (req, res) => {
   }
 });
 
-// تصدير البيانات (JSON)
+// Export data (JSON)
 app.get('/api/export', (req, res) => {
   try {
     const hosts = dbFunctions.getAllHosts();
@@ -339,7 +339,7 @@ app.get('/api/export', (req, res) => {
   }
 });
 
-// استيراد البيانات (JSON)
+// Import data (JSON)
 app.post('/api/import', async (req, res) => {
   try {
     const { hosts, tags } = req.body;
@@ -350,7 +350,7 @@ app.post('/api/import', async (req, res) => {
         try {
           dbFunctions.addTag({ name: tag.name, color: tag.color });
         } catch (e) {
-          // تجاهل إذا كان موجوداً
+          // Ignore if already exists
         }
       }
     }
@@ -370,7 +370,7 @@ app.post('/api/import', async (req, res) => {
           });
           imported++;
         } catch (e) {
-          console.error('خطأ في استيراد مضيف:', e);
+          console.error('Error importing host:', e);
         }
       }
     }
@@ -381,21 +381,21 @@ app.post('/api/import', async (req, res) => {
   }
 });
 
-// إحصائيات شاملة
+// Statistics
 app.get('/api/stats', (req, res) => {
   try {
     const networks = dbFunctions.getAllNetworks();
     const allHosts = dbFunctions.getAllHosts();
     
-    // حساب الإحصائيات العامة
+    // Calculate general statistics
     const totalNetworks = networks.length;
     const totalHosts = allHosts.length;
     const onlineHosts = allHosts.filter(h => h.status === 'online').length;
     const offlineHosts = allHosts.filter(h => h.status === 'offline').length;
     
-    // حساب الإحصائيات لكل شبكة
+    // Calculate statistics for each network
     const networksWithStats = networks.map(network => {
-      // فلترة الأجهزة التي IPها ضمن نطاق الشبكة
+      // Filter hosts whose IP is within network range
       const networkHosts = allHosts.filter(host => 
         isIPInNetwork(host.ip, network.network_id, network.subnet)
       );
@@ -426,7 +426,7 @@ app.get('/api/stats', (req, res) => {
   }
 });
 
-// مسح الشبكة
+// Network scan
 app.post('/api/network/scan', async (req, res) => {
   try {
     const { networkRange, timeout } = req.body;
@@ -448,9 +448,9 @@ app.post('/api/network/scan', async (req, res) => {
   }
 });
 
-// ========== APIs للشبكات ==========
+// ========== Networks API ==========
 
-// جلب جميع الشبكات
+// Get all networks
 app.get('/api/networks', (req, res) => {
   try {
     const networks = dbFunctions.getAllNetworks();
@@ -460,7 +460,7 @@ app.get('/api/networks', (req, res) => {
   }
 });
 
-// جلب شبكة معينة
+// Get single network
 app.get('/api/networks/:id', (req, res) => {
   try {
     const network = dbFunctions.getNetworkById(parseInt(req.params.id));
@@ -473,7 +473,7 @@ app.get('/api/networks/:id', (req, res) => {
   }
 });
 
-// إضافة شبكة جديدة
+// Add new network
 app.post('/api/networks', (req, res) => {
   try {
     const { name, networkId, subnet } = req.body;
@@ -501,7 +501,7 @@ app.post('/api/networks', (req, res) => {
   }
 });
 
-// تحديث شبكة
+// Update network
 app.put('/api/networks/:id', (req, res) => {
   try {
     const { name, networkId, subnet, lastScanned } = req.body;
@@ -530,7 +530,7 @@ app.put('/api/networks/:id', (req, res) => {
   }
 });
 
-// حذف أجهزة شبكة معينة (بدون حذف الشبكة نفسها)
+// Delete network hosts (without deleting the network itself)
 app.delete('/api/networks/:id/hosts', (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -539,7 +539,7 @@ app.delete('/api/networks/:id/hosts', (req, res) => {
       return res.status(404).json({ error: 'الشبكة غير موجودة' });
     }
     
-    // جلب جميع الأجهزة المرتبطة بالشبكة
+    // Get all hosts associated with the network
     const allHosts = dbFunctions.getAllHosts();
     const networkHosts = allHosts.filter(host => 
       isIPInNetwork(host.ip, network.network_id, network.subnet)
@@ -562,7 +562,7 @@ app.delete('/api/networks/:id/hosts', (req, res) => {
   }
 });
 
-// حذف شبكة مع جميع أجهزتها
+// Delete network with all its hosts
 app.delete('/api/networks/:id', (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -571,7 +571,7 @@ app.delete('/api/networks/:id', (req, res) => {
       return res.status(404).json({ error: 'الشبكة غير موجودة' });
     }
     
-    // حذف جميع الأجهزة المرتبطة بالشبكة
+    // Delete all hosts associated with the network
     const allHosts = dbFunctions.getAllHosts();
     const networkHosts = allHosts.filter(host => 
       isIPInNetwork(host.ip, network.network_id, network.subnet)
@@ -583,7 +583,7 @@ app.delete('/api/networks/:id', (req, res) => {
       deletedHostsCount++;
     });
     
-    // حذف الشبكة
+    // Delete the network
     dbFunctions.deleteNetwork(id);
     
     res.json({ 
@@ -597,7 +597,7 @@ app.delete('/api/networks/:id', (req, res) => {
   }
 });
 
-// جلب الأجهزة المرتبطة بالشبكة (ربط تلقائي)
+// Get hosts associated with network (automatic linking)
 app.get('/api/networks/:id/hosts', (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -606,7 +606,7 @@ app.get('/api/networks/:id/hosts', (req, res) => {
       return res.status(404).json({ error: 'الشبكة غير موجودة' });
     }
 
-    // جلب جميع الأجهزة وفلترتها بناءً على IP range
+    // Get all hosts and filter based on IP range
     const allHosts = dbFunctions.getAllHosts();
     const networkHosts = allHosts.filter(host => 
       isIPInNetwork(host.ip, network.network_id, network.subnet)
@@ -618,7 +618,7 @@ app.get('/api/networks/:id/hosts', (req, res) => {
   }
 });
 
-// مسح الشبكة
+// Scan network
 app.post('/api/networks/:id/scan', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -631,15 +631,15 @@ app.post('/api/networks/:id/scan', async (req, res) => {
     const scanTimeout = timeout || 2;
     const shouldAddHosts = addHosts === true;
 
-    // حساب CIDR notation
+    // Calculate CIDR notation
     const cidr = getNetworkCIDR(network.network_id, network.subnet);
     console.log(`[Scan] Starting scan for network ${id}: ${cidr}, timeout: ${scanTimeout}s, addHosts: ${shouldAddHosts}`);
     
-    // مسح الشبكة
+    // Scan network
     const activeHosts = await scanNetwork(cidr, scanTimeout);
     console.log(`[Scan] Found ${activeHosts.length} active hosts`);
 
-    // تحديث last_scanned
+    // Update last_scanned
     dbFunctions.updateNetwork(id, {
       name: network.name,
       networkId: network.network_id,
@@ -647,7 +647,7 @@ app.post('/api/networks/:id/scan', async (req, res) => {
       lastScanned: new Date().toISOString()
     });
 
-    // إضافة الأجهزة المكتشفة تلقائياً (دائماً)
+    // Automatically add discovered hosts (always)
     let addedCount = 0;
     const discoveredIPs = new Set(activeHosts.map(h => h.ip));
     
@@ -671,16 +671,16 @@ app.post('/api/networks/:id/scan', async (req, res) => {
               packetLoss: null
             });
             addedCount++;
-            existingIPs.add(host.ip); // تحديث القائمة لتجنب التكرار
+            existingIPs.add(host.ip); // Update list to avoid duplicates
           } catch (error) {
-            console.error(`خطأ في إضافة الجهاز ${host.ip}:`, error);
+            console.error(`Error adding host ${host.ip}:`, error);
           }
         }
       }
       console.log(`[Scan] Added ${addedCount} new hosts to database`);
     }
 
-    // تحديث حالة جميع الأجهزة المرتبطة بالشبكة
+    // Update status for all hosts associated with the network
     const allNetworkHosts = dbFunctions.getAllHosts().filter(host => 
       isIPInNetwork(host.ip, network.network_id, network.subnet)
     );
@@ -692,7 +692,7 @@ app.post('/api/networks/:id/scan', async (req, res) => {
       const activeHost = activeHosts.find(h => h.ip === host.ip);
       
       try {
-        // الحصول على tagIds
+        // Get tagIds
         const hostTags = dbFunctions.getHostTags(host.id);
         const tagIds = hostTags.map(tag => tag.id);
         
@@ -709,7 +709,7 @@ app.post('/api/networks/:id/scan', async (req, res) => {
         });
         updatedCount++;
       } catch (error) {
-        console.error(`خطأ في تحديث حالة الجهاز ${host.ip}:`, error);
+        console.error(`Error updating host ${host.ip} status:`, error);
       }
     }
     console.log(`[Scan] Updated status for ${updatedCount} existing hosts`);
@@ -727,18 +727,18 @@ app.post('/api/networks/:id/scan', async (req, res) => {
   }
 });
 
-// مسح جميع البيانات
+// Delete all data
 app.delete('/api/data/all', (req, res) => {
   try {
-    // حذف جميع الأجهزة
+    // Delete all hosts
     const allHosts = dbFunctions.getAllHosts();
     allHosts.forEach(host => dbFunctions.deleteHost(host.id));
     
-    // حذف جميع الشبكات
+    // Delete all networks
     const allNetworks = dbFunctions.getAllNetworks();
     allNetworks.forEach(network => dbFunctions.deleteNetwork(network.id));
     
-    // حذف جميع الوسوم
+    // Delete all tags
     const allTags = dbFunctions.getAllTags();
     allTags.forEach(tag => dbFunctions.deleteTag(tag.id));
     
@@ -752,9 +752,10 @@ app.delete('/api/data/all', (req, res) => {
   }
 });
 
-// بدء الخادم
-app.listen(PORT, () => {
-  console.log(`🚀 الخادم يعمل على المنفذ ${PORT}`);
-  console.log(`📡 API متاح على: http://localhost:${PORT}/api`);
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 API available on all interfaces: http://0.0.0.0:${PORT}/api`);
+  console.log(`🌐 Access from local network at: http://<SERVER_IP>:${PORT}/api`);
 });
 
