@@ -4,9 +4,9 @@ import ErrorBoundary from './components/ErrorBoundary'
 
 // Lazy loading للصفحات لتحسين الأداء
 const HostsList = lazy(() => import('./pages/HostsList'))
-const AddHost = lazy(() => import('./pages/AddHost'))
-const NetworkScan = lazy(() => import('./pages/NetworkScan'))
 const TagsManagement = lazy(() => import('./pages/TagsManagement'))
+const NetworksList = lazy(() => import('./pages/NetworksList'))
+const NetworkView = lazy(() => import('./pages/NetworkView'))
 
 // Loading component
 const LoadingSpinner = () => (
@@ -23,9 +23,9 @@ function App() {
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
               <Route path="/" element={<HostsList />} />
-              <Route path="/add" element={<AddHost />} />
-              <Route path="/scan" element={<NetworkScan />} />
               <Route path="/tags" element={<TagsManagement />} />
+              <Route path="/networks" element={<NetworksList />} />
+              <Route path="/networks/:id" element={<NetworkView />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

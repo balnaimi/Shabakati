@@ -10,22 +10,30 @@ import { API_URL } from '../constants'
 export async function handleApiResponse(response) {
   const contentType = response.headers.get('content-type')
   
-  if (!contentType || !contentType.includes('application/json')) {
-    const text = await response.text()
-    throw new Error(`استجابة غير صحيحة من الخادم: ${response.status} ${response.statusText}`)
-  }
-
   if (!response.ok) {
     let errorMessage = `فشل في العملية: ${response.status} ${response.statusText}`
     try {
-      const errorData = await response.json()
-      if (errorData.error) {
-        errorMessage = errorData.error
+      // محاولة قراءة JSON حتى لو كان contentType غير صحيح
+      const text = await response.text()
+      
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = JSON.parse(text)
+        if (errorData.error) {
+          errorMessage = errorData.error
+        }
+      } else if (text) {
+        // إذا كان نص وليس JSON، استخدم النص
+        errorMessage = text.length > 200 ? text.substring(0, 200) : text
       }
     } catch (e) {
-      // إذا فشل parse JSON، استخدم الرسالة الافتراضية
+      // إذا فشل parse، استخدم الرسالة الافتراضية
     }
     throw new Error(errorMessage)
+  }
+
+  if (!contentType || !contentType.includes('application/json')) {
+    const text = await response.text()
+    throw new Error(`استجابة غير صحيحة من الخادم: ${response.status} ${response.statusText}`)
   }
 
   return await response.json()

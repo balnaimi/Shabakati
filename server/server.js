@@ -3,6 +3,7 @@ import cors from 'cors';
 import { dbFunctions } from './database.js';
 import { checkHost } from './hostChecker.js';
 import { scanNetwork } from './networkScanner.js';
+import { getNetworkCIDR, isIPInNetwork, calculateIPRange } from './networkUtils.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -166,6 +167,12 @@ app.put('/api/hosts/:id', (req, res) => {
       return res.status(400).json({ error: 'اسم المضيف وعنوان IP مطلوبان' });
     }
 
+    // جلب الجهاز الحالي للحفاظ على القيم الموجودة
+    const existingHost = dbFunctions.getHostById(id);
+    if (!existingHost) {
+      return res.status(404).json({ error: 'المضيف غير موجود' });
+    }
+
     // التأكد من أن tagIds مصفوفة
     const tagIdsArray = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds] : []);
 
@@ -175,7 +182,10 @@ app.put('/api/hosts/:id', (req, res) => {
       description: description || '',
       url: url || '',
       tagIds: tagIdsArray,
-      status: status || 'online'
+      status: status || 'online',
+      lastChecked: req.body.lastChecked !== undefined ? req.body.lastChecked : existingHost.lastChecked || null,
+      pingLatency: req.body.pingLatency !== undefined ? req.body.pingLatency : existingHost.pingLatency || null,
+      packetLoss: req.body.packetLoss !== undefined ? req.body.packetLoss : existingHost.packetLoss || null
     });
 
     if (!updatedHost) {
@@ -371,6 +381,51 @@ app.post('/api/import', async (req, res) => {
   }
 });
 
+// إحصائيات شاملة
+app.get('/api/stats', (req, res) => {
+  try {
+    const networks = dbFunctions.getAllNetworks();
+    const allHosts = dbFunctions.getAllHosts();
+    
+    // حساب الإحصائيات العامة
+    const totalNetworks = networks.length;
+    const totalHosts = allHosts.length;
+    const onlineHosts = allHosts.filter(h => h.status === 'online').length;
+    const offlineHosts = allHosts.filter(h => h.status === 'offline').length;
+    
+    // حساب الإحصائيات لكل شبكة
+    const networksWithStats = networks.map(network => {
+      // فلترة الأجهزة التي IPها ضمن نطاق الشبكة
+      const networkHosts = allHosts.filter(host => 
+        isIPInNetwork(host.ip, network.network_id, network.subnet)
+      );
+      
+      const networkOnlineHosts = networkHosts.filter(h => h.status === 'online').length;
+      const networkOfflineHosts = networkHosts.filter(h => h.status === 'offline').length;
+      
+      return {
+        networkId: network.id,
+        networkName: network.name,
+        networkCIDR: `${network.network_id}/${network.subnet}`,
+        totalHosts: networkHosts.length,
+        onlineHosts: networkOnlineHosts,
+        offlineHosts: networkOfflineHosts
+      };
+    });
+    
+    res.json({
+      totalNetworks,
+      totalHosts,
+      onlineHosts,
+      offlineHosts,
+      networksWithStats
+    });
+  } catch (error) {
+    console.error('Error in GET /api/stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // مسح الشبكة
 app.post('/api/network/scan', async (req, res) => {
   try {
@@ -389,6 +444,310 @@ app.post('/api/network/scan', async (req, res) => {
       hosts: activeHosts
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== APIs للشبكات ==========
+
+// جلب جميع الشبكات
+app.get('/api/networks', (req, res) => {
+  try {
+    const networks = dbFunctions.getAllNetworks();
+    res.json(networks);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// جلب شبكة معينة
+app.get('/api/networks/:id', (req, res) => {
+  try {
+    const network = dbFunctions.getNetworkById(parseInt(req.params.id));
+    if (!network) {
+      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+    }
+    res.json(network);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// إضافة شبكة جديدة
+app.post('/api/networks', (req, res) => {
+  try {
+    const { name, networkId, subnet } = req.body;
+    
+    if (!name || !networkId || !subnet) {
+      return res.status(400).json({ error: 'اسم الشبكة و Network ID و Subnet مطلوبون' });
+    }
+
+    if (subnet < 0 || subnet > 32) {
+      return res.status(400).json({ error: 'Subnet يجب أن يكون بين 0 و 32' });
+    }
+
+    const network = {
+      name: name.trim(),
+      networkId: networkId.trim(),
+      subnet: parseInt(subnet),
+      createdAt: new Date().toISOString()
+    };
+
+    const newNetwork = dbFunctions.addNetwork(network);
+    res.status(201).json(newNetwork);
+  } catch (error) {
+    console.error('Error in POST /api/networks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// تحديث شبكة
+app.put('/api/networks/:id', (req, res) => {
+  try {
+    const { name, networkId, subnet, lastScanned } = req.body;
+    const id = parseInt(req.params.id);
+    
+    const existingNetwork = dbFunctions.getNetworkById(id);
+    if (!existingNetwork) {
+      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+    }
+
+    if (subnet && (subnet < 0 || subnet > 32)) {
+      return res.status(400).json({ error: 'Subnet يجب أن يكون بين 0 و 32' });
+    }
+
+    const network = {
+      name: name !== undefined ? name.trim() : existingNetwork.name,
+      networkId: networkId !== undefined ? networkId.trim() : existingNetwork.network_id,
+      subnet: subnet !== undefined ? parseInt(subnet) : existingNetwork.subnet,
+      lastScanned: lastScanned !== undefined ? lastScanned : existingNetwork.last_scanned
+    };
+
+    const updatedNetwork = dbFunctions.updateNetwork(id, network);
+    res.json(updatedNetwork);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// حذف أجهزة شبكة معينة (بدون حذف الشبكة نفسها)
+app.delete('/api/networks/:id/hosts', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const network = dbFunctions.getNetworkById(id);
+    if (!network) {
+      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+    }
+    
+    // جلب جميع الأجهزة المرتبطة بالشبكة
+    const allHosts = dbFunctions.getAllHosts();
+    const networkHosts = allHosts.filter(host => 
+      isIPInNetwork(host.ip, network.network_id, network.subnet)
+    );
+    
+    let deletedCount = 0;
+    networkHosts.forEach(host => {
+      dbFunctions.deleteHost(host.id);
+      deletedCount++;
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `تم حذف ${deletedCount} جهاز بنجاح`,
+      deletedCount 
+    });
+  } catch (error) {
+    console.error('Error in DELETE /api/networks/:id/hosts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// حذف شبكة مع جميع أجهزتها
+app.delete('/api/networks/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const network = dbFunctions.getNetworkById(id);
+    if (!network) {
+      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+    }
+    
+    // حذف جميع الأجهزة المرتبطة بالشبكة
+    const allHosts = dbFunctions.getAllHosts();
+    const networkHosts = allHosts.filter(host => 
+      isIPInNetwork(host.ip, network.network_id, network.subnet)
+    );
+    
+    let deletedHostsCount = 0;
+    networkHosts.forEach(host => {
+      dbFunctions.deleteHost(host.id);
+      deletedHostsCount++;
+    });
+    
+    // حذف الشبكة
+    dbFunctions.deleteNetwork(id);
+    
+    res.json({ 
+      success: true, 
+      message: `تم حذف الشبكة و ${deletedHostsCount} جهاز بنجاح`,
+      deletedHostsCount 
+    });
+  } catch (error) {
+    console.error('Error in DELETE /api/networks/:id:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// جلب الأجهزة المرتبطة بالشبكة (ربط تلقائي)
+app.get('/api/networks/:id/hosts', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const network = dbFunctions.getNetworkById(id);
+    if (!network) {
+      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+    }
+
+    // جلب جميع الأجهزة وفلترتها بناءً على IP range
+    const allHosts = dbFunctions.getAllHosts();
+    const networkHosts = allHosts.filter(host => 
+      isIPInNetwork(host.ip, network.network_id, network.subnet)
+    );
+
+    res.json(networkHosts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// مسح الشبكة
+app.post('/api/networks/:id/scan', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const network = dbFunctions.getNetworkById(id);
+    if (!network) {
+      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+    }
+
+    const { timeout, addHosts } = req.body;
+    const scanTimeout = timeout || 2;
+    const shouldAddHosts = addHosts === true;
+
+    // حساب CIDR notation
+    const cidr = getNetworkCIDR(network.network_id, network.subnet);
+    console.log(`[Scan] Starting scan for network ${id}: ${cidr}, timeout: ${scanTimeout}s, addHosts: ${shouldAddHosts}`);
+    
+    // مسح الشبكة
+    const activeHosts = await scanNetwork(cidr, scanTimeout);
+    console.log(`[Scan] Found ${activeHosts.length} active hosts`);
+
+    // تحديث last_scanned
+    dbFunctions.updateNetwork(id, {
+      name: network.name,
+      networkId: network.network_id,
+      subnet: network.subnet,
+      lastScanned: new Date().toISOString()
+    });
+
+    // إضافة الأجهزة المكتشفة تلقائياً (دائماً)
+    let addedCount = 0;
+    const discoveredIPs = new Set(activeHosts.map(h => h.ip));
+    
+    if (activeHosts.length > 0) {
+      const allHosts = dbFunctions.getAllHosts();
+      const existingIPs = new Set(allHosts.map(h => h.ip));
+
+      for (const host of activeHosts) {
+        if (!existingIPs.has(host.ip) && !host.isExisting) {
+          try {
+            dbFunctions.addHost({
+              name: host.hostname || host.existingName || `Host ${host.ip.split('.').pop()}`,
+              ip: host.ip,
+              description: host.description || `تم اكتشافه من فحص الشبكة ${network.name}`,
+              url: '',
+              status: 'online',
+              tagIds: [],
+              createdAt: new Date().toISOString(),
+              lastChecked: new Date().toISOString(),
+              pingLatency: host.pingLatency || null,
+              packetLoss: null
+            });
+            addedCount++;
+            existingIPs.add(host.ip); // تحديث القائمة لتجنب التكرار
+          } catch (error) {
+            console.error(`خطأ في إضافة الجهاز ${host.ip}:`, error);
+          }
+        }
+      }
+      console.log(`[Scan] Added ${addedCount} new hosts to database`);
+    }
+
+    // تحديث حالة جميع الأجهزة المرتبطة بالشبكة
+    const allNetworkHosts = dbFunctions.getAllHosts().filter(host => 
+      isIPInNetwork(host.ip, network.network_id, network.subnet)
+    );
+    
+    let updatedCount = 0;
+    for (const host of allNetworkHosts) {
+      const isOnline = discoveredIPs.has(host.ip);
+      const newStatus = isOnline ? 'online' : 'offline';
+      const activeHost = activeHosts.find(h => h.ip === host.ip);
+      
+      try {
+        // الحصول على tagIds
+        const hostTags = dbFunctions.getHostTags(host.id);
+        const tagIds = hostTags.map(tag => tag.id);
+        
+        dbFunctions.updateHost(host.id, {
+          name: host.name,
+          ip: host.ip,
+          description: host.description || '',
+          url: host.url || '',
+          status: newStatus,
+          tagIds: tagIds,
+          lastChecked: new Date().toISOString(),
+          pingLatency: activeHost?.pingLatency || null,
+          packetLoss: null
+        });
+        updatedCount++;
+      } catch (error) {
+        console.error(`خطأ في تحديث حالة الجهاز ${host.ip}:`, error);
+      }
+    }
+    console.log(`[Scan] Updated status for ${updatedCount} existing hosts`);
+
+    res.json({
+      success: true,
+      count: activeHosts.length,
+      hosts: activeHosts,
+      addedCount: addedCount,
+      updatedCount: updatedCount,
+      addedHosts: true
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// مسح جميع البيانات
+app.delete('/api/data/all', (req, res) => {
+  try {
+    // حذف جميع الأجهزة
+    const allHosts = dbFunctions.getAllHosts();
+    allHosts.forEach(host => dbFunctions.deleteHost(host.id));
+    
+    // حذف جميع الشبكات
+    const allNetworks = dbFunctions.getAllNetworks();
+    allNetworks.forEach(network => dbFunctions.deleteNetwork(network.id));
+    
+    // حذف جميع الوسوم
+    const allTags = dbFunctions.getAllTags();
+    allTags.forEach(tag => dbFunctions.deleteTag(tag.id));
+    
+    res.json({ 
+      success: true, 
+      message: 'تم حذف جميع البيانات بنجاح' 
+    });
+  } catch (error) {
+    console.error('Error in DELETE /api/data/all:', error);
     res.status(500).json({ error: error.message });
   }
 });

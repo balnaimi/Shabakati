@@ -52,6 +52,18 @@ db.exec(`
   )
 `);
 
+// إنشاء جدول networks
+db.exec(`
+  CREATE TABLE IF NOT EXISTS networks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    network_id TEXT NOT NULL,
+    subnet INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    last_scanned TEXT
+  )
+`);
+
 // إضافة عمود tags إذا لم يكن موجوداً (للقواعد الموجودة)
 try {
   db.exec('ALTER TABLE hosts ADD COLUMN tags TEXT');
@@ -454,6 +466,59 @@ export const dbFunctions = {
     
     const updateStmt = db.prepare('UPDATE hosts SET uptime_percentage = ? WHERE id = ?');
     updateStmt.run(uptimePercentage, hostId);
+  },
+
+  // ========== دوال الشبكات ==========
+  
+  // الحصول على جميع الشبكات
+  getAllNetworks() {
+    const stmt = db.prepare('SELECT * FROM networks ORDER BY created_at DESC');
+    return stmt.all();
+  },
+
+  // الحصول على شبكة بالـ ID
+  getNetworkById(id) {
+    const stmt = db.prepare('SELECT * FROM networks WHERE id = ?');
+    return stmt.get(id);
+  },
+
+  // إضافة شبكة جديدة
+  addNetwork(network) {
+    const stmt = db.prepare(`
+      INSERT INTO networks (name, network_id, subnet, created_at, last_scanned)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      network.name,
+      network.networkId,
+      network.subnet,
+      network.createdAt || new Date().toISOString(),
+      network.lastScanned || null
+    );
+    return this.getNetworkById(result.lastInsertRowid);
+  },
+
+  // تحديث شبكة
+  updateNetwork(id, network) {
+    const stmt = db.prepare(`
+      UPDATE networks 
+      SET name = ?, network_id = ?, subnet = ?, last_scanned = ?
+      WHERE id = ?
+    `);
+    stmt.run(
+      network.name,
+      network.networkId,
+      network.subnet,
+      network.lastScanned || null,
+      id
+    );
+    return this.getNetworkById(id);
+  },
+
+  // حذف شبكة
+  deleteNetwork(id) {
+    const stmt = db.prepare('DELETE FROM networks WHERE id = ?');
+    return stmt.run(id);
   }
 };
 
