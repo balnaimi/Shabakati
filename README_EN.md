@@ -39,19 +39,27 @@ The easiest way to run the application in development mode:
 
 ### Linux / macOS:
 ```bash
-# 1. Install Node.js and dependencies
+# 1. Clone the repository
+git clone <repository-url>
+cd Shabakati
+
+# 2. Install Node.js and dependencies
 ./scripts/install-nodejs.sh
 
-# 2. Run the application in development mode
+# 3. Run the application in development mode
 ./scripts/dev.sh
 ```
 
 ### Windows:
 ```powershell
-# 1. Install Node.js and dependencies (run PowerShell as Administrator)
+# 1. Clone the repository
+git clone <repository-url>
+cd Shabakati
+
+# 2. Install Node.js and dependencies (run PowerShell as Administrator)
 .\scripts\install-nodejs.ps1
 
-# 2. Run the application in development mode
+# 3. Run the application in development mode
 .\scripts\dev.ps1
 ```
 
@@ -61,6 +69,21 @@ After running the scripts, the application will be available at:
 - **From local network:** http://<SERVER_IP>:5173
 
 **Note:** If you prefer manual installation, see the sections below.
+
+---
+
+## 📥 Getting the Project
+
+Before starting, you need to clone the project from the Git repository:
+
+```bash
+git clone <repository-url>
+cd Shabakati
+```
+
+**Note:** Replace `<repository-url>` with your Git repository URL (example: `https://github.com/username/Shabakati.git` or `git@github.com:username/Shabakati.git`).
+
+After cloning the project, follow the installation and setup instructions below.
 
 ---
 
@@ -687,6 +710,6 @@ See `LICENSE` file for details.
 
 ---
 
-**Last Updated:** 2024
+**Last Updated:** December 31, 2025
 
 
