@@ -142,6 +142,45 @@ try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_status_history_checked_at ON host_status_history(host_id, checked_at DESC)');
 } catch (e) {}
 
+// Create groups table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT '#4a9eff',
+    display_order INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL
+  )
+`);
+
+// Create favorites table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS favorites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    host_id INTEGER NOT NULL,
+    url TEXT,
+    group_id INTEGER,
+    display_order INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (host_id) REFERENCES hosts(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
+  )
+`);
+
+// Add indexes for favorites and groups
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_favorites_host_id ON favorites(host_id)');
+} catch (e) {}
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_favorites_group_id ON favorites(group_id)');
+} catch (e) {}
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_favorites_display_order ON favorites(display_order)');
+} catch (e) {}
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_groups_display_order ON groups(display_order)');
+} catch (e) {}
+
 // Database functions
 export const dbFunctions = {
   // Get all hosts (optimized - fetch tags in batch)
@@ -519,6 +558,206 @@ export const dbFunctions = {
   deleteNetwork(id) {
     const stmt = db.prepare('DELETE FROM networks WHERE id = ?');
     return stmt.run(id);
+  },
+
+  // ========== Groups functions ==========
+  
+  // Get all groups
+  getAllGroups() {
+    const stmt = db.prepare('SELECT * FROM groups ORDER BY display_order ASC, created_at ASC');
+    return stmt.all();
+  },
+
+  // Get group by ID
+  getGroupById(id) {
+    const stmt = db.prepare('SELECT * FROM groups WHERE id = ?');
+    return stmt.get(id);
+  },
+
+  // Add new group
+  addGroup(group) {
+    const stmt = db.prepare(`
+      INSERT INTO groups (name, color, display_order, created_at)
+      VALUES (?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      group.name,
+      group.color || '#4a9eff',
+      group.displayOrder || 0,
+      group.createdAt || new Date().toISOString()
+    );
+    return this.getGroupById(result.lastInsertRowid);
+  },
+
+  // Update group
+  updateGroup(id, group) {
+    const stmt = db.prepare(`
+      UPDATE groups 
+      SET name = ?, color = ?, display_order = ?
+      WHERE id = ?
+    `);
+    stmt.run(
+      group.name,
+      group.color || '#4a9eff',
+      group.displayOrder || 0,
+      id
+    );
+    return this.getGroupById(id);
+  },
+
+  // Delete group
+  deleteGroup(id) {
+    const stmt = db.prepare('DELETE FROM groups WHERE id = ?');
+    return stmt.run(id);
+  },
+
+  // ========== Favorites functions ==========
+  
+  // Get all favorites with host and group info
+  getAllFavorites() {
+    const stmt = db.prepare(`
+      SELECT 
+        f.*,
+        h.name as host_name,
+        h.ip as host_ip,
+        h.status as host_status,
+        h.description as host_description,
+        h.url as host_url,
+        g.name as group_name,
+        g.color as group_color
+      FROM favorites f
+      INNER JOIN hosts h ON f.host_id = h.id
+      LEFT JOIN groups g ON f.group_id = g.id
+      ORDER BY f.display_order ASC, f.created_at ASC
+    `);
+    const favorites = stmt.all();
+    
+    // Get tags for each host
+    return favorites.map(fav => {
+      const hostTags = this.getHostTags(fav.host_id);
+      return {
+        id: fav.id,
+        hostId: fav.host_id,
+        url: fav.url || fav.host_url || null,
+        groupId: fav.group_id,
+        displayOrder: fav.display_order,
+        createdAt: fav.created_at,
+        host: {
+          id: fav.host_id,
+          name: fav.host_name,
+          ip: fav.host_ip,
+          status: fav.host_status,
+          description: fav.host_description,
+          url: fav.host_url,
+          tags: hostTags
+        },
+        group: fav.group_id ? {
+          id: fav.group_id,
+          name: fav.group_name,
+          color: fav.group_color
+        } : null
+      };
+    });
+  },
+
+  // Get favorite by ID
+  getFavoriteById(id) {
+    const stmt = db.prepare(`
+      SELECT 
+        f.*,
+        h.name as host_name,
+        h.ip as host_ip,
+        h.status as host_status,
+        h.description as host_description,
+        h.url as host_url,
+        g.name as group_name,
+        g.color as group_color
+      FROM favorites f
+      INNER JOIN hosts h ON f.host_id = h.id
+      LEFT JOIN groups g ON f.group_id = g.id
+      WHERE f.id = ?
+    `);
+    const fav = stmt.get(id);
+    if (!fav) return null;
+    
+    const hostTags = this.getHostTags(fav.host_id);
+    return {
+      id: fav.id,
+      hostId: fav.host_id,
+      url: fav.url || fav.host_url || null,
+      groupId: fav.group_id,
+      displayOrder: fav.display_order,
+      createdAt: fav.created_at,
+      host: {
+        id: fav.host_id,
+        name: fav.host_name,
+        ip: fav.host_ip,
+        status: fav.host_status,
+        description: fav.host_description,
+        url: fav.host_url,
+        tags: hostTags
+      },
+      group: fav.group_id ? {
+        id: fav.group_id,
+        name: fav.group_name,
+        color: fav.group_color
+      } : null
+    };
+  },
+
+  // Check if host is already in favorites
+  isHostFavorite(hostId) {
+    const stmt = db.prepare('SELECT id FROM favorites WHERE host_id = ?');
+    return stmt.get(hostId) !== undefined;
+  },
+
+  // Add favorite
+  addFavorite(favorite) {
+    // Check if host is already in favorites
+    if (this.isHostFavorite(favorite.hostId)) {
+      throw new Error('الجهاز موجود بالفعل في المفضلة');
+    }
+    
+    const stmt = db.prepare(`
+      INSERT INTO favorites (host_id, url, group_id, display_order, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      favorite.hostId,
+      favorite.url || null,
+      favorite.groupId || null,
+      favorite.displayOrder || 0,
+      favorite.createdAt || new Date().toISOString()
+    );
+    return this.getFavoriteById(result.lastInsertRowid);
+  },
+
+  // Update favorite
+  updateFavorite(id, favorite) {
+    const stmt = db.prepare(`
+      UPDATE favorites 
+      SET url = ?, group_id = ?, display_order = ?
+      WHERE id = ?
+    `);
+    stmt.run(
+      favorite.url || null,
+      favorite.groupId || null,
+      favorite.displayOrder || 0,
+      id
+    );
+    return this.getFavoriteById(id);
+  },
+
+  // Delete favorite
+  deleteFavorite(id) {
+    const stmt = db.prepare('DELETE FROM favorites WHERE id = ?');
+    return stmt.run(id);
+  },
+
+  // Delete favorite by host ID
+  deleteFavoriteByHostId(hostId) {
+    const stmt = db.prepare('DELETE FROM favorites WHERE host_id = ?');
+    return stmt.run(hostId);
   }
 };
 

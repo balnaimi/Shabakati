@@ -761,6 +761,199 @@ app.delete('/api/data/all', (req, res) => {
   }
 });
 
+// ========== Favorites API ==========
+
+// Get all favorites
+app.get('/api/favorites', (req, res) => {
+  try {
+    const favorites = dbFunctions.getAllFavorites();
+    res.json(favorites);
+  } catch (error) {
+    console.error('Error in GET /api/favorites:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get favorite by ID
+app.get('/api/favorites/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const favorite = dbFunctions.getFavoriteById(id);
+    if (!favorite) {
+      return res.status(404).json({ error: 'المفضلة غير موجودة' });
+    }
+    res.json(favorite);
+  } catch (error) {
+    console.error('Error in GET /api/favorites/:id:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add favorite
+app.post('/api/favorites', (req, res) => {
+  try {
+    const { hostId, url, groupId, displayOrder } = req.body;
+    
+    if (!hostId) {
+      return res.status(400).json({ error: 'hostId مطلوب' });
+    }
+    
+    // Check if host exists
+    const host = dbFunctions.getHostById(hostId);
+    if (!host) {
+      return res.status(404).json({ error: 'الجهاز غير موجود' });
+    }
+    
+    const favorite = dbFunctions.addFavorite({
+      hostId: parseInt(hostId),
+      url: url || null,
+      groupId: groupId ? parseInt(groupId) : null,
+      displayOrder: displayOrder || 0
+    });
+    
+    res.status(201).json(favorite);
+  } catch (error) {
+    console.error('Error in POST /api/favorites:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update favorite
+app.put('/api/favorites/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { url, groupId, displayOrder } = req.body;
+    
+    const favorite = dbFunctions.getFavoriteById(id);
+    if (!favorite) {
+      return res.status(404).json({ error: 'المفضلة غير موجودة' });
+    }
+    
+    const updated = dbFunctions.updateFavorite(id, {
+      url: url !== undefined ? url : favorite.url,
+      groupId: groupId !== undefined ? (groupId ? parseInt(groupId) : null) : favorite.groupId,
+      displayOrder: displayOrder !== undefined ? displayOrder : favorite.displayOrder
+    });
+    
+    res.json(updated);
+  } catch (error) {
+    console.error('Error in PUT /api/favorites/:id:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete favorite
+app.delete('/api/favorites/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const favorite = dbFunctions.getFavoriteById(id);
+    if (!favorite) {
+      return res.status(404).json({ error: 'المفضلة غير موجودة' });
+    }
+    
+    dbFunctions.deleteFavorite(id);
+    res.json({ success: true, message: 'تم حذف المفضلة بنجاح' });
+  } catch (error) {
+    console.error('Error in DELETE /api/favorites/:id:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== Groups API ==========
+
+// Get all groups
+app.get('/api/groups', (req, res) => {
+  try {
+    const groups = dbFunctions.getAllGroups();
+    res.json(groups);
+  } catch (error) {
+    console.error('Error in GET /api/groups:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get group by ID
+app.get('/api/groups/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const group = dbFunctions.getGroupById(id);
+    if (!group) {
+      return res.status(404).json({ error: 'المجموعة غير موجودة' });
+    }
+    res.json(group);
+  } catch (error) {
+    console.error('Error in GET /api/groups/:id:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create group
+app.post('/api/groups', (req, res) => {
+  try {
+    const { name, color, displayOrder } = req.body;
+    
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ error: 'اسم المجموعة مطلوب' });
+    }
+    
+    const group = dbFunctions.addGroup({
+      name: name.trim(),
+      color: color || '#4a9eff',
+      displayOrder: displayOrder || 0
+    });
+    
+    res.status(201).json(group);
+  } catch (error) {
+    console.error('Error in POST /api/groups:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update group
+app.put('/api/groups/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { name, color, displayOrder } = req.body;
+    
+    const group = dbFunctions.getGroupById(id);
+    if (!group) {
+      return res.status(404).json({ error: 'المجموعة غير موجودة' });
+    }
+    
+    if (name && name.trim() === '') {
+      return res.status(400).json({ error: 'اسم المجموعة لا يمكن أن يكون فارغاً' });
+    }
+    
+    const updated = dbFunctions.updateGroup(id, {
+      name: name !== undefined ? name.trim() : group.name,
+      color: color !== undefined ? color : group.color,
+      displayOrder: displayOrder !== undefined ? displayOrder : group.display_order
+    });
+    
+    res.json(updated);
+  } catch (error) {
+    console.error('Error in PUT /api/groups/:id:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete group
+app.delete('/api/groups/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const group = dbFunctions.getGroupById(id);
+    if (!group) {
+      return res.status(404).json({ error: 'المجموعة غير موجودة' });
+    }
+    
+    dbFunctions.deleteGroup(id);
+    res.json({ success: true, message: 'تم حذف المجموعة بنجاح' });
+  } catch (error) {
+    console.error('Error in DELETE /api/groups/:id:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Handle Chrome DevTools .well-known requests (to avoid 404 errors)
 app.get('/.well-known/*', (req, res) => {
   res.status(404).json({ error: 'Not found' });

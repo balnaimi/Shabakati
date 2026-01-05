@@ -22,12 +22,50 @@ function NetworkView() {
   const [editingHostId, setEditingHostId] = useState(null)
   const [editFormData, setEditFormData] = useState({ tagIds: [] })
   const [activeTab, setActiveTab] = useState('devices') // 'devices' or 'ips'
+  const [favorites, setFavorites] = useState([])
 
   useEffect(() => {
     fetchNetwork()
     fetchHosts()
     fetchTags()
+    fetchFavorites()
   }, [id])
+
+  const fetchFavorites = async () => {
+    try {
+      const data = await apiGet('/favorites')
+      setFavorites(data)
+    } catch (err) {
+      console.error('Error fetching favorites:', err)
+    }
+  }
+
+  const isHostFavorite = (hostId) => {
+    return favorites.some(fav => fav.hostId === hostId)
+  }
+
+  const handleAddToFavorites = async (hostId) => {
+    try {
+      await apiPost('/favorites', { hostId: parseInt(hostId) })
+      await fetchFavorites()
+      alert('تم إضافة الجهاز للمفضلة بنجاح')
+    } catch (err) {
+      alert(`خطأ: ${err.message}`)
+    }
+  }
+
+  const handleRemoveFromFavorites = async (hostId) => {
+    try {
+      const favorite = favorites.find(fav => fav.hostId === hostId)
+      if (favorite) {
+        await apiDelete(`/favorites/${favorite.id}`)
+        await fetchFavorites()
+        alert('تم حذف الجهاز من المفضلة')
+      }
+    } catch (err) {
+      alert(`خطأ: ${err.message}`)
+    }
+  }
 
   const fetchTags = async () => {
     try {
@@ -273,8 +311,9 @@ function NetworkView() {
       <div className="header">
         <h1>{network.name}</h1>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => navigate('/')}>العودة للعرض</button>
-          <button onClick={() => navigate('/networks')}>العودة للشبكات</button>
+          <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
+          <button onClick={() => navigate('/hosts')}>لوحة التحكم</button>
+          <button onClick={() => navigate('/networks')}>إدارة الشبكات</button>
         </div>
       </div>
 
@@ -494,6 +533,23 @@ function NetworkView() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '8px' }}>
+                        {isHostFavorite(host.id) ? (
+                          <button 
+                            onClick={() => handleRemoveFromFavorites(host.id)} 
+                            style={{ backgroundColor: '#ffc107', color: 'black', padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                            title="حذف من المفضلة"
+                          >
+                            ⭐
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => handleAddToFavorites(host.id)} 
+                            style={{ backgroundColor: '#6c757d', color: 'white', padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                            title="إضافة للمفضلة"
+                          >
+                            ⭐
+                          </button>
+                        )}
                         <button 
                           onClick={() => handleEditHost(host)} 
                           style={{ padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}

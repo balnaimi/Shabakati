@@ -59,10 +59,11 @@ function HostsList() {
     <div className="container">
       <div className="header">
         <div>
-          <h1>لوحة تحكم الشبكة</h1>
+          <h1>لوحة تحكم الشبكات</h1>
           <p>نظرة عامة على الشبكات والأجهزة</p>
         </div>
         <div className="controls">
+          <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
           <button onClick={() => navigate('/networks')}>إدارة الشبكات</button>
           <button onClick={() => navigate('/tags')}>إدارة الوسوم</button>
           <button 

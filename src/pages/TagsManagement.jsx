@@ -90,7 +90,10 @@ function TagsManagement() {
     <div className="container">
       <div className="header">
         <h1>إدارة الوسوم</h1>
-        <button onClick={() => navigate('/')}>العودة للعرض</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => navigate('/hosts')}>الرجوع</button>
+          <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
+        </div>
       </div>
 
       {error && (

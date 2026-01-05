@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import ErrorBoundary from './components/ErrorBoundary'
 
 // Lazy loading للصفحات لتحسين الأداء
+const Favorites = lazy(() => import('./pages/Favorites'))
 const HostsList = lazy(() => import('./pages/HostsList'))
 const TagsManagement = lazy(() => import('./pages/TagsManagement'))
 const NetworksList = lazy(() => import('./pages/NetworksList'))
@@ -22,7 +23,8 @@ function App() {
         <div className="app">
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
-              <Route path="/" element={<HostsList />} />
+              <Route path="/" element={<Favorites />} />
+              <Route path="/hosts" element={<HostsList />} />
               <Route path="/tags" element={<TagsManagement />} />
               <Route path="/networks" element={<NetworksList />} />
               <Route path="/networks/:id" element={<NetworkView />} />
