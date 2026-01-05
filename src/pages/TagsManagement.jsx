@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import AuthButton from '../components/AuthButton'
 import { API_URL } from '../constants'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 function TagsManagement() {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   const [tags, setTags] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -93,6 +96,7 @@ function TagsManagement() {
         <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={() => navigate('/hosts')}>الرجوع</button>
           <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
+          <AuthButton />
         </div>
       </div>
 

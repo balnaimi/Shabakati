@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import AuthButton from '../components/AuthButton'
 import { API_URL } from '../constants'
 import { apiGet, apiDelete } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 function HostsList() {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   const [stats, setStats] = useState({
     totalNetworks: 0,
     totalHosts: 0,
@@ -66,12 +69,15 @@ function HostsList() {
           <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
           <button onClick={() => navigate('/networks')}>إدارة الشبكات</button>
           <button onClick={() => navigate('/tags')}>إدارة الوسوم</button>
-          <button 
-            onClick={handleClearAllData} 
-            style={{ backgroundColor: '#dc3545', color: 'white' }}
-          >
-            حذف جميع البيانات
-          </button>
+          {isAuthenticated && (
+            <button 
+              onClick={handleClearAllData} 
+              style={{ backgroundColor: '#dc3545', color: 'white' }}
+            >
+              حذف جميع البيانات
+            </button>
+          )}
+          <AuthButton />
         </div>
         
         <div className="stats">

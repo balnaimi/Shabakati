@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiDelete, apiPost, apiPut } from '../utils/api'
+import AuthButton from '../components/AuthButton'
+import { useAuth } from '../contexts/AuthContext'
 
 function NetworksList() {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   const [networks, setNetworks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -61,6 +64,7 @@ function NetworksList() {
         <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={() => navigate('/hosts')}>الرجوع</button>
           <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
+          <AuthButton />
         </div>
       </div>
 

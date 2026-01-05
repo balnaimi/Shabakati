@@ -5,6 +5,22 @@ import { API_URL } from '../constants'
  */
 
 /**
+ * Get authorization header with token from localStorage
+ */
+function getAuthHeaders() {
+  const token = localStorage.getItem('authToken');
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+}
+
+/**
  * معالجة استجابة API مع فحص الأخطاء
  */
 export async function handleApiResponse(response) {
@@ -44,7 +60,16 @@ export async function handleApiResponse(response) {
  */
 export async function apiGet(endpoint) {
   try {
-    const response = await fetch(`${API_URL}${endpoint}`)
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      headers: getAuthHeaders()
+    })
+    
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+      localStorage.removeItem('authToken');
+      // Don't redirect automatically, let the component handle it
+    }
+    
     return await handleApiResponse(response)
   } catch (error) {
     console.error(`API GET Error (${endpoint}):`, error)
@@ -59,11 +84,16 @@ export async function apiPost(endpoint, data) {
   try {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     })
+    
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+      localStorage.removeItem('authToken');
+      // Don't redirect automatically, let the component handle it
+    }
+    
     return await handleApiResponse(response)
   } catch (error) {
     console.error(`API POST Error (${endpoint}):`, error)
@@ -78,11 +108,16 @@ export async function apiPut(endpoint, data) {
   try {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     })
+    
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+      localStorage.removeItem('authToken');
+      // Don't redirect automatically, let the component handle it
+    }
+    
     return await handleApiResponse(response)
   } catch (error) {
     console.error(`API PUT Error (${endpoint}):`, error)
@@ -96,8 +131,16 @@ export async function apiPut(endpoint, data) {
 export async function apiDelete(endpoint) {
   try {
     const response = await fetch(`${API_URL}${endpoint}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: getAuthHeaders()
     })
+    
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+      localStorage.removeItem('authToken');
+      // Don't redirect automatically, let the component handle it
+    }
+    
     return await handleApiResponse(response)
   } catch (error) {
     console.error(`API DELETE Error (${endpoint}):`, error)
@@ -112,11 +155,16 @@ export async function apiPatch(endpoint, data = {}) {
   try {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     })
+    
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+      localStorage.removeItem('authToken');
+      // Don't redirect automatically, let the component handle it
+    }
+    
     return await handleApiResponse(response)
   } catch (error) {
     console.error(`API PATCH Error (${endpoint}):`, error)

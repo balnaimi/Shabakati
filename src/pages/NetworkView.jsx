@@ -3,10 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiPost, apiDelete, apiPut } from '../utils/api'
 import { calculateIPRange, getLastOctet } from '../utils/networkUtils'
+import AuthButton from '../components/AuthButton'
+import { useAuth } from '../contexts/AuthContext'
 
 function NetworkView() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const { isAuthenticated } = useAuth()
   const [network, setNetwork] = useState(null)
   const [hosts, setHosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -314,6 +317,7 @@ function NetworkView() {
           <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
           <button onClick={() => navigate('/hosts')}>لوحة التحكم</button>
           <button onClick={() => navigate('/networks')}>إدارة الشبكات</button>
+          <AuthButton />
         </div>
       </div>
 

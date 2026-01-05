@@ -181,6 +181,16 @@ try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_groups_display_order ON groups(display_order)');
 } catch (e) {}
 
+// Create admins table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  )
+`);
+
 // Database functions
 export const dbFunctions = {
   // Get all hosts (optimized - fetch tags in batch)
@@ -758,6 +768,41 @@ export const dbFunctions = {
   deleteFavoriteByHostId(hostId) {
     const stmt = db.prepare('DELETE FROM favorites WHERE host_id = ?');
     return stmt.run(hostId);
+  },
+
+  // ========== Admin functions ==========
+  
+  // Get admin by username
+  getAdminByUsername(username) {
+    const stmt = db.prepare('SELECT * FROM admins WHERE username = ?');
+    return stmt.get(username);
+  },
+
+  // Create admin
+  createAdmin(username, passwordHash) {
+    const stmt = db.prepare(`
+      INSERT INTO admins (username, password_hash, created_at)
+      VALUES (?, ?, ?)
+    `);
+    const result = stmt.run(
+      username,
+      passwordHash,
+      new Date().toISOString()
+    );
+    const selectStmt = db.prepare('SELECT * FROM admins WHERE id = ?');
+    return selectStmt.get(result.lastInsertRowid);
+  },
+
+  // Verify admin password (returns admin if password matches)
+  verifyAdminPassword(username, passwordHash) {
+    const admin = this.getAdminByUsername(username);
+    if (!admin) return null;
+    // Compare password hashes
+    if (admin.password_hash === passwordHash) {
+      const { password_hash, ...adminWithoutPassword } = admin;
+      return adminWithoutPassword;
+    }
+    return null;
   }
 };
 

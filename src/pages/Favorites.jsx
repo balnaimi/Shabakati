@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
+import AuthButton from '../components/AuthButton'
+import { useAuth } from '../contexts/AuthContext'
 
 function Favorites() {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   const [favorites, setFavorites] = useState([])
   const [groups, setGroups] = useState([])
   const [allHosts, setAllHosts] = useState([])
@@ -185,12 +188,17 @@ function Favorites() {
         <h1>شبكتي</h1>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={() => navigate('/hosts')}>لوحة التحكم</button>
-          <button onClick={() => setShowAddModal(true)} style={{ backgroundColor: '#28a745', color: 'white' }}>
-            إضافة جهاز
-          </button>
-          <button onClick={() => setShowGroupModal(true)} style={{ backgroundColor: '#4a9eff', color: 'white' }}>
-            إدارة المجموعات
-          </button>
+          {isAuthenticated && (
+            <>
+              <button onClick={() => setShowAddModal(true)} style={{ backgroundColor: '#28a745', color: 'white' }}>
+                إضافة جهاز
+              </button>
+              <button onClick={() => setShowGroupModal(true)} style={{ backgroundColor: '#4a9eff', color: 'white' }}>
+                إدارة المجموعات
+              </button>
+            </>
+          )}
+          <AuthButton />
         </div>
       </div>
 
@@ -319,40 +327,44 @@ function Favorites() {
                           >
                             فتح
                           </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleEditFavorite(favorite)
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#ffc107',
-                              color: 'black',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
-                          >
-                            تعديل
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteFavorite(favorite.id)
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#dc3545',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
-                          >
-                            حذف
-                          </button>
+                          {isAuthenticated && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEditFavorite(favorite)
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  backgroundColor: '#ffc107',
+                                  color: 'black',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px'
+                                }}
+                              >
+                                تعديل
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteFavorite(favorite.id)
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  backgroundColor: '#dc3545',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px'
+                                }}
+                              >
+                                حذف
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -652,20 +664,22 @@ function Favorites() {
                             ({groupFavorites.length} جهاز)
                           </span>
                         </div>
-                        <button
-                          onClick={() => handleDeleteGroup(group.id)}
-                          style={{
-                            backgroundColor: '#dc3545',
-                            color: 'white',
-                            padding: '5px 10px',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          حذف
-                        </button>
+                        {isAuthenticated && (
+                          <button
+                            onClick={() => handleDeleteGroup(group.id)}
+                            style={{
+                              backgroundColor: '#dc3545',
+                              color: 'white',
+                              padding: '5px 10px',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            حذف
+                          </button>
+                        )}
                       </div>
                     )
                   })}

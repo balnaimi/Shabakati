@@ -4,6 +4,8 @@ import { dbFunctions } from './database.js';
 import { checkHost } from './hostChecker.js';
 import { scanNetwork } from './networkScanner.js';
 import { getNetworkCIDR, isIPInNetwork, calculateIPRange } from './networkUtils.js';
+import { hashPassword, comparePassword, generateToken, verifyToken } from './auth.js';
+import { requireAuth } from './middleware.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,6 +21,68 @@ app.get('/', (req, res) => {
     api: 'http://localhost:3001/api',
     frontend: 'http://localhost:5173'
   });
+});
+
+// ========== Authentication Routes ==========
+
+// Login endpoint
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'اسم المستخدم وكلمة المرور مطلوبان' });
+    }
+    
+    // Get admin from database
+    const admin = dbFunctions.getAdminByUsername(username);
+    if (!admin) {
+      return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+    }
+    
+    // Compare password
+    const passwordMatch = comparePassword(password, admin.password_hash);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+    }
+    
+    // Generate token
+    const token = generateToken(username);
+    
+    res.json({
+      token,
+      username: admin.username,
+      message: 'تم تسجيل الدخول بنجاح'
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'حدث خطأ أثناء تسجيل الدخول' });
+  }
+});
+
+// Check auth status
+app.get('/api/auth/status', (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.json({ authenticated: false });
+    }
+    
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token);
+    
+    if (!decoded) {
+      return res.json({ authenticated: false });
+    }
+    
+    res.json({
+      authenticated: true,
+      username: decoded.username
+    });
+  } catch (error) {
+    res.json({ authenticated: false });
+  }
 });
 
 // Routes
@@ -54,7 +118,7 @@ app.get('/api/hosts', (req, res) => {
 });
 
 // Check host status (must be before /api/hosts/:id)
-app.post('/api/hosts/:id/check-status', async (req, res) => {
+app.post('/api/hosts/:id/check-status', requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const host = dbFunctions.getHostById(id);
@@ -91,7 +155,7 @@ app.post('/api/hosts/:id/check-status', async (req, res) => {
 });
 
 // Toggle host status (must be before /api/hosts/:id)
-app.patch('/api/hosts/:id/toggle-status', (req, res) => {
+app.patch('/api/hosts/:id/toggle-status', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const host = dbFunctions.toggleHostStatus(id);
@@ -120,7 +184,7 @@ app.get('/api/hosts/:id', (req, res) => {
 });
 
 // Add new host
-app.post('/api/hosts', async (req, res) => {
+app.post('/api/hosts', requireAuth, async (req, res) => {
   try {
     const { name, ip, description, url, tagIds } = req.body;
     
@@ -166,7 +230,7 @@ app.post('/api/hosts', async (req, res) => {
 });
 
 // Update host
-app.put('/api/hosts/:id', (req, res) => {
+app.put('/api/hosts/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { name, ip, description, url, status, tagIds } = req.body;
@@ -208,7 +272,7 @@ app.put('/api/hosts/:id', (req, res) => {
 });
 
 // Delete host
-app.delete('/api/hosts/:id', (req, res) => {
+app.delete('/api/hosts/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const result = dbFunctions.deleteHost(id);
@@ -250,7 +314,7 @@ app.get('/api/tags/:id', (req, res) => {
 });
 
 // Add new tag
-app.post('/api/tags', (req, res) => {
+app.post('/api/tags', requireAuth, (req, res) => {
   try {
     const { name, color } = req.body;
     
@@ -278,7 +342,7 @@ app.post('/api/tags', (req, res) => {
 });
 
 // Update tag
-app.put('/api/tags/:id', (req, res) => {
+app.put('/api/tags/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { name, color } = req.body;
@@ -310,7 +374,7 @@ app.put('/api/tags/:id', (req, res) => {
 });
 
 // Delete tag
-app.delete('/api/tags/:id', (req, res) => {
+app.delete('/api/tags/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const result = dbFunctions.deleteTag(id);
@@ -349,7 +413,7 @@ app.get('/api/export', (req, res) => {
 });
 
 // Import data (JSON)
-app.post('/api/import', async (req, res) => {
+app.post('/api/import', requireAuth, async (req, res) => {
   try {
     const { hosts, tags } = req.body;
     let imported = 0;
@@ -436,7 +500,7 @@ app.get('/api/stats', (req, res) => {
 });
 
 // Network scan
-app.post('/api/network/scan', async (req, res) => {
+app.post('/api/network/scan', requireAuth, async (req, res) => {
   try {
     const { networkRange, timeout } = req.body;
     
@@ -483,7 +547,7 @@ app.get('/api/networks/:id', (req, res) => {
 });
 
 // Add new network
-app.post('/api/networks', (req, res) => {
+app.post('/api/networks', requireAuth, (req, res) => {
   try {
     const { name, networkId, subnet } = req.body;
     
@@ -511,7 +575,7 @@ app.post('/api/networks', (req, res) => {
 });
 
 // Update network
-app.put('/api/networks/:id', (req, res) => {
+app.put('/api/networks/:id', requireAuth, (req, res) => {
   try {
     const { name, networkId, subnet, lastScanned } = req.body;
     const id = parseInt(req.params.id);
@@ -540,7 +604,7 @@ app.put('/api/networks/:id', (req, res) => {
 });
 
 // Delete network hosts (without deleting the network itself)
-app.delete('/api/networks/:id/hosts', (req, res) => {
+app.delete('/api/networks/:id/hosts', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
@@ -572,7 +636,7 @@ app.delete('/api/networks/:id/hosts', (req, res) => {
 });
 
 // Delete network with all its hosts
-app.delete('/api/networks/:id', (req, res) => {
+app.delete('/api/networks/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
@@ -628,7 +692,7 @@ app.get('/api/networks/:id/hosts', (req, res) => {
 });
 
 // Scan network
-app.post('/api/networks/:id/scan', async (req, res) => {
+app.post('/api/networks/:id/scan', requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
@@ -737,7 +801,7 @@ app.post('/api/networks/:id/scan', async (req, res) => {
 });
 
 // Delete all data
-app.delete('/api/data/all', (req, res) => {
+app.delete('/api/data/all', requireAuth, (req, res) => {
   try {
     // Delete all hosts
     const allHosts = dbFunctions.getAllHosts();
@@ -790,7 +854,7 @@ app.get('/api/favorites/:id', (req, res) => {
 });
 
 // Add favorite
-app.post('/api/favorites', (req, res) => {
+app.post('/api/favorites', requireAuth, (req, res) => {
   try {
     const { hostId, url, groupId, displayOrder } = req.body;
     
@@ -819,7 +883,7 @@ app.post('/api/favorites', (req, res) => {
 });
 
 // Update favorite
-app.put('/api/favorites/:id', (req, res) => {
+app.put('/api/favorites/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { url, groupId, displayOrder } = req.body;
@@ -843,7 +907,7 @@ app.put('/api/favorites/:id', (req, res) => {
 });
 
 // Delete favorite
-app.delete('/api/favorites/:id', (req, res) => {
+app.delete('/api/favorites/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const favorite = dbFunctions.getFavoriteById(id);
@@ -888,7 +952,7 @@ app.get('/api/groups/:id', (req, res) => {
 });
 
 // Create group
-app.post('/api/groups', (req, res) => {
+app.post('/api/groups', requireAuth, (req, res) => {
   try {
     const { name, color, displayOrder } = req.body;
     
@@ -910,7 +974,7 @@ app.post('/api/groups', (req, res) => {
 });
 
 // Update group
-app.put('/api/groups/:id', (req, res) => {
+app.put('/api/groups/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { name, color, displayOrder } = req.body;
@@ -938,7 +1002,7 @@ app.put('/api/groups/:id', (req, res) => {
 });
 
 // Delete group
-app.delete('/api/groups/:id', (req, res) => {
+app.delete('/api/groups/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const group = dbFunctions.getGroupById(id);
