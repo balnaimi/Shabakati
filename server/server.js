@@ -12,6 +12,15 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Increase data size limit
 
+// Root route - redirect to frontend
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'This is the API server. Please access the frontend at http://localhost:5173',
+    api: 'http://localhost:3001/api',
+    frontend: 'http://localhost:5173'
+  });
+});
+
 // Routes
 
 // Get all hosts (with pagination support)
@@ -752,10 +761,17 @@ app.delete('/api/data/all', (req, res) => {
   }
 });
 
+// Handle Chrome DevTools .well-known requests (to avoid 404 errors)
+app.get('/.well-known/*', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API available on all interfaces: http://0.0.0.0:${PORT}/api`);
   console.log(`🌐 Access from local network at: http://<SERVER_IP>:${PORT}/api`);
+}).on('error', (err) => {
+  console.error('Failed to start server:', err);
 });
 

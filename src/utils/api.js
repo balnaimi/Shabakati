@@ -18,8 +18,8 @@ export async function handleApiResponse(response) {
       
       if (contentType && contentType.includes('application/json')) {
         const errorData = JSON.parse(text)
-        if (errorData.error) {
-          errorMessage = errorData.error
+      if (errorData.error) {
+        errorMessage = errorData.error
         }
       } else if (text) {
         // إذا كان نص وليس JSON، استخدم النص

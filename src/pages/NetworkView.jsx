@@ -21,6 +21,7 @@ function NetworkView() {
   const [availableTags, setAvailableTags] = useState([])
   const [editingHostId, setEditingHostId] = useState(null)
   const [editFormData, setEditFormData] = useState({ tagIds: [] })
+  const [activeTab, setActiveTab] = useState('devices') // 'devices' or 'ips'
 
   useEffect(() => {
     fetchNetwork()
@@ -301,81 +302,52 @@ function NetworkView() {
         </button>
       </div>
 
-      <h2>عرض الأجهزة</h2>
-      
-      {network.subnet < 24 ? (
-        <div className="empty-state">
-          <p>النطاق كبير جداً للعرض ({range.count} عنوان). الرجاء استخدام subnet /24 أو أكبر للعرض البصري.</p>
-          <p>الأجهزة المكتشفة: {hosts.length}</p>
-        </div>
-      ) : (
-        <>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', 
-            gap: '5px',
-            marginTop: '20px'
-          }}>
-            {displayIPs.map((ip, index) => {
-              const status = getIPStatus(ip)
-              const lastOctet = getLastOctet(ip)
-              const host = hosts.find(h => h.ip === ip)
-              
-              let bgColor = '#ffffff'
-              let borderColor = '#ddd'
-              let color = '#333'
-              
-              if (status === 'online') {
-                bgColor = '#d4edda'
-                borderColor = '#28a745'
-                color = '#155724'
-              } else if (status === 'offline') {
-                bgColor = '#f8d7da'
-                borderColor = '#dc3545'
-                color = '#721c24'
-              }
-              
-              return (
-                <div
-                  key={ip}
-                  title={host ? `${host.name} (${ip}) - ${host.status === 'online' ? 'متصل' : 'غير متصل'}` : ip}
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    backgroundColor: bgColor,
-                    border: `2px solid ${borderColor}`,
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    color: color,
-                    cursor: host ? 'pointer' : 'default'
-                  }}
-                  onClick={() => {
-                    if (host) {
-                      // يمكن فتح modal أو navigate لصفحة الجهاز
-                      alert(`الجهاز: ${host.name}\nIP: ${ip}\nالحالة: ${host.status === 'online' ? 'متصل' : 'غير متصل'}`)
-                    }
-                  }}
-                >
-                  {lastOctet}
-                </div>
-              )
-            })}
-          </div>
-          
-          <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
-            <p><strong>الإحصائيات:</strong></p>
-            <p>الأجهزة المتصلة: {hosts.filter(h => h.status === 'online').length}</p>
-            <p>الأجهزة غير المتصلة: {hosts.filter(h => h.status === 'offline').length}</p>
-            <p>إجمالي الأجهزة: {hosts.length}</p>
-          </div>
-        </>
-      )}
+      {/* Tabs Navigation */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '10px', 
+        marginTop: '20px', 
+        marginBottom: '20px',
+        borderBottom: '2px solid #ddd'
+      }}>
+        <button
+          onClick={() => setActiveTab('devices')}
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            backgroundColor: activeTab === 'devices' ? '#4a9eff' : 'transparent',
+            color: activeTab === 'devices' ? 'white' : '#333',
+            cursor: 'pointer',
+            borderTopLeftRadius: '6px',
+            borderTopRightRadius: '6px',
+            fontWeight: activeTab === 'devices' ? 'bold' : 'normal',
+            transition: 'all 0.2s'
+          }}
+        >
+          الأجهزة
+        </button>
+        <button
+          onClick={() => setActiveTab('ips')}
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            backgroundColor: activeTab === 'ips' ? '#4a9eff' : 'transparent',
+            color: activeTab === 'ips' ? 'white' : '#333',
+            cursor: 'pointer',
+            borderTopLeftRadius: '6px',
+            borderTopRightRadius: '6px',
+            fontWeight: activeTab === 'ips' ? 'bold' : 'normal',
+            transition: 'all 0.2s'
+          }}
+        >
+          عرض IP
+        </button>
+      </div>
 
-      {hosts.length > 0 && (
+      {/* Tab Content */}
+      {activeTab === 'devices' && (
+        <>
+          {hosts.length > 0 && (
         <div style={{ marginTop: '40px' }}>
           <h2>الأجهزة في هذه الشبكة ({filteredHosts.length} من {hosts.length})</h2>
           
@@ -542,13 +514,93 @@ function NetworkView() {
             </table>
           </div>
         </div>
+          )}
+
+          {hosts.length === 0 && (
+            <div className="empty-state" style={{ marginTop: '40px' }}>
+              <p>لا توجد أجهزة مضافة في هذه الشبكة بعد.</p>
+              <p>قم بفحص الشبكة لإضافة الأجهزة المكتشفة.</p>
+            </div>
+          )}
+        </>
       )}
 
-      {hosts.length === 0 && network.subnet >= 24 && (
-        <div className="empty-state" style={{ marginTop: '40px' }}>
-          <p>لا توجد أجهزة مضافة في هذه الشبكة بعد.</p>
-          <p>قم بفحص الشبكة لإضافة الأجهزة المكتشفة.</p>
-        </div>
+      {activeTab === 'ips' && (
+        <>
+          {network.subnet < 24 ? (
+            <div className="empty-state">
+              <p>النطاق كبير جداً للعرض ({range.count} عنوان). الرجاء استخدام subnet /24 أو أكبر للعرض البصري.</p>
+              <p>الأجهزة المكتشفة: {hosts.length}</p>
+            </div>
+          ) : (
+            <>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', 
+                gap: '5px',
+                marginTop: '20px'
+              }}>
+                {displayIPs.map((ip, index) => {
+                  const status = getIPStatus(ip)
+                  const lastOctet = getLastOctet(ip)
+                  const host = hosts.find(h => h.ip === ip)
+                  
+                  let bgColor = '#ffffff'
+                  let borderColor = '#ddd'
+                  let color = '#333'
+                  
+                  if (status === 'online') {
+                    bgColor = '#d4edda'
+                    borderColor = '#28a745'
+                    color = '#155724'
+                  } else if (status === 'offline') {
+                    bgColor = '#f8d7da'
+                    borderColor = '#dc3545'
+                    color = '#721c24'
+                  }
+                  
+                  return (
+                    <div
+                      key={ip}
+                      title={host ? `${host.name} (${ip}) - ${host.status === 'online' ? 'متصل' : 'غير متصل'}` : `${ip} - فاضي`}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        backgroundColor: bgColor,
+                        border: `2px solid ${borderColor}`,
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: color,
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => {
+                        if (host) {
+                          alert(`الجهاز: ${host.name}\nIP: ${ip}\nالحالة: ${host.status === 'online' ? 'متصل' : 'غير متصل'}`)
+                        } else {
+                          alert(`IP فاضي: ${ip}`)
+                        }
+                      }}
+                    >
+                      {lastOctet}
+                    </div>
+                  )
+                })}
+              </div>
+              
+              <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                <p><strong>الإحصائيات:</strong></p>
+                <p>الأجهزة المتصلة: {hosts.filter(h => h.status === 'online').length}</p>
+                <p>الأجهزة غير المتصلة: {hosts.filter(h => h.status === 'offline').length}</p>
+                <p>إجمالي الأجهزة: {hosts.length}</p>
+                <p>IPs الفاضية: {displayIPs.length - hosts.length}</p>
+              </div>
+            </>
+          )}
+        </>
       )}
 
       {editingHostId && (

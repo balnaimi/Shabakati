@@ -71,17 +71,32 @@ cd "$PROJECT_DIR/server"
 npm run dev > /tmp/backend.log 2>&1 &
 BACKEND_PID=$!
 
-# Wait a bit for backend to start
-sleep 2
+# Wait for backend to be ready (health check)
+echo -e "${YELLOW}Waiting for backend to be ready...${NC}"
+MAX_ATTEMPTS=30
+ATTEMPT=0
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    if curl -s http://localhost:3001/api/stats > /dev/null 2>&1; then
+        break
+    fi
+    ATTEMPT=$((ATTEMPT + 1))
+    sleep 0.5
+done
 
-# Check if backend started successfully
+if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+    echo -e "${RED}ERROR: Backend server did not become ready!${NC}"
+    echo -e "${YELLOW}Check logs: cat /tmp/backend.log${NC}"
+    exit 1
+fi
+
+# Check if backend process is still running
 if ! kill -0 $BACKEND_PID 2>/dev/null; then
     echo -e "${RED}ERROR: Backend server failed to start!${NC}"
     echo -e "${YELLOW}Check logs: cat /tmp/backend.log${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Backend server started (PID: $BACKEND_PID)${NC}"
+echo -e "${GREEN}✓ Backend server started and ready (PID: $BACKEND_PID)${NC}"
 
 # Start frontend server
 echo -e "${YELLOW}Starting frontend server on port 5173...${NC}"
