@@ -22,7 +22,7 @@ function Favorites() {
   // Form states
   const [addFormData, setAddFormData] = useState({ hostId: '', url: '', groupId: '' })
   const [groupFormData, setGroupFormData] = useState({ name: '', color: '#4a9eff' })
-  const [editFormData, setEditFormData] = useState({ url: '', groupId: '' })
+  const [editFormData, setEditFormData] = useState({ url: '', groupId: '', customName: '', description: '' })
 
   useEffect(() => {
     fetchData()
@@ -90,7 +90,9 @@ function Favorites() {
     setEditingFavorite(favorite)
     setEditFormData({
       url: favorite.url || '',
-      groupId: favorite.groupId || ''
+      groupId: favorite.groupId || '',
+      customName: favorite.customName || '',
+      description: favorite.description || ''
     })
     setShowEditModal(true)
   }
@@ -102,11 +104,13 @@ function Favorites() {
       setError(null)
       await apiPut(`/favorites/${editingFavorite.id}`, {
         url: editFormData.url || null,
-        groupId: editFormData.groupId ? parseInt(editFormData.groupId) : null
+        groupId: editFormData.groupId ? parseInt(editFormData.groupId) : null,
+        customName: editFormData.customName || null,
+        description: editFormData.description || null
       })
       setShowEditModal(false)
       setEditingFavorite(null)
-      setEditFormData({ url: '', groupId: '' })
+      setEditFormData({ url: '', groupId: '', customName: '', description: '' })
       await fetchData()
     } catch (err) {
       setError(err.message)
@@ -268,7 +272,7 @@ function Favorites() {
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
                           <div>
-                            <h3 style={{ margin: 0, marginBottom: '5px' }}>{favorite.host.name}</h3>
+                            <h3 style={{ margin: 0, marginBottom: '5px' }}>{favorite.customName || favorite.host.name}</h3>
                             <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>{favorite.host.ip}</p>
                           </div>
                           <span style={{
@@ -282,6 +286,12 @@ function Favorites() {
                             {favorite.host.status === 'online' ? 'متصل' : 'غير متصل'}
                           </span>
                         </div>
+
+                        {favorite.description && (
+                          <p style={{ margin: '5px 0', fontSize: '13px', color: '#555', fontStyle: 'italic' }}>
+                            {favorite.description}
+                          </p>
+                        )}
 
                         {favorite.url && (
                           <p style={{ margin: '5px 0', fontSize: '12px', color: '#4a9eff' }}>
@@ -522,6 +532,29 @@ function Favorites() {
             </div>
 
             <form onSubmit={handleUpdateFavorite}>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>اسم الجهاز المخصص:</label>
+                <input
+                  type="text"
+                  value={editFormData.customName}
+                  onChange={(e) => setEditFormData({ ...editFormData, customName: e.target.value })}
+                  placeholder={editingFavorite.host.name}
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                />
+                <small style={{ color: '#666', fontSize: '12px' }}>اتركه فارغاً لاستخدام الاسم الافتراضي</small>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>الوصف:</label>
+                <textarea
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                  placeholder="أضف وصفاً للجهاز..."
+                  rows="3"
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', resize: 'vertical' }}
+                />
+              </div>
+
               <div style={{ marginBottom: '15px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>URL:</label>
                 <input

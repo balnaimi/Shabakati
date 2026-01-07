@@ -29,7 +29,7 @@ function AuthButton() {
         fontSize: '0.9rem'
       }}
     >
-      {isAuthenticated ? `تسجيل الخروج${username ? ` (${username})` : ''}` : 'تسجيل الدخول'}
+      {isAuthenticated ? 'إلغاء صلاحية المسؤول' : 'صلاحية المسؤول'}
     </button>
   );
 }

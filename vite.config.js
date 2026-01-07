@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0', // السماح بالوصول من الشبكة المحلية
+    allowedHosts: ['shabakati.majlis.lab'],
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

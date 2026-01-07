@@ -108,9 +108,11 @@ function TagsManagement() {
 
       <div>
         <div className="controls">
-          <button onClick={() => { setShowAddForm(true); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
-            إضافة وسم جديد
-          </button>
+          {isAuthenticated && (
+            <button onClick={() => { setShowAddForm(true); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
+              إضافة وسم جديد
+            </button>
+          )}
         </div>
         <h2>الوسوم ({tags.length})</h2>
 
@@ -151,8 +153,12 @@ function TagsManagement() {
                 <h3>{tag.name}</h3>
               </div>
               <div className="tag-actions">
-                <button onClick={() => startEdit(tag)}>تعديل</button>
-                <button onClick={() => handleDeleteTag(tag.id)}>حذف</button>
+                {isAuthenticated && (
+                  <>
+                    <button onClick={() => startEdit(tag)}>تعديل</button>
+                    <button onClick={() => handleDeleteTag(tag.id)}>حذف</button>
+                  </>
+                )}
               </div>
             </div>
           ))}

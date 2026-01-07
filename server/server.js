@@ -28,26 +28,20 @@ app.get('/', (req, res) => {
 // Login endpoint
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { password } = req.body;
     
-    if (!username || !password) {
-      return res.status(400).json({ error: 'اسم المستخدم وكلمة المرور مطلوبان' });
+    if (!password) {
+      return res.status(400).json({ error: 'كلمة المرور مطلوبة' });
     }
     
-    // Get admin from database
-    const admin = dbFunctions.getAdminByUsername(username);
+    // Verify password against all admins
+    const admin = dbFunctions.verifyAdminPasswordOnly(password, comparePassword);
     if (!admin) {
-      return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
-    }
-    
-    // Compare password
-    const passwordMatch = comparePassword(password, admin.password_hash);
-    if (!passwordMatch) {
-      return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+      return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
     }
     
     // Generate token
-    const token = generateToken(username);
+    const token = generateToken(admin.username);
     
     res.json({
       token,
@@ -856,7 +850,7 @@ app.get('/api/favorites/:id', (req, res) => {
 // Add favorite
 app.post('/api/favorites', requireAuth, (req, res) => {
   try {
-    const { hostId, url, groupId, displayOrder } = req.body;
+    const { hostId, url, groupId, displayOrder, customName, description } = req.body;
     
     if (!hostId) {
       return res.status(400).json({ error: 'hostId مطلوب' });
@@ -872,7 +866,9 @@ app.post('/api/favorites', requireAuth, (req, res) => {
       hostId: parseInt(hostId),
       url: url || null,
       groupId: groupId ? parseInt(groupId) : null,
-      displayOrder: displayOrder || 0
+      displayOrder: displayOrder || 0,
+      customName: customName || null,
+      description: description || null
     });
     
     res.status(201).json(favorite);
@@ -886,7 +882,7 @@ app.post('/api/favorites', requireAuth, (req, res) => {
 app.put('/api/favorites/:id', requireAuth, (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { url, groupId, displayOrder } = req.body;
+    const { url, groupId, displayOrder, customName, description } = req.body;
     
     const favorite = dbFunctions.getFavoriteById(id);
     if (!favorite) {
@@ -896,7 +892,9 @@ app.put('/api/favorites/:id', requireAuth, (req, res) => {
     const updated = dbFunctions.updateFavorite(id, {
       url: url !== undefined ? url : favorite.url,
       groupId: groupId !== undefined ? (groupId ? parseInt(groupId) : null) : favorite.groupId,
-      displayOrder: displayOrder !== undefined ? displayOrder : favorite.displayOrder
+      displayOrder: displayOrder !== undefined ? displayOrder : favorite.displayOrder,
+      customName: customName !== undefined ? customName : favorite.customName,
+      description: description !== undefined ? description : favorite.description
     });
     
     res.json(updated);

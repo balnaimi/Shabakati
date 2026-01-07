@@ -52,14 +52,14 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const login = async (username, password) => {
+  const login = async (password) => {
     try {
-      const response = await apiPost('/auth/login', { username, password });
+      const response = await apiPost('/auth/login', { password });
       
       if (response.token) {
         localStorage.setItem('authToken', response.token);
         setIsAuthenticated(true);
-        setUsername(response.username);
+        setUsername(response.username || 'admin');
         return { success: true };
       } else {
         return { success: false, error: 'فشل تسجيل الدخول' };

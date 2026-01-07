@@ -75,13 +75,15 @@ function NetworksList() {
       )}
 
       <div className="controls">
-        <button onClick={() => {
-          setShowAddForm(true)
-          setEditingNetworkId(null)
-          setFormData({ name: '', networkId: '', subnet: '' })
-        }}>
-          إضافة شبكة جديدة
-        </button>
+        {isAuthenticated && (
+          <button onClick={() => {
+            setShowAddForm(true)
+            setEditingNetworkId(null)
+            setFormData({ name: '', networkId: '', subnet: '' })
+          }}>
+            إضافة شبكة جديدة
+          </button>
+        )}
       </div>
 
       {showAddForm && (
@@ -124,8 +126,12 @@ function NetworksList() {
               </div>
               <div className="tag-actions">
                 <button onClick={() => navigate(`/networks/${network.id}`)}>عرض</button>
-                <button onClick={() => handleStartEdit(network)}>تعديل</button>
-                <button onClick={() => handleDeleteNetwork(network.id)}>حذف</button>
+                {isAuthenticated && (
+                  <>
+                    <button onClick={() => handleStartEdit(network)}>تعديل</button>
+                    <button onClick={() => handleDeleteNetwork(network.id)}>حذف</button>
+                  </>
+                )}
               </div>
             </div>
           ))}

@@ -337,12 +337,16 @@ function NetworkView() {
       )}
 
       <div className="controls">
-        <button onClick={handleScan} disabled={scanning}>
-          {scanning ? 'جاري الفحص...' : 'فحص الشبكة'}
-        </button>
-        <button onClick={handleClearNetworkHosts} style={{ backgroundColor: '#dc3545', color: 'white' }}>
-          حذف أجهزة الشبكة
-        </button>
+        {isAuthenticated && (
+          <>
+            <button onClick={handleScan} disabled={scanning}>
+              {scanning ? 'جاري الفحص...' : 'فحص الشبكة'}
+            </button>
+            <button onClick={handleClearNetworkHosts} style={{ backgroundColor: '#dc3545', color: 'white' }}>
+              حذف أجهزة الشبكة
+            </button>
+          </>
+        )}
       </div>
 
       {/* Tabs Navigation */}
@@ -554,18 +558,22 @@ function NetworkView() {
                             ⭐
                           </button>
                         )}
-                        <button 
-                          onClick={() => handleEditHost(host)} 
-                          style={{ padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                        >
-                          تعديل
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteHost(host.id)} 
-                          style={{ backgroundColor: '#dc3545', color: 'white', padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                        >
-                          حذف
-                        </button>
+                        {isAuthenticated && (
+                          <>
+                            <button 
+                              onClick={() => handleEditHost(host)} 
+                              style={{ padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                              تعديل
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteHost(host.id)} 
+                              style={{ backgroundColor: '#dc3545', color: 'white', padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                              حذف
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

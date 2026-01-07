@@ -161,11 +161,21 @@ db.exec(`
     url TEXT,
     group_id INTEGER,
     display_order INTEGER DEFAULT 0,
+    custom_name TEXT,
+    description TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (host_id) REFERENCES hosts(id) ON DELETE CASCADE,
     FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
   )
 `);
+
+// Add custom_name and description columns to existing databases
+try {
+  db.exec('ALTER TABLE favorites ADD COLUMN custom_name TEXT');
+} catch (e) {}
+try {
+  db.exec('ALTER TABLE favorites ADD COLUMN description TEXT');
+} catch (e) {}
 
 // Add indexes for favorites and groups
 try {
@@ -651,6 +661,8 @@ export const dbFunctions = {
         url: fav.url || fav.host_url || null,
         groupId: fav.group_id,
         displayOrder: fav.display_order,
+        customName: fav.custom_name,
+        description: fav.description,
         createdAt: fav.created_at,
         host: {
           id: fav.host_id,
@@ -697,6 +709,8 @@ export const dbFunctions = {
       url: fav.url || fav.host_url || null,
       groupId: fav.group_id,
       displayOrder: fav.display_order,
+      customName: fav.custom_name,
+      description: fav.description,
       createdAt: fav.created_at,
       host: {
         id: fav.host_id,
@@ -729,14 +743,16 @@ export const dbFunctions = {
     }
     
     const stmt = db.prepare(`
-      INSERT INTO favorites (host_id, url, group_id, display_order, created_at)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO favorites (host_id, url, group_id, display_order, custom_name, description, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       favorite.hostId,
       favorite.url || null,
       favorite.groupId || null,
       favorite.displayOrder || 0,
+      favorite.customName || null,
+      favorite.description || null,
       favorite.createdAt || new Date().toISOString()
     );
     return this.getFavoriteById(result.lastInsertRowid);
@@ -746,13 +762,15 @@ export const dbFunctions = {
   updateFavorite(id, favorite) {
     const stmt = db.prepare(`
       UPDATE favorites 
-      SET url = ?, group_id = ?, display_order = ?
+      SET url = ?, group_id = ?, display_order = ?, custom_name = ?, description = ?
       WHERE id = ?
     `);
     stmt.run(
-      favorite.url || null,
-      favorite.groupId || null,
-      favorite.displayOrder || 0,
+      favorite.url !== undefined ? (favorite.url || null) : null,
+      favorite.groupId !== undefined ? (favorite.groupId || null) : null,
+      favorite.displayOrder !== undefined ? (favorite.displayOrder || 0) : 0,
+      favorite.customName !== undefined ? (favorite.customName || null) : null,
+      favorite.description !== undefined ? (favorite.description || null) : null,
       id
     );
     return this.getFavoriteById(id);
@@ -801,6 +819,23 @@ export const dbFunctions = {
     if (admin.password_hash === passwordHash) {
       const { password_hash, ...adminWithoutPassword } = admin;
       return adminWithoutPassword;
+    }
+    return null;
+  },
+
+  // Get all admins
+  getAllAdmins() {
+    const stmt = db.prepare('SELECT * FROM admins');
+    return stmt.all();
+  },
+
+  // Verify admin password only (without username) - checks all admins
+  verifyAdminPasswordOnly(password, comparePasswordFunc) {
+    const admins = this.getAllAdmins();
+    for (const admin of admins) {
+      if (comparePasswordFunc(password, admin.password_hash)) {
+        return admin;
+      }
     }
     return null;
   }

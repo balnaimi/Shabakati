@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import '../index.css';
 
 function Login() {
-  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,7 +16,7 @@ function Login() {
     setLoading(true);
 
     try {
-      const result = await login(username, password);
+      const result = await login(password);
       
       if (result.success) {
         // Redirect to home page or the page user was trying to access
@@ -51,7 +50,7 @@ function Login() {
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
         <h1 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          تسجيل الدخول
+          صلاحية المسؤول
         </h1>
         
         {error && (
@@ -69,27 +68,6 @@ function Login() {
         )}
         
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="username" style={{ display: 'block', marginBottom: '0.5rem' }}>
-              اسم المستخدم:
-            </label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '1rem'
-              }}
-            />
-          </div>
-          
           <div style={{ marginBottom: '1.5rem' }}>
             <label htmlFor="password" style={{ display: 'block', marginBottom: '0.5rem' }}>
               كلمة المرور:
@@ -101,6 +79,7 @@ function Login() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
+              autoFocus
               style={{
                 width: '100%',
                 padding: '0.75rem',
@@ -126,7 +105,7 @@ function Login() {
               opacity: loading ? 0.6 : 1
             }}
           >
-            {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+            {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
           </button>
         </form>
       </div>
