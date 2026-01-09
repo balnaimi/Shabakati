@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { dbFunctions } from './database.js';
+import db from './database.js';
 import { checkHost } from './hostChecker.js';
 import { scanNetwork } from './networkScanner.js';
 import { getNetworkCIDR, isIPInNetwork, calculateIPRange } from './networkUtils.js';
@@ -936,29 +937,65 @@ app.post('/api/networks/:id/scan', requireAuth, async (req, res) => {
 });
 
 // Delete all data
-app.delete('/api/data/all', requireAuth, (req, res) => {
+app.delete('/api/data/all', requireAuth, asyncHandler((req, res) => {
   try {
-    // Delete all hosts
-    const allHosts = dbFunctions.getAllHosts();
-    allHosts.forEach(host => dbFunctions.deleteHost(host.id));
+    // Use database transaction to ensure all data is deleted
+    // Start transaction
+    db.exec('BEGIN TRANSACTION');
     
-    // Delete all networks
-    const allNetworks = dbFunctions.getAllNetworks();
-    allNetworks.forEach(network => dbFunctions.deleteNetwork(network.id));
-    
-    // Delete all tags
-    const allTags = dbFunctions.getAllTags();
-    allTags.forEach(tag => dbFunctions.deleteTag(tag.id));
-    
-    res.json({ 
-      success: true, 
-      message: 'تم حذف جميع البيانات بنجاح' 
-    });
+    try {
+      // Delete all data in correct order (respecting foreign keys)
+      // 1. Delete host_tags (junction table) - must be deleted first
+      db.exec('DELETE FROM host_tags');
+      
+      // 2. Delete host_status_history
+      db.exec('DELETE FROM host_status_history');
+      
+      // 3. Delete favorites (references hosts)
+      db.exec('DELETE FROM favorites');
+      
+      // 4. Delete hosts
+      db.exec('DELETE FROM hosts');
+      
+      // 5. Delete networks
+      db.exec('DELETE FROM networks');
+      
+      // 6. Delete tags - now safe to delete since host_tags is already deleted
+      db.exec('DELETE FROM tags');
+      
+      // 7. Delete groups
+      db.exec('DELETE FROM groups');
+      
+      // Commit transaction
+      db.exec('COMMIT');
+      
+      // Clear cache
+      cache.clear();
+      
+      logger.info('All data deleted successfully', { 
+        deleted: {
+          hosts: 'all',
+          networks: 'all',
+          tags: 'all',
+          groups: 'all',
+          favorites: 'all'
+        }
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'تم حذف جميع البيانات بنجاح (الأجهزة، الشبكات، الوسوم، المجموعات، المفضلة)' 
+      });
+    } catch (error) {
+      // Rollback on error
+      db.exec('ROLLBACK');
+      throw error;
+    }
   } catch (error) {
     logger.error('Error in DELETE /api/data/all:', { error: error.message });
-    res.status(500).json({ error: error.message });
+    throw new ApiError(500, `خطأ في حذف البيانات: ${error.message}`);
   }
-});
+}));
 
 // ========== Favorites API ==========
 
