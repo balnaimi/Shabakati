@@ -1,36 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AuthButton from '../components/AuthButton'
 import { API_URL } from '../constants'
-import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
+import { apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useTags } from '../hooks/useTags'
 
 function TagsManagement() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
-  const [tags, setTags] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { tags, loading, error: tagsError, refetch: fetchTags } = useTags()
   const [error, setError] = useState(null)
   const [editingTag, setEditingTag] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [formData, setFormData] = useState({ name: '', color: '#4a9eff' })
-
-  useEffect(() => {
-    fetchTags()
-  }, [])
-
-  const fetchTags = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await apiGet('/tags')
-      setTags(data)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleAddTag = async (e) => {
     e.preventDefault()
@@ -44,7 +27,7 @@ function TagsManagement() {
       await apiPost('/tags', formData)
       setFormData({ name: '', color: '#4a9eff' })
       setShowAddForm(false)
-      fetchTags()
+      await fetchTags()
     } catch (err) {
       setError(err.message)
     }
@@ -62,7 +45,7 @@ function TagsManagement() {
       await apiPut(`/tags/${editingTag.id}`, formData)
       setEditingTag(null)
       setFormData({ name: '', color: '#4a9eff' })
-      fetchTags()
+      await fetchTags()
     } catch (err) {
       setError(err.message)
     }
@@ -73,7 +56,7 @@ function TagsManagement() {
     try {
       setError(null)
       await apiDelete(`/tags/${id}`)
-      fetchTags()
+      await fetchTags()
     } catch (err) {
       setError(err.message)
     }
@@ -100,9 +83,9 @@ function TagsManagement() {
         </div>
       </div>
 
-      {error && (
+      {(error || tagsError) && (
         <div className="error-message">
-          {error}
+          {error || tagsError}
         </div>
       )}
 

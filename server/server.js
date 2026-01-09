@@ -1,17 +1,80 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { dbFunctions } from './database.js';
 import { checkHost } from './hostChecker.js';
 import { scanNetwork } from './networkScanner.js';
 import { getNetworkCIDR, isIPInNetwork, calculateIPRange } from './networkUtils.js';
 import { hashPassword, comparePassword, generateToken, verifyToken } from './auth.js';
 import { requireAuth } from './middleware.js';
+import logger from './logger.js';
+import { errorHandler, notFoundHandler, asyncHandler, ApiError } from './errorHandler.js';
+import cache from './cache.js';
+import {
+  isValidIP,
+  validateHostName,
+  validateDescription,
+  validateURL,
+  validateNetworkID,
+  validateSubnet,
+  validateTagName,
+  validateColor
+} from './validators.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Configure CORS
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : isDevelopment 
+    ? ['http://localhost:5173', 'http://localhost:3000'] 
+    : ['http://localhost:5173', 'http://localhost:3000'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // In development mode, allow all origins for easier testing
+    if (isDevelopment) {
+      return callback(null, true);
+    }
+    
+    // In production, check against allowed origins
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      logger.warn(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
+// Compression middleware
+app.use(compression());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+  message: 'تم تجاوز الحد الأقصى لعدد الطلبات، يرجى المحاولة لاحقاً',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/', limiter);
+
+// Body parser
 app.use(express.json({ limit: '10mb' })); // Increase data size limit
 
 // Root route - redirect to frontend
@@ -26,33 +89,30 @@ app.get('/', (req, res) => {
 // ========== Authentication Routes ==========
 
 // Login endpoint
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { password } = req.body;
-    
-    if (!password) {
-      return res.status(400).json({ error: 'كلمة المرور مطلوبة' });
-    }
-    
-    // Verify password against all admins
-    const admin = dbFunctions.verifyAdminPasswordOnly(password, comparePassword);
-    if (!admin) {
-      return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
-    }
-    
-    // Generate token
-    const token = generateToken(admin.username);
-    
-    res.json({
-      token,
-      username: admin.username,
-      message: 'تم تسجيل الدخول بنجاح'
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'حدث خطأ أثناء تسجيل الدخول' });
+app.post('/api/auth/login', asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  
+  if (!password) {
+    throw new ApiError(400, 'كلمة المرور مطلوبة');
   }
-});
+  
+  // Verify password against all admins
+  const admin = dbFunctions.verifyAdminPasswordOnly(password, comparePassword);
+  if (!admin) {
+    logger.warn('Failed login attempt', { ip: req.ip });
+    throw new ApiError(401, 'كلمة المرور غير صحيحة');
+  }
+  
+  // Generate token
+  const token = generateToken(admin.username);
+  logger.info('User logged in', { username: admin.username, ip: req.ip });
+  
+  res.json({
+    token,
+    username: admin.username,
+    message: 'تم تسجيل الدخول بنجاح'
+  });
+}));
 
 // Check auth status
 app.get('/api/auth/status', (req, res) => {
@@ -126,7 +186,7 @@ app.post('/api/hosts/:id/check-status', requireAuth, async (req, res) => {
     try {
       checkResult = await checkHost(host.ip, host.url || null);
     } catch (error) {
-      console.error('Error checking host status:', error);
+      logger.error('Error checking host status:', { error: error.message, hostId: id });
       checkResult = { status: 'offline', latency: null, packetLoss: 100 };
     }
 
@@ -178,92 +238,124 @@ app.get('/api/hosts/:id', (req, res) => {
 });
 
 // Add new host
-app.post('/api/hosts', requireAuth, async (req, res) => {
-  try {
-    const { name, ip, description, url, tagIds } = req.body;
-    
-    if (!name || !ip) {
-      return res.status(400).json({ error: 'اسم الجهاز وعنوان IP مطلوبان' });
-    }
-
-    // Check for existing host with same IP
-    const existingHosts = dbFunctions.getAllHosts();
-    const existingHost = existingHosts.find(h => h.ip === ip);
-    if (existingHost) {
-      return res.status(400).json({ error: `الجهاز موجود مسبقاً: ${existingHost.name} (${ip})` });
-    }
-
-    // Automatically check host status
-    let checkResult = { status: 'offline', latency: null, packetLoss: 100 };
-    try {
-      checkResult = await checkHost(ip, url || null);
-    } catch (error) {
-      console.error('Error checking host status:', error);
-      // On error, set offline as default status
-      checkResult = { status: 'offline', latency: null, packetLoss: 100 };
-    }
-
-    const newHost = {
-      name,
-      ip,
-      description: description || '',
-      url: url || '',
-      tagIds: tagIds || [],
-      status: checkResult.status || 'offline',
-      createdAt: new Date().toISOString(),
-      lastChecked: new Date().toISOString(),
-      pingLatency: checkResult.latency || null,
-      packetLoss: checkResult.packetLoss || null
-    };
-
-    const host = dbFunctions.addHost(newHost);
-    res.status(201).json(host);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+app.post('/api/hosts', requireAuth, asyncHandler(async (req, res) => {
+  const { name, ip, description, url, tagIds } = req.body;
+  
+  // Validate host name
+  const nameValidation = validateHostName(name);
+  if (!nameValidation.valid) {
+    throw new ApiError(400, nameValidation.error);
   }
-});
+  
+  // Validate IP
+  if (!ip || !isValidIP(ip)) {
+    throw new ApiError(400, 'عنوان IP غير صحيح');
+  }
+  
+  // Validate description
+  const descValidation = validateDescription(description);
+  if (!descValidation.valid) {
+    throw new ApiError(400, descValidation.error);
+  }
+  
+  // Validate URL
+  const urlValidation = validateURL(url);
+  if (!urlValidation.valid) {
+    throw new ApiError(400, urlValidation.error);
+  }
+
+  // Check for existing host with same IP
+  const existingHosts = dbFunctions.getAllHosts();
+  const existingHost = existingHosts.find(h => h.ip === ip.trim());
+  if (existingHost) {
+    throw new ApiError(400, `الجهاز موجود مسبقاً: ${existingHost.name} (${ip})`);
+  }
+
+  // Automatically check host status
+  let checkResult = { status: 'offline', latency: null, packetLoss: 100 };
+  try {
+    checkResult = await checkHost(ip.trim(), urlValidation.sanitized || null);
+  } catch (error) {
+    logger.error('Error checking host status:', { error: error.message, ip });
+    // On error, set offline as default status
+    checkResult = { status: 'offline', latency: null, packetLoss: 100 };
+  }
+
+  const newHost = {
+    name: nameValidation.sanitized,
+    ip: ip.trim(),
+    description: descValidation.sanitized,
+    url: urlValidation.sanitized,
+    tagIds: Array.isArray(tagIds) ? tagIds : [],
+    status: checkResult.status || 'offline',
+    createdAt: new Date().toISOString(),
+    lastChecked: new Date().toISOString(),
+    pingLatency: checkResult.latency || null,
+    packetLoss: checkResult.packetLoss || null
+  };
+
+  const host = dbFunctions.addHost(newHost);
+  cache.delete('stats'); // Invalidate stats cache
+  logger.info('Host added', { hostId: host.id, ip: host.ip, name: host.name });
+  res.status(201).json(host);
+}));
 
 // Update host
-app.put('/api/hosts/:id', requireAuth, (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { name, ip, description, url, status, tagIds } = req.body;
-    console.log('Received update request:', { id, tagIds, body: req.body });
+app.put('/api/hosts/:id', requireAuth, asyncHandler((req, res) => {
+  const id = parseInt(req.params.id);
+  const { name, ip, description, url, status, tagIds } = req.body;
 
-    if (!name || !ip) {
-      return res.status(400).json({ error: 'اسم المضيف وعنوان IP مطلوبان' });
-    }
-
-    // Get current host to preserve existing values
-    const existingHost = dbFunctions.getHostById(id);
-    if (!existingHost) {
-      return res.status(404).json({ error: 'المضيف غير موجود' });
-    }
-
-    // Ensure tagIds is an array
-    const tagIdsArray = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds] : []);
-
-    const updatedHost = dbFunctions.updateHost(id, {
-      name,
-      ip,
-      description: description || '',
-      url: url || '',
-      tagIds: tagIdsArray,
-      status: status || 'online',
-      lastChecked: req.body.lastChecked !== undefined ? req.body.lastChecked : existingHost.lastChecked || null,
-      pingLatency: req.body.pingLatency !== undefined ? req.body.pingLatency : existingHost.pingLatency || null,
-      packetLoss: req.body.packetLoss !== undefined ? req.body.packetLoss : existingHost.packetLoss || null
-    });
-
-    if (!updatedHost) {
-      return res.status(404).json({ error: 'المضيف غير موجود' });
-    }
-
-    res.json(updatedHost);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  // Validate host name
+  const nameValidation = validateHostName(name);
+  if (!nameValidation.valid) {
+    throw new ApiError(400, nameValidation.error);
   }
-});
+  
+  // Validate IP
+  if (!ip || !isValidIP(ip)) {
+    throw new ApiError(400, 'عنوان IP غير صحيح');
+  }
+  
+  // Validate description
+  const descValidation = validateDescription(description);
+  if (!descValidation.valid) {
+    throw new ApiError(400, descValidation.error);
+  }
+  
+  // Validate URL
+  const urlValidation = validateURL(url);
+  if (!urlValidation.valid) {
+    throw new ApiError(400, urlValidation.error);
+  }
+
+  // Get current host to preserve existing values
+  const existingHost = dbFunctions.getHostById(id);
+  if (!existingHost) {
+    throw new ApiError(404, 'المضيف غير موجود');
+  }
+
+  // Ensure tagIds is an array
+  const tagIdsArray = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds] : []);
+
+  const updatedHost = dbFunctions.updateHost(id, {
+    name: nameValidation.sanitized,
+    ip: ip.trim(),
+    description: descValidation.sanitized,
+    url: urlValidation.sanitized,
+    tagIds: tagIdsArray,
+    status: status || 'online',
+    lastChecked: req.body.lastChecked !== undefined ? req.body.lastChecked : existingHost.lastChecked || null,
+    pingLatency: req.body.pingLatency !== undefined ? req.body.pingLatency : existingHost.pingLatency || null,
+    packetLoss: req.body.packetLoss !== undefined ? req.body.packetLoss : existingHost.packetLoss || null
+  });
+
+  if (!updatedHost) {
+    throw new ApiError(404, 'المضيف غير موجود');
+  }
+
+  logger.info('Host updated', { hostId: id, ip: updatedHost.ip });
+  res.json(updatedHost);
+}));
 
 // Delete host
 app.delete('/api/hosts/:id', requireAuth, (req, res) => {
@@ -284,10 +376,17 @@ app.delete('/api/hosts/:id', requireAuth, (req, res) => {
 
 // ========== Tags API ==========
 
-// Get all tags
+// Get all tags (with caching)
 app.get('/api/tags', (req, res) => {
   try {
-    const tags = dbFunctions.getAllTags();
+    const cacheKey = 'tags';
+    let tags = cache.get(cacheKey);
+    
+    if (!tags) {
+      tags = dbFunctions.getAllTags();
+      cache.set(cacheKey, tags, 30000); // Cache for 30 seconds
+    }
+    
     res.json(tags);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -308,64 +407,76 @@ app.get('/api/tags/:id', (req, res) => {
 });
 
 // Add new tag
-app.post('/api/tags', requireAuth, (req, res) => {
-  try {
-    const { name, color } = req.body;
-    
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'اسم الوسم مطلوب' });
-    }
-
-    // Check for existing tag with same name
-    const existingTag = dbFunctions.getTagByName(name.trim());
-    if (existingTag) {
-      return res.status(400).json({ error: 'الوسم موجود بالفعل' });
-    }
-
-    const newTag = {
-      name: name.trim(),
-      color: color || '#4a9eff',
-      createdAt: new Date().toISOString()
-    };
-
-    const tag = dbFunctions.addTag(newTag);
-    res.status(201).json(tag);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+app.post('/api/tags', requireAuth, asyncHandler((req, res) => {
+  const { name, color } = req.body;
+  
+  // Validate tag name
+  const nameValidation = validateTagName(name);
+  if (!nameValidation.valid) {
+    throw new ApiError(400, nameValidation.error);
   }
-});
+  
+  // Validate color
+  const colorValidation = validateColor(color || '#4a9eff');
+  if (!colorValidation.valid) {
+    throw new ApiError(400, colorValidation.error);
+  }
+
+  // Check for existing tag with same name
+  const existingTag = dbFunctions.getTagByName(nameValidation.sanitized);
+  if (existingTag) {
+    throw new ApiError(400, 'الوسم موجود بالفعل');
+  }
+
+  const newTag = {
+    name: nameValidation.sanitized,
+    color: color || '#4a9eff',
+    createdAt: new Date().toISOString()
+  };
+
+  const tag = dbFunctions.addTag(newTag);
+  cache.delete('tags'); // Invalidate tags cache
+  logger.info('Tag added', { tagId: tag.id, name: tag.name });
+  res.status(201).json(tag);
+}));
 
 // Update tag
-app.put('/api/tags/:id', requireAuth, (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { name, color } = req.body;
+app.put('/api/tags/:id', requireAuth, asyncHandler((req, res) => {
+  const id = parseInt(req.params.id);
+  const { name, color } = req.body;
 
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'اسم الوسم مطلوب' });
-    }
-
-    const existingTag = dbFunctions.getTagById(id);
-    if (!existingTag) {
-      return res.status(404).json({ error: 'الوسم غير موجود' });
-    }
-
-    // Check for another tag with same name
-    const tagWithSameName = dbFunctions.getTagByName(name.trim());
-    if (tagWithSameName && tagWithSameName.id !== id) {
-      return res.status(400).json({ error: 'الوسم موجود بالفعل' });
-    }
-
-    const updatedTag = dbFunctions.updateTag(id, {
-      name: name.trim(),
-      color: color || '#4a9eff'
-    });
-
-    res.json(updatedTag);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  // Validate tag name
+  const nameValidation = validateTagName(name);
+  if (!nameValidation.valid) {
+    throw new ApiError(400, nameValidation.error);
   }
-});
+  
+  // Validate color
+  const colorValidation = validateColor(color || '#4a9eff');
+  if (!colorValidation.valid) {
+    throw new ApiError(400, colorValidation.error);
+  }
+
+  const existingTag = dbFunctions.getTagById(id);
+  if (!existingTag) {
+    throw new ApiError(404, 'الوسم غير موجود');
+  }
+
+  // Check for another tag with same name
+  const tagWithSameName = dbFunctions.getTagByName(nameValidation.sanitized);
+  if (tagWithSameName && tagWithSameName.id !== id) {
+    throw new ApiError(400, 'الوسم موجود بالفعل');
+  }
+
+  const updatedTag = dbFunctions.updateTag(id, {
+    name: nameValidation.sanitized,
+    color: color || '#4a9eff'
+  });
+
+  cache.delete('tags'); // Invalidate tags cache
+  logger.info('Tag updated', { tagId: id, name: updatedTag.name });
+  res.json(updatedTag);
+}));
 
 // Delete tag
 app.delete('/api/tags/:id', requireAuth, (req, res) => {
@@ -377,6 +488,8 @@ app.delete('/api/tags/:id', requireAuth, (req, res) => {
       return res.status(404).json({ error: 'الوسم غير موجود' });
     }
 
+    cache.delete('tags'); // Invalidate tags cache
+    cache.delete('stats'); // Invalidate stats cache
     res.json({ message: 'تم حذف الوسم بنجاح' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -437,7 +550,7 @@ app.post('/api/import', requireAuth, async (req, res) => {
           });
           imported++;
         } catch (e) {
-          console.error('Error importing host:', e);
+          logger.error('Error importing host:', { error: e.message, host: host.ip });
         }
       }
     }
@@ -448,47 +561,56 @@ app.post('/api/import', requireAuth, async (req, res) => {
   }
 });
 
-// Statistics
+// Statistics (with caching)
 app.get('/api/stats', (req, res) => {
   try {
-    const networks = dbFunctions.getAllNetworks();
-    const allHosts = dbFunctions.getAllHosts();
+    const cacheKey = 'stats';
+    let stats = cache.get(cacheKey);
     
-    // Calculate general statistics
-    const totalNetworks = networks.length;
-    const totalHosts = allHosts.length;
-    const onlineHosts = allHosts.filter(h => h.status === 'online').length;
-    const offlineHosts = allHosts.filter(h => h.status === 'offline').length;
-    
-    // Calculate statistics for each network
-    const networksWithStats = networks.map(network => {
-      // Filter hosts whose IP is within network range
-      const networkHosts = allHosts.filter(host => 
-        isIPInNetwork(host.ip, network.network_id, network.subnet)
-      );
+    if (!stats) {
+      const networks = dbFunctions.getAllNetworks();
+      const allHosts = dbFunctions.getAllHosts();
       
-      const networkOnlineHosts = networkHosts.filter(h => h.status === 'online').length;
-      const networkOfflineHosts = networkHosts.filter(h => h.status === 'offline').length;
+      // Calculate general statistics
+      const totalNetworks = networks.length;
+      const totalHosts = allHosts.length;
+      const onlineHosts = allHosts.filter(h => h.status === 'online').length;
+      const offlineHosts = allHosts.filter(h => h.status === 'offline').length;
       
-      return {
-        networkId: network.id,
-        networkName: network.name,
-        networkCIDR: `${network.network_id}/${network.subnet}`,
-        totalHosts: networkHosts.length,
-        onlineHosts: networkOnlineHosts,
-        offlineHosts: networkOfflineHosts
+      // Calculate statistics for each network
+      const networksWithStats = networks.map(network => {
+        // Filter hosts whose IP is within network range
+        const networkHosts = allHosts.filter(host => 
+          isIPInNetwork(host.ip, network.network_id, network.subnet)
+        );
+        
+        const networkOnlineHosts = networkHosts.filter(h => h.status === 'online').length;
+        const networkOfflineHosts = networkHosts.filter(h => h.status === 'offline').length;
+        
+        return {
+          networkId: network.id,
+          networkName: network.name,
+          networkCIDR: `${network.network_id}/${network.subnet}`,
+          totalHosts: networkHosts.length,
+          onlineHosts: networkOnlineHosts,
+          offlineHosts: networkOfflineHosts
+        };
+      });
+      
+      stats = {
+        totalNetworks,
+        totalHosts,
+        onlineHosts,
+        offlineHosts,
+        networksWithStats
       };
-    });
+      
+      cache.set(cacheKey, stats, 10000); // Cache for 10 seconds
+    }
     
-    res.json({
-      totalNetworks,
-      totalHosts,
-      onlineHosts,
-      offlineHosts,
-      networksWithStats
-    });
+    res.json(stats);
   } catch (error) {
-    console.error('Error in GET /api/stats:', error);
+    logger.error('Error in GET /api/stats:', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -517,10 +639,17 @@ app.post('/api/network/scan', requireAuth, async (req, res) => {
 
 // ========== Networks API ==========
 
-// Get all networks
+// Get all networks (with caching)
 app.get('/api/networks', (req, res) => {
   try {
-    const networks = dbFunctions.getAllNetworks();
+    const cacheKey = 'networks';
+    let networks = cache.get(cacheKey);
+    
+    if (!networks) {
+      networks = dbFunctions.getAllNetworks();
+      cache.set(cacheKey, networks, 30000); // Cache for 30 seconds
+    }
+    
     res.json(networks);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -541,32 +670,44 @@ app.get('/api/networks/:id', (req, res) => {
 });
 
 // Add new network
-app.post('/api/networks', requireAuth, (req, res) => {
-  try {
-    const { name, networkId, subnet } = req.body;
-    
-    if (!name || !networkId || !subnet) {
-      return res.status(400).json({ error: 'اسم الشبكة و Network ID و Subnet مطلوبون' });
-    }
-
-    if (subnet < 0 || subnet > 32) {
-      return res.status(400).json({ error: 'Subnet يجب أن يكون بين 0 و 32' });
-    }
-
-    const network = {
-      name: name.trim(),
-      networkId: networkId.trim(),
-      subnet: parseInt(subnet),
-      createdAt: new Date().toISOString()
-    };
-
-    const newNetwork = dbFunctions.addNetwork(network);
-    res.status(201).json(newNetwork);
-  } catch (error) {
-    console.error('Error in POST /api/networks:', error);
-    res.status(500).json({ error: error.message });
+app.post('/api/networks', requireAuth, asyncHandler((req, res) => {
+  const { name, networkId, subnet } = req.body;
+  
+  if (!name || !networkId || subnet === undefined) {
+    throw new ApiError(400, 'اسم الشبكة و Network ID و Subnet مطلوبون');
   }
-});
+
+  // Validate network ID
+  const networkIdValidation = validateNetworkID(networkId);
+  if (!networkIdValidation.valid) {
+    throw new ApiError(400, networkIdValidation.error);
+  }
+
+  // Validate subnet
+  const subnetValidation = validateSubnet(subnet);
+  if (!subnetValidation.valid) {
+    throw new ApiError(400, subnetValidation.error);
+  }
+
+  // Validate and sanitize name
+  const nameValidation = validateHostName(name); // Reuse host name validation
+  if (!nameValidation.valid) {
+    throw new ApiError(400, 'اسم الشبكة غير صحيح');
+  }
+
+  const network = {
+    name: nameValidation.sanitized,
+    networkId: networkId.trim(),
+    subnet: parseInt(subnet),
+    createdAt: new Date().toISOString()
+  };
+
+  const newNetwork = dbFunctions.addNetwork(network);
+  cache.delete('networks'); // Invalidate networks cache
+  cache.delete('stats'); // Invalidate stats cache
+  logger.info('Network added', { networkId: newNetwork.id, name: newNetwork.name });
+  res.status(201).json(newNetwork);
+}));
 
 // Update network
 app.put('/api/networks/:id', requireAuth, (req, res) => {
@@ -624,7 +765,7 @@ app.delete('/api/networks/:id/hosts', requireAuth, (req, res) => {
       deletedCount 
     });
   } catch (error) {
-    console.error('Error in DELETE /api/networks/:id/hosts:', error);
+    logger.error('Error in DELETE /api/networks/:id/hosts:', { error: error.message, networkId: id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -659,7 +800,7 @@ app.delete('/api/networks/:id', requireAuth, (req, res) => {
       deletedHostsCount 
     });
   } catch (error) {
-    console.error('Error in DELETE /api/networks/:id:', error);
+    logger.error('Error in DELETE /api/networks/:id:', { error: error.message, networkId: id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -700,11 +841,11 @@ app.post('/api/networks/:id/scan', requireAuth, async (req, res) => {
 
     // Calculate CIDR notation
     const cidr = getNetworkCIDR(network.network_id, network.subnet);
-    console.log(`[Scan] Starting scan for network ${id}: ${cidr}, timeout: ${scanTimeout}s, addHosts: ${shouldAddHosts}`);
+    logger.info(`[Scan] Starting scan for network ${id}: ${cidr}, timeout: ${scanTimeout}s, addHosts: ${shouldAddHosts}`);
     
     // Scan network
     const activeHosts = await scanNetwork(cidr, scanTimeout);
-    console.log(`[Scan] Found ${activeHosts.length} active hosts`);
+    logger.info(`[Scan] Found ${activeHosts.length} active hosts`);
 
     // Update last_scanned
     dbFunctions.updateNetwork(id, {
@@ -740,11 +881,11 @@ app.post('/api/networks/:id/scan', requireAuth, async (req, res) => {
             addedCount++;
             existingIPs.add(host.ip); // Update list to avoid duplicates
           } catch (error) {
-            console.error(`Error adding host ${host.ip}:`, error);
+            logger.error(`Error adding host ${host.ip}:`, { error: error.message, ip: host.ip });
           }
         }
       }
-      console.log(`[Scan] Added ${addedCount} new hosts to database`);
+      logger.info(`[Scan] Added ${addedCount} new hosts to database`);
     }
 
     // Update status for all hosts associated with the network
@@ -776,10 +917,10 @@ app.post('/api/networks/:id/scan', requireAuth, async (req, res) => {
         });
         updatedCount++;
       } catch (error) {
-        console.error(`Error updating host ${host.ip} status:`, error);
+        logger.error(`Error updating host ${host.ip} status:`, { error: error.message, ip: host.ip });
       }
     }
-    console.log(`[Scan] Updated status for ${updatedCount} existing hosts`);
+    logger.info(`[Scan] Updated status for ${updatedCount} existing hosts`);
 
     res.json({
       success: true,
@@ -814,7 +955,7 @@ app.delete('/api/data/all', requireAuth, (req, res) => {
       message: 'تم حذف جميع البيانات بنجاح' 
     });
   } catch (error) {
-    console.error('Error in DELETE /api/data/all:', error);
+    logger.error('Error in DELETE /api/data/all:', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -827,7 +968,7 @@ app.get('/api/favorites', (req, res) => {
     const favorites = dbFunctions.getAllFavorites();
     res.json(favorites);
   } catch (error) {
-    console.error('Error in GET /api/favorites:', error);
+    logger.error('Error in GET /api/favorites:', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -842,7 +983,7 @@ app.get('/api/favorites/:id', (req, res) => {
     }
     res.json(favorite);
   } catch (error) {
-    console.error('Error in GET /api/favorites/:id:', error);
+    logger.error('Error in GET /api/favorites/:id:', { error: error.message, favoriteId: id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -873,7 +1014,7 @@ app.post('/api/favorites', requireAuth, (req, res) => {
     
     res.status(201).json(favorite);
   } catch (error) {
-    console.error('Error in POST /api/favorites:', error);
+    logger.error('Error in POST /api/favorites:', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -899,7 +1040,7 @@ app.put('/api/favorites/:id', requireAuth, (req, res) => {
     
     res.json(updated);
   } catch (error) {
-    console.error('Error in PUT /api/favorites/:id:', error);
+    logger.error('Error in PUT /api/favorites/:id:', { error: error.message, favoriteId: id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -916,7 +1057,7 @@ app.delete('/api/favorites/:id', requireAuth, (req, res) => {
     dbFunctions.deleteFavorite(id);
     res.json({ success: true, message: 'تم حذف المفضلة بنجاح' });
   } catch (error) {
-    console.error('Error in DELETE /api/favorites/:id:', error);
+    logger.error('Error in DELETE /api/favorites/:id:', { error: error.message, favoriteId: id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -929,7 +1070,7 @@ app.get('/api/groups', (req, res) => {
     const groups = dbFunctions.getAllGroups();
     res.json(groups);
   } catch (error) {
-    console.error('Error in GET /api/groups:', error);
+    logger.error('Error in GET /api/groups:', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -944,7 +1085,7 @@ app.get('/api/groups/:id', (req, res) => {
     }
     res.json(group);
   } catch (error) {
-    console.error('Error in GET /api/groups/:id:', error);
+    logger.error('Error in GET /api/groups/:id:', { error: error.message, groupId: id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -966,7 +1107,7 @@ app.post('/api/groups', requireAuth, (req, res) => {
     
     res.status(201).json(group);
   } catch (error) {
-    console.error('Error in POST /api/groups:', error);
+    logger.error('Error in POST /api/groups:', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -994,7 +1135,7 @@ app.put('/api/groups/:id', requireAuth, (req, res) => {
     
     res.json(updated);
   } catch (error) {
-    console.error('Error in PUT /api/groups/:id:', error);
+    logger.error('Error in PUT /api/groups/:id:', { error: error.message, groupId: id });
     res.status(500).json({ error: error.message });
   }
 });
@@ -1011,22 +1152,45 @@ app.delete('/api/groups/:id', requireAuth, (req, res) => {
     dbFunctions.deleteGroup(id);
     res.json({ success: true, message: 'تم حذف المجموعة بنجاح' });
   } catch (error) {
-    console.error('Error in DELETE /api/groups/:id:', error);
+    logger.error('Error in DELETE /api/groups/:id:', { error: error.message, groupId: id });
     res.status(500).json({ error: error.message });
   }
 });
+
+// Serve static files from dist (for production)
+if (process.env.NODE_ENV === 'production') {
+  const distPath = join(__dirname, '..', 'dist');
+  app.use(express.static(distPath));
+  
+  // Serve index.html for all non-API routes (SPA routing)
+  app.get('*', (req, res, next) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(join(distPath, 'index.html'));
+    } else {
+      next();
+    }
+  });
+}
 
 // Handle Chrome DevTools .well-known requests (to avoid 404 errors)
 app.get('/.well-known/*', (req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+// 404 handler (must be before error handler)
+app.use(notFoundHandler);
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 API available on all interfaces: http://0.0.0.0:${PORT}/api`);
-  console.log(`🌐 Access from local network at: http://<SERVER_IP>:${PORT}/api`);
+  logger.info(`🚀 Server running on port ${PORT}`);
+  logger.info(`📡 API available on all interfaces: http://0.0.0.0:${PORT}/api`);
+  logger.info(`🌐 Access from local network at: http://<SERVER_IP>:${PORT}/api`);
+  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
 }).on('error', (err) => {
-  console.error('Failed to start server:', err);
+  logger.error('Failed to start server:', err);
+  process.exit(1);
 });
 

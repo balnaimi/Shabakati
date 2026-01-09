@@ -5,6 +5,7 @@ import { apiGet, apiPost, apiDelete, apiPut } from '../utils/api'
 import { calculateIPRange, getLastOctet } from '../utils/networkUtils'
 import AuthButton from '../components/AuthButton'
 import { useAuth } from '../contexts/AuthContext'
+import { useTags } from '../hooks/useTags'
 
 function NetworkView() {
   const navigate = useNavigate()
@@ -21,7 +22,7 @@ function NetworkView() {
   const [tagFilter, setTagFilter] = useState(null)
   const [sortBy, setSortBy] = useState('name')
   const [sortOrder, setSortOrder] = useState('asc')
-  const [availableTags, setAvailableTags] = useState([])
+  const { tags: availableTags } = useTags()
   const [editingHostId, setEditingHostId] = useState(null)
   const [editFormData, setEditFormData] = useState({ tagIds: [] })
   const [activeTab, setActiveTab] = useState('devices') // 'devices' or 'ips'
@@ -30,7 +31,6 @@ function NetworkView() {
   useEffect(() => {
     fetchNetwork()
     fetchHosts()
-    fetchTags()
     fetchFavorites()
   }, [id])
 
@@ -70,17 +70,6 @@ function NetworkView() {
     }
   }
 
-  const fetchTags = async () => {
-    try {
-      const response = await fetch(`${API_URL}/tags`)
-      if (response.ok) {
-        const tags = await response.json()
-        setAvailableTags(tags)
-      }
-    } catch (err) {
-      console.error('Error fetching tags:', err)
-    }
-  }
 
   const fetchNetwork = async () => {
     try {
