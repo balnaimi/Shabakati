@@ -80,9 +80,18 @@ app.use(express.json({ limit: '10mb' })); // Increase data size limit
 
 // Root route - redirect to frontend
 app.get('/', (req, res) => {
+  // In production, serve the frontend directly
+  if (process.env.NODE_ENV === 'production') {
+    const distPath = join(__dirname, '..', 'dist');
+    return res.sendFile(join(distPath, 'index.html'));
+  }
+  
+  // In development, show API info with dynamic URLs
+  const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+  
   res.status(200).json({
-    message: 'This is the API server. Please access the frontend at http://localhost:5173',
-    api: 'http://localhost:3001/api',
+    message: `This is the API server. Please access the frontend at http://localhost:5173`,
+    api: `${baseUrl}/api`,
     frontend: 'http://localhost:5173'
   });
 });
