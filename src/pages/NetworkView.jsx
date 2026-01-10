@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiPost, apiDelete, apiPut } from '../utils/api'
 import { calculateIPRange, getLastOctet } from '../utils/networkUtils'
-import AuthButton from '../components/AuthButton'
 import { useAuth } from '../contexts/AuthContext'
 import { useTags } from '../hooks/useTags'
 
@@ -302,15 +301,9 @@ function NetworkView() {
     <div className="container">
       <div className="header">
         <h1>{network.name}</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
-          <button onClick={() => navigate('/hosts')}>لوحة التحكم</button>
-          <button onClick={() => navigate('/networks')}>إدارة الشبكات</button>
-          <AuthButton />
-        </div>
       </div>
 
-      <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+      <div className="card" style={{ marginBottom: '20px' }}>
         <p><strong>Network ID:</strong> {network.network_id}</p>
         <p><strong>Subnet:</strong> /{network.subnet}</p>
         <p><strong>النطاق:</strong> {range.start} - {range.end} ({range.count} عنوان)</p>
@@ -331,7 +324,7 @@ function NetworkView() {
             <button onClick={handleScan} disabled={scanning}>
               {scanning ? 'جاري الفحص...' : 'فحص الشبكة'}
             </button>
-            <button onClick={handleClearNetworkHosts} style={{ backgroundColor: '#dc3545', color: 'white' }}>
+            <button onClick={handleClearNetworkHosts} className="btn-danger">
               حذف أجهزة الشبكة
             </button>
           </>

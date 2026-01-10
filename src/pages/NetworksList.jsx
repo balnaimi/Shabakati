@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiDelete, apiPost, apiPut } from '../utils/api'
-import AuthButton from '../components/AuthButton'
 import { useAuth } from '../contexts/AuthContext'
 
 function NetworksList() {
@@ -61,11 +60,6 @@ function NetworksList() {
     <div className="container">
       <div className="header">
         <h1>إدارة الشبكات</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => navigate('/hosts')}>الرجوع</button>
-          <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
-          <AuthButton />
-        </div>
       </div>
 
       {error && (
@@ -119,17 +113,17 @@ function NetworksList() {
                 <h3>{network.name}</h3>
                 <p>{network.network_id}/{network.subnet}</p>
                 {network.last_scanned && (
-                  <p style={{ fontSize: '12px', color: '#666' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                     آخر فحص: {new Date(network.last_scanned).toLocaleString('ar-SA')}
                   </p>
                 )}
               </div>
               <div className="tag-actions">
-                <button onClick={() => navigate(`/networks/${network.id}`)}>عرض</button>
+                <button onClick={() => navigate(`/networks/${network.id}`)} className="btn-primary">عرض</button>
                 {isAuthenticated && (
                   <>
-                    <button onClick={() => handleStartEdit(network)}>تعديل</button>
-                    <button onClick={() => handleDeleteNetwork(network.id)}>حذف</button>
+                    <button onClick={() => handleStartEdit(network)} className="btn-warning">تعديل</button>
+                    <button onClick={() => handleDeleteNetwork(network.id)} className="btn-danger">حذف</button>
                   </>
                 )}
               </div>
@@ -231,7 +225,7 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
       )}
 
       <div className="form-actions">
-        <button type="submit" disabled={submitting}>
+        <button type="submit" disabled={submitting} className="btn-primary">
           {submitting ? 'جاري الحفظ...' : (networkId ? 'حفظ التعديلات' : 'إضافة')}
         </button>
         <button type="button" onClick={onClose}>

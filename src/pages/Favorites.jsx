@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
-import AuthButton from '../components/AuthButton'
 import { useAuth } from '../contexts/AuthContext'
 
 function Favorites() {
@@ -190,19 +189,17 @@ function Favorites() {
     <div className="container">
       <div className="header">
         <h1>شبكتي</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => navigate('/hosts')}>لوحة التحكم</button>
+        <div className="controls">
           {isAuthenticated && (
             <>
-              <button onClick={() => setShowAddModal(true)} style={{ backgroundColor: '#28a745', color: 'white' }}>
+              <button onClick={() => setShowAddModal(true)} className="btn-success">
                 إضافة جهاز
               </button>
-              <button onClick={() => setShowGroupModal(true)} style={{ backgroundColor: '#4a9eff', color: 'white' }}>
+              <button onClick={() => setShowGroupModal(true)} className="btn-primary">
                 إدارة المجموعات
               </button>
             </>
           )}
-          <AuthButton />
         </div>
       </div>
 
@@ -230,16 +227,10 @@ function Favorites() {
               <div key={groupId} style={{ marginBottom: '30px' }}>
                 <div
                   onClick={() => toggleGroup(groupId)}
+                  className="group-header"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '15px',
                     backgroundColor: groupColor,
-                    color: 'white',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    marginBottom: '10px'
+                    color: 'white'
                   }}
                 >
                   <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{groupName}</span>
@@ -249,67 +240,43 @@ function Favorites() {
                 </div>
 
                 {!isCollapsed && (
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                    gap: '15px'
-                  }}>
+                  <div className="group-content">
                     {groupFavorites.map(favorite => (
                       <div
                         key={favorite.id}
-                        style={{
-                          border: '1px solid #ddd',
-                          borderRadius: '8px',
-                          padding: '15px',
-                          backgroundColor: 'white',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                          transition: 'transform 0.2s',
-                          cursor: 'pointer'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                        className="favorite-card"
                         onClick={() => handleOpenUrl(favorite)}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
                           <div>
-                            <h3 style={{ margin: 0, marginBottom: '5px' }}>{favorite.customName || favorite.host.name}</h3>
-                            <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>{favorite.host.ip}</p>
+                            <h3 style={{ margin: 0, marginBottom: '5px', color: 'var(--text-primary)' }}>{favorite.customName || favorite.host.name}</h3>
+                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>{favorite.host.ip}</p>
                           </div>
-                          <span style={{
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            backgroundColor: favorite.host.status === 'online' ? '#d4edda' : '#f8d7da',
-                            color: favorite.host.status === 'online' ? '#155724' : '#721c24'
-                          }}>
+                          <span className={`status-badge ${favorite.host.status === 'online' ? 'status-online' : 'status-offline'}`}>
                             {favorite.host.status === 'online' ? 'متصل' : 'غير متصل'}
                           </span>
                         </div>
 
                         {favorite.description && (
-                          <p style={{ margin: '5px 0', fontSize: '13px', color: '#555', fontStyle: 'italic' }}>
+                          <p style={{ margin: '5px 0', fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
                             {favorite.description}
                           </p>
                         )}
 
                         {favorite.url && (
-                          <p style={{ margin: '5px 0', fontSize: '12px', color: '#4a9eff' }}>
+                          <p style={{ margin: '5px 0', fontSize: '12px', color: 'var(--primary)' }}>
                             🔗 {favorite.url}
                           </p>
                         )}
 
                         {favorite.host.tags && favorite.host.tags.length > 0 && (
-                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '10px' }}>
+                          <div className="tags-inline" style={{ marginTop: '10px' }}>
                             {favorite.host.tags.map(tag => (
                               <span
                                 key={typeof tag === 'object' ? tag.id : tag}
+                                className="tag-badge"
                                 style={{
-                                  padding: '2px 6px',
-                                  backgroundColor: typeof tag === 'object' ? (tag.color || '#4a9eff') : '#4a9eff',
-                                  color: 'white',
-                                  borderRadius: '4px',
-                                  fontSize: '11px'
+                                  backgroundColor: typeof tag === 'object' ? (tag.color || 'var(--primary)') : 'var(--primary)'
                                 }}
                               >
                                 {typeof tag === 'object' ? tag.name : tag}
@@ -324,16 +291,8 @@ function Favorites() {
                               e.stopPropagation()
                               handleOpenUrl(favorite)
                             }}
-                            style={{
-                              flex: 1,
-                              padding: '6px',
-                              backgroundColor: '#4a9eff',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
+                            className="btn-primary btn-small"
+                            style={{ flex: 1 }}
                           >
                             فتح
                           </button>
@@ -344,15 +303,7 @@ function Favorites() {
                                   e.stopPropagation()
                                   handleEditFavorite(favorite)
                                 }}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: '#ffc107',
-                                  color: 'black',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '12px'
-                                }}
+                                className="btn-warning btn-small"
                               >
                                 تعديل
                               </button>
@@ -361,15 +312,7 @@ function Favorites() {
                                   e.stopPropagation()
                                   handleDeleteFavorite(favorite.id)
                                 }}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: '#dc3545',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '12px'
-                                }}
+                                className="btn-danger btn-small"
                               >
                                 حذف
                               </button>
@@ -391,45 +334,23 @@ function Favorites() {
         <div
           className="modal-overlay"
           onClick={() => setShowAddModal(false)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
         >
           <div
             className="modal-content"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              maxWidth: '500px',
-              width: '90%',
-              maxHeight: '90vh',
-              overflow: 'auto'
-            }}
           >
-            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-header">
               <h2>إضافة جهاز للمفضلة</h2>
               <button onClick={() => setShowAddModal(false)}>إغلاق</button>
             </div>
 
             <form onSubmit={handleAddFavorite}>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>الجهاز:</label>
+              <div className="form-group">
+                <label>الجهاز:</label>
                 <select
                   value={addFormData.hostId}
                   onChange={(e) => setAddFormData({ ...addFormData, hostId: e.target.value })}
                   required
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
                 >
                   <option value="">اختر جهاز...</option>
                   {availableHosts.map(host => (
@@ -439,29 +360,27 @@ function Favorites() {
                   ))}
                 </select>
                 {availableHosts.length === 0 && (
-                  <p style={{ color: '#666', fontSize: '12px', marginTop: '5px' }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '5px' }}>
                     جميع الأجهزة موجودة في المفضلة بالفعل
                   </p>
                 )}
               </div>
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>URL (اختياري):</label>
+              <div className="form-group">
+                <label>URL (اختياري):</label>
                 <input
                   type="text"
                   value={addFormData.url}
                   onChange={(e) => setAddFormData({ ...addFormData, url: e.target.value })}
                   placeholder="http://example.com أو https://example.com"
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
                 />
               </div>
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>المجموعة (اختياري):</label>
+              <div className="form-group">
+                <label>المجموعة (اختياري):</label>
                 <select
                   value={addFormData.groupId}
                   onChange={(e) => setAddFormData({ ...addFormData, groupId: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
                 >
                   <option value="">بدون مجموعة</option>
                   {groups.map(group => (
@@ -472,11 +391,11 @@ function Favorites() {
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <div className="modal-footer">
                 <button type="button" onClick={() => setShowAddModal(false)}>
                   إلغاء
                 </button>
-                <button type="submit" disabled={availableHosts.length === 0}>
+                <button type="submit" disabled={availableHosts.length === 0} className="btn-primary">
                   إضافة
                 </button>
               </div>
@@ -493,33 +412,12 @@ function Favorites() {
             setShowEditModal(false)
             setEditingFavorite(null)
           }}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
         >
           <div
             className="modal-content"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              maxWidth: '500px',
-              width: '90%',
-              maxHeight: '90vh',
-              overflow: 'auto'
-            }}
           >
-            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-header">
               <h2>تعديل المفضلة</h2>
               <button onClick={() => {
                 setShowEditModal(false)
@@ -532,46 +430,42 @@ function Favorites() {
             </div>
 
             <form onSubmit={handleUpdateFavorite}>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>اسم الجهاز المخصص:</label>
+              <div className="form-group">
+                <label>اسم الجهاز المخصص:</label>
                 <input
                   type="text"
                   value={editFormData.customName}
                   onChange={(e) => setEditFormData({ ...editFormData, customName: e.target.value })}
                   placeholder={editingFavorite.host.name}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
                 />
-                <small style={{ color: '#666', fontSize: '12px' }}>اتركه فارغاً لاستخدام الاسم الافتراضي</small>
+                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>اتركه فارغاً لاستخدام الاسم الافتراضي</small>
               </div>
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>الوصف:</label>
+              <div className="form-group">
+                <label>الوصف:</label>
                 <textarea
                   value={editFormData.description}
                   onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
                   placeholder="أضف وصفاً للجهاز..."
                   rows="3"
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', resize: 'vertical' }}
                 />
               </div>
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>URL:</label>
+              <div className="form-group">
+                <label>URL:</label>
                 <input
                   type="text"
                   value={editFormData.url}
                   onChange={(e) => setEditFormData({ ...editFormData, url: e.target.value })}
                   placeholder="http://example.com أو https://example.com"
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
                 />
               </div>
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>المجموعة:</label>
+              <div className="form-group">
+                <label>المجموعة:</label>
                 <select
                   value={editFormData.groupId}
                   onChange={(e) => setEditFormData({ ...editFormData, groupId: e.target.value })}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
                 >
                   <option value="">بدون مجموعة</option>
                   {groups.map(group => (
@@ -582,14 +476,14 @@ function Favorites() {
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <div className="modal-footer">
                 <button type="button" onClick={() => {
                   setShowEditModal(false)
                   setEditingFavorite(null)
                 }}>
                   إلغاء
                 </button>
-                <button type="submit">
+                <button type="submit" className="btn-primary">
                   حفظ
                 </button>
               </div>
@@ -603,61 +497,38 @@ function Favorites() {
         <div
           className="modal-overlay"
           onClick={() => setShowGroupModal(false)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
         >
           <div
             className="modal-content"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'white',
-              padding: '20px',
-              borderRadius: '8px',
-              maxWidth: '600px',
-              width: '90%',
-              maxHeight: '90vh',
-              overflow: 'auto'
-            }}
           >
-            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-header">
               <h2>إدارة المجموعات</h2>
               <button onClick={() => setShowGroupModal(false)}>إغلاق</button>
             </div>
 
-            <form onSubmit={handleCreateGroup} style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+            <form onSubmit={handleCreateGroup} className="card" style={{ marginBottom: '30px' }}>
               <h3 style={{ marginTop: 0 }}>إنشاء مجموعة جديدة</h3>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>اسم المجموعة:</label>
+              <div className="form-group">
+                <label>اسم المجموعة:</label>
                 <input
                   type="text"
                   value={groupFormData.name}
                   onChange={(e) => setGroupFormData({ ...groupFormData, name: e.target.value })}
                   required
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
                 />
               </div>
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>اللون:</label>
+              <div className="form-group">
+                <label>اللون:</label>
                 <input
                   type="color"
                   value={groupFormData.color}
                   onChange={(e) => setGroupFormData({ ...groupFormData, color: e.target.value })}
-                  style={{ width: '100px', height: '40px', borderRadius: '4px', border: '1px solid #ddd' }}
                 />
               </div>
 
-              <button type="submit" style={{ backgroundColor: '#28a745', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+              <button type="submit" className="btn-success">
                 إنشاء مجموعة
               </button>
             </form>
@@ -665,7 +536,7 @@ function Favorites() {
             <div>
               <h3>المجموعات الموجودة</h3>
               {groups.length === 0 ? (
-                <p style={{ color: '#666' }}>لا توجد مجموعات</p>
+                <p style={{ color: 'var(--text-secondary)' }}>لا توجد مجموعات</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {groups.map(group => {
@@ -673,15 +544,7 @@ function Favorites() {
                     return (
                       <div
                         key={group.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          backgroundColor: 'white'
-                        }}
+                        className="tag-item"
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <div
@@ -692,23 +555,15 @@ function Favorites() {
                               borderRadius: '4px'
                             }}
                           />
-                          <span style={{ fontWeight: 'bold' }}>{group.name}</span>
-                          <span style={{ color: '#666', fontSize: '14px' }}>
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{group.name}</span>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
                             ({groupFavorites.length} جهاز)
                           </span>
                         </div>
                         {isAuthenticated && (
                           <button
                             onClick={() => handleDeleteGroup(group.id)}
-                            style={{
-                              backgroundColor: '#dc3545',
-                              color: 'white',
-                              padding: '5px 10px',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
+                            className="btn-danger btn-small"
                           >
                             حذف
                           </button>

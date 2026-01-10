@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import AuthButton from '../components/AuthButton'
 import { API_URL } from '../constants'
 import { apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -76,11 +75,6 @@ function TagsManagement() {
     <div className="container">
       <div className="header">
         <h1>إدارة الوسوم</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => navigate('/hosts')}>الرجوع</button>
-          <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
-          <AuthButton />
-        </div>
       </div>
 
       {(error || tagsError) && (
@@ -119,7 +113,7 @@ function TagsManagement() {
               />
             </div>
             <div className="form-actions">
-              <button type="submit">
+              <button type="submit" className="btn-primary">
                 {editingTag ? 'حفظ التعديلات' : 'إضافة'}
               </button>
               <button type="button" onClick={() => { setShowAddForm(false); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
@@ -138,8 +132,8 @@ function TagsManagement() {
               <div className="tag-actions">
                 {isAuthenticated && (
                   <>
-                    <button onClick={() => startEdit(tag)}>تعديل</button>
-                    <button onClick={() => handleDeleteTag(tag.id)}>حذف</button>
+                    <button onClick={() => startEdit(tag)} className="btn-warning">تعديل</button>
+                    <button onClick={() => handleDeleteTag(tag.id)} className="btn-danger">حذف</button>
                   </>
                 )}
               </div>

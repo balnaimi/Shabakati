@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import AuthButton from '../components/AuthButton'
 import { API_URL } from '../constants'
 import { apiGet, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -66,18 +65,14 @@ function HostsList() {
           <p>نظرة عامة على الشبكات والأجهزة</p>
         </div>
         <div className="controls">
-          <button onClick={() => navigate('/')}>الصفحة الرئيسية</button>
-          <button onClick={() => navigate('/networks')}>إدارة الشبكات</button>
-          <button onClick={() => navigate('/tags')}>إدارة الوسوم</button>
           {isAuthenticated && (
             <button 
               onClick={handleClearAllData} 
-              style={{ backgroundColor: '#dc3545', color: 'white' }}
+              className="btn-danger"
             >
               حذف جميع البيانات
             </button>
           )}
-          <AuthButton />
         </div>
         
         <div className="stats">
@@ -121,14 +116,14 @@ function HostsList() {
                 <div>
                   <h3>{network.networkName}</h3>
                   <p>{network.networkCIDR}</p>
-                  <div style={{ marginTop: '10px', display: 'flex', gap: '15px', fontSize: '14px' }}>
-                    <span>الأجهزة: {network.totalHosts}</span>
-                    <span style={{ color: '#28a745' }}>متصل: {network.onlineHosts}</span>
-                    <span style={{ color: '#dc3545' }}>غير متصل: {network.offlineHosts}</span>
+                  <div style={{ marginTop: '10px', display: 'flex', gap: '15px', fontSize: '14px', flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>الأجهزة: {network.totalHosts}</span>
+                    <span style={{ color: 'var(--success)' }}>متصل: {network.onlineHosts}</span>
+                    <span style={{ color: 'var(--danger)' }}>غير متصل: {network.offlineHosts}</span>
                   </div>
                 </div>
                 <div className="tag-actions">
-                  <button onClick={() => navigate(`/networks/${network.networkId}`)}>عرض</button>
+                  <button onClick={() => navigate(`/networks/${network.networkId}`)} className="btn-primary">عرض</button>
                 </div>
               </div>
             ))}

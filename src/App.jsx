@@ -2,6 +2,8 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import { AuthProvider } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
+import Layout from './components/Layout'
 
 // Lazy loading للصفحات لتحسين الأداء
 const Favorites = lazy(() => import('./pages/Favorites'))
@@ -13,7 +15,7 @@ const Login = lazy(() => import('./pages/Login'))
 
 // Loading component
 const LoadingSpinner = () => (
-  <div>
+  <div className="loading">
     جاري التحميل...
   </div>
 )
@@ -21,23 +23,43 @@ const LoadingSpinner = () => (
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <Router>
-          <div className="app">
+      <ThemeProvider>
+        <AuthProvider>
+          <Router>
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
-                <Route path="/" element={<Favorites />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/hosts" element={<HostsList />} />
-                <Route path="/tags" element={<TagsManagement />} />
-                <Route path="/networks" element={<NetworksList />} />
-                <Route path="/networks/:id" element={<NetworkView />} />
+                <Route path="/" element={
+                  <Layout>
+                    <Favorites />
+                  </Layout>
+                } />
+                <Route path="/hosts" element={
+                  <Layout>
+                    <HostsList />
+                  </Layout>
+                } />
+                <Route path="/tags" element={
+                  <Layout>
+                    <TagsManagement />
+                  </Layout>
+                } />
+                <Route path="/networks" element={
+                  <Layout>
+                    <NetworksList />
+                  </Layout>
+                } />
+                <Route path="/networks/:id" element={
+                  <Layout>
+                    <NetworkView />
+                  </Layout>
+                } />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
-          </div>
-        </Router>
-      </AuthProvider>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

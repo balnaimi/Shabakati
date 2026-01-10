@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import ThemeToggle from '../components/ThemeToggle';
 import '../index.css';
 
 function Login() {
@@ -33,45 +34,32 @@ function Login() {
   };
 
   return (
-    <div className="container" style={{ 
+    <div className="app" style={{ 
       display: 'flex', 
       justifyContent: 'center', 
       alignItems: 'center', 
       minHeight: '100vh',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      gap: '20px'
     }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '400px',
-        padding: '2rem',
-        border: '1px solid #ddd',
-        borderRadius: '8px',
-        backgroundColor: '#fff',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
+      <div style={{ position: 'absolute', top: '20px', left: '20px' }}>
+        <ThemeToggle />
+      </div>
+      
+      <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
         <h1 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           صلاحية المسؤول
         </h1>
         
         {error && (
-          <div style={{
-            padding: '0.75rem',
-            marginBottom: '1rem',
-            backgroundColor: '#fee',
-            color: '#c33',
-            border: '1px solid #c33',
-            borderRadius: '4px',
-            textAlign: 'center'
-          }}>
+          <div className="error-message" style={{ marginBottom: '1.5rem' }}>
             {error}
           </div>
         )}
         
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label htmlFor="password" style={{ display: 'block', marginBottom: '0.5rem' }}>
-              كلمة المرور:
-            </label>
+          <div className="form-group">
+            <label htmlFor="password">كلمة المرور:</label>
             <input
               id="password"
               type="password"
@@ -80,30 +68,14 @@ function Login() {
               required
               disabled={loading}
               autoFocus
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '1rem'
-              }}
             />
           </div>
           
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              backgroundColor: '#4a9eff',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1
-            }}
+            className="btn-primary"
+            style={{ width: '100%' }}
           >
             {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
           </button>
@@ -114,4 +86,3 @@ function Login() {
 }
 
 export default Login;
-

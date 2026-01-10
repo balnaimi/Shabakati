@@ -19,15 +19,8 @@ function AuthButton() {
   return (
     <button 
       onClick={handleClick}
-      style={{
-        padding: '0.5rem 1rem',
-        backgroundColor: isAuthenticated ? '#dc3545' : '#28a745',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '0.9rem'
-      }}
+      className={isAuthenticated ? 'btn-danger' : 'btn-success'}
+      aria-label={isAuthenticated ? 'إلغاء صلاحية المسؤول' : 'صلاحية المسؤول'}
     >
       {isAuthenticated ? 'إلغاء صلاحية المسؤول' : 'صلاحية المسؤول'}
     </button>
