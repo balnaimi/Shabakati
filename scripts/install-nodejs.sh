@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to install Node.js v22 LTS and required dependencies
+# Script to install Node.js v24 LTS and required dependencies
 # Supports Linux (Ubuntu/Debian/Fedora/RHEL) and macOS
 
 set -e  # Exit on error
@@ -11,7 +11,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}=== Node.js v22 LTS Installation Script ===${NC}\n"
+echo -e "${GREEN}=== Node.js v24 LTS Installation Script ===${NC}\n"
 
 # Detect OS
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -100,8 +100,8 @@ echo -e "${GREEN}✓ System dependencies installed${NC}\n"
 # Check if Node.js is already installed
 if command_exists node; then
     NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$NODE_VERSION" -ge 22 ]; then
-        echo -e "${GREEN}✓ Node.js v22 or later is already installed: $(node --version)${NC}"
+    if [ "$NODE_VERSION" -ge 24 ]; then
+        echo -e "${GREEN}✓ Node.js v24 or later is already installed: $(node --version)${NC}"
         echo -e "${GREEN}✓ npm version: $(npm --version)${NC}\n"
         
         # Check if nvm is available
@@ -126,8 +126,8 @@ if command_exists node; then
         echo -e "${GREEN}✓ Installation complete!${NC}"
         exit 0
     else
-        echo -e "${YELLOW}Node.js version $(node --version) is installed, but v22+ is required.${NC}"
-        echo -e "${YELLOW}Installing Node.js v22 LTS using nvm...${NC}\n"
+        echo -e "${YELLOW}Node.js version $(node --version) is installed, but v24+ is required.${NC}"
+        echo -e "${YELLOW}Installing Node.js v24 LTS using nvm...${NC}\n"
     fi
 fi
 
@@ -150,13 +150,13 @@ else
     [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 fi
 
-# Install Node.js v22 LTS
-echo -e "${YELLOW}Installing Node.js v22 LTS...${NC}"
-nvm install 22
-nvm use 22
-nvm alias default 22
+# Install Node.js v24 LTS
+echo -e "${YELLOW}Installing Node.js v24 LTS...${NC}"
+nvm install 24
+nvm use 24
+nvm alias default 24
 
-echo -e "${GREEN}✓ Node.js v22 LTS installed: $(node --version)${NC}"
+echo -e "${GREEN}✓ Node.js v24 LTS installed: $(node --version)${NC}"
 echo -e "${GREEN}✓ npm version: $(npm --version)${NC}\n"
 
 # Install project dependencies
@@ -184,6 +184,6 @@ echo -e "${GREEN}Node.js version: $(node --version)${NC}"
 echo -e "${GREEN}npm version: $(npm --version)${NC}\n"
 echo -e "${YELLOW}Note: If you open a new terminal, you may need to run:${NC}"
 echo -e "${YELLOW}  source ~/.nvm/nvm.sh${NC}"
-echo -e "${YELLOW}  nvm use 22${NC}\n"
+echo -e "${YELLOW}  nvm use 24${NC}\n"
 echo -e "${GREEN}You can now run the development script: ./scripts/dev.sh${NC}"
 

@@ -28,8 +28,8 @@ fi
 
 # Check Node.js version
 NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
-if [ "$NODE_VERSION" -lt 20 ]; then
-    echo -e "${RED}ERROR: Node.js v20 or later is required!${NC}"
+if [ "$NODE_VERSION" -lt 24 ]; then
+    echo -e "${RED}ERROR: Node.js v24 or later is required!${NC}"
     echo -e "${YELLOW}Current version: $(node --version)${NC}"
     echo -e "${YELLOW}Please run: ./scripts/install-nodejs.sh${NC}"
     exit 1
@@ -39,7 +39,7 @@ fi
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    nvm use 22 2>/dev/null || true
+    nvm use 24 2>/dev/null || true
 fi
 
 # Check if dependencies are installed

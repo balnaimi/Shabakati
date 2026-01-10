@@ -1,7 +1,7 @@
-# Script to install Node.js v22 LTS and required dependencies for Windows
+# Script to install Node.js v24 LTS and required dependencies for Windows
 # Requires PowerShell to be run as Administrator
 
-Write-Host "=== Node.js v22 LTS Installation Script ===" -ForegroundColor Green
+Write-Host "=== Node.js v24 LTS Installation Script ===" -ForegroundColor Green
 Write-Host ""
 
 # Check if running as Administrator
@@ -24,8 +24,8 @@ if (Test-Command node) {
     $nodeVersion = node --version
     $majorVersion = [int]($nodeVersion -replace 'v(\d+)\..*', '$1')
     
-    if ($majorVersion -ge 22) {
-        Write-Host "✓ Node.js v22 or later is already installed: $nodeVersion" -ForegroundColor Green
+    if ($majorVersion -ge 24) {
+        Write-Host "✓ Node.js v24 or later is already installed: $nodeVersion" -ForegroundColor Green
         Write-Host "✓ npm version: $(npm --version)" -ForegroundColor Green
         Write-Host ""
         
@@ -53,8 +53,8 @@ if (Test-Command node) {
         Write-Host "=== Installation Complete! ===" -ForegroundColor Green
         exit 0
     } else {
-        Write-Host "Node.js version $nodeVersion is installed, but v22+ is required." -ForegroundColor Yellow
-        Write-Host "Installing Node.js v22 LTS using nvm-windows..." -ForegroundColor Yellow
+        Write-Host "Node.js version $nodeVersion is installed, but v24+ is required." -ForegroundColor Yellow
+        Write-Host "Installing Node.js v24 LTS using nvm-windows..." -ForegroundColor Yellow
         Write-Host ""
     }
 }
@@ -91,18 +91,18 @@ if (-not (Test-Path $nvmPath)) {
     Write-Host ""
 }
 
-# Install Node.js v22 LTS using nvm
-Write-Host "Installing Node.js v22 LTS..." -ForegroundColor Yellow
+# Install Node.js v24 LTS using nvm
+Write-Host "Installing Node.js v24 LTS..." -ForegroundColor Yellow
 $nvmCmd = "$nvmPath\nvm.exe"
 
 if (Test-Path $nvmCmd) {
-    & $nvmCmd install 22
-    & $nvmCmd use 22
+    & $nvmCmd install 24
+    & $nvmCmd use 24
     
     # Refresh environment
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
     
-    Write-Host "✓ Node.js v22 LTS installed: $(node --version)" -ForegroundColor Green
+    Write-Host "✓ Node.js v24 LTS installed: $(node --version)" -ForegroundColor Green
     Write-Host "✓ npm version: $(npm --version)" -ForegroundColor Green
     Write-Host ""
 } else {

@@ -19,8 +19,8 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 # Check Node.js version
 $nodeVersion = node --version
 $majorVersion = [int]($nodeVersion -replace 'v(\d+)\..*', '$1')
-if ($majorVersion -lt 20) {
-    Write-Host "ERROR: Node.js v20 or later is required!" -ForegroundColor Red
+if ($majorVersion -lt 24) {
+    Write-Host "ERROR: Node.js v24 or later is required!" -ForegroundColor Red
     Write-Host "Current version: $nodeVersion" -ForegroundColor Yellow
     Write-Host "Please run: .\scripts\install-nodejs.ps1" -ForegroundColor Yellow
     exit 1
