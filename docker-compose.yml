@@ -8,14 +8,10 @@ services:
     container_name: network-dashboard
     ports:
       - "3001:3001"
-    environment:
-      - NODE_ENV=production
-      - PORT=3001
-      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-      - JWT_SECRET=your-secret-key-change-in-production
-      - LOG_LEVEL=info
+    env_file:
+      - .env
     volumes:
-      - ./server/network.db:/app/network.db
+      - network-db-data:/app/data
       - ./server/logs:/app/logs
     restart: unless-stopped
     healthcheck:
@@ -24,3 +20,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  network-db-data:

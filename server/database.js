@@ -1,12 +1,27 @@
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { mkdirSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Determine database path - use /app/data in Docker, or local directory otherwise
+const dbPath = process.env.DATABASE_PATH || (process.env.NODE_ENV === 'production' 
+  ? '/app/data/network.db' 
+  : join(__dirname, 'network.db'));
+
+// Ensure data directory exists in production
+if (process.env.NODE_ENV === 'production' && dbPath.startsWith('/app/data')) {
+  try {
+    mkdirSync(dirname(dbPath), { recursive: true });
+  } catch (e) {
+    // Directory might already exist, ignore error
+  }
+}
+
 // Create database connection
-const db = new Database(join(__dirname, 'network.db'));
+const db = new Database(dbPath);
 
 // Create table if it doesn't exist
 db.exec(`
