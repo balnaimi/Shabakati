@@ -5,6 +5,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 import { dbFunctions } from './database.js';
 import db from './database.js';
 import { checkHost } from './hostChecker.js';
@@ -82,7 +83,12 @@ app.use(express.json({ limit: '10mb' })); // Increase data size limit
 app.get('/', (req, res) => {
   // In production, serve the frontend directly
   if (process.env.NODE_ENV === 'production') {
-    const distPath = join(__dirname, '..', 'dist');
+    // Try Docker path first (dist is sibling to server.js at /app/dist)
+    let distPath = join(__dirname, 'dist');
+    // Fallback to local development path (dist is sibling to server/ folder)
+    if (!existsSync(join(distPath, 'index.html'))) {
+      distPath = join(__dirname, '..', 'dist');
+    }
     return res.sendFile(join(distPath, 'index.html'));
   }
   
@@ -1205,7 +1211,12 @@ app.delete('/api/groups/:id', requireAuth, (req, res) => {
 
 // Serve static files from dist (for production)
 if (process.env.NODE_ENV === 'production') {
-  const distPath = join(__dirname, '..', 'dist');
+  // Try Docker path first (dist is sibling to server.js at /app/dist)
+  let distPath = join(__dirname, 'dist');
+  // Fallback to local development path (dist is sibling to server/ folder)
+  if (!existsSync(join(distPath, 'index.html'))) {
+    distPath = join(__dirname, '..', 'dist');
+  }
   app.use(express.static(distPath));
   
   // Serve index.html for all non-API routes (SPA routing)
