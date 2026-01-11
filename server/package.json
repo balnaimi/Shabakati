@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "init-admin": "node initAdmin.js"
+    "reset-db": "node resetDatabase.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

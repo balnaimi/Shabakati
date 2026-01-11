@@ -66,32 +66,27 @@ function HostsList() {
         </div>
         <div className="controls">
           {isAuthenticated && (
-            <button 
-              onClick={handleClearAllData} 
-              className="btn-danger"
-            >
-              حذف جميع البيانات
-            </button>
+            <>
+              <button 
+                onClick={() => navigate('/networks')} 
+                className="btn-primary"
+              >
+                إدارة الشبكات
+              </button>
+              <button 
+                onClick={() => navigate('/tags')} 
+                className="btn-primary"
+              >
+                إدارة الوسوم
+              </button>
+              <button 
+                onClick={handleClearAllData} 
+                className="btn-danger"
+              >
+                حذف جميع البيانات
+              </button>
+            </>
           )}
-        </div>
-        
-        <div className="stats">
-          <div className="stat-item">
-            <p>عدد الشبكات</p>
-            <p>{stats.totalNetworks}</p>
-          </div>
-          <div className="stat-item">
-            <p>إجمالي الأجهزة</p>
-            <p>{stats.totalHosts}</p>
-          </div>
-          <div className="stat-item">
-            <p>متصلة</p>
-            <p>{stats.onlineHosts}</p>
-          </div>
-          <div className="stat-item">
-            <p>غير متصلة</p>
-            <p>{stats.offlineHosts}</p>
-          </div>
         </div>
       </div>
 

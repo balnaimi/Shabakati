@@ -66,15 +66,42 @@ app.use(cors({
 app.use(compression());
 
 // Rate limiting
+// General limiter for read operations (more lenient)
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 500, // limit each IP to 500 requests per windowMs
+  message: 'تم تجاوز الحد الأقصى لعدد الطلبات، يرجى المحاولة لاحقاً',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for check-setup and auth/status endpoints
+    return req.path === '/api/auth/check-setup' || req.path === '/api/auth/status';
+  }
+});
+
+// Strict limiter for write/delete operations (more restrictive)
+const strictLimiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_STRICT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
   message: 'تم تجاوز الحد الأقصى لعدد الطلبات، يرجى المحاولة لاحقاً',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
+// Apply general limiter to all API routes
 app.use('/api/', limiter);
+
+// Apply strict limiter to write/delete operations (POST, PUT, DELETE, PATCH)
+app.use('/api/', (req, res, next) => {
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    // Skip strict limiter for auth endpoints (login, setup, change-password)
+    if (req.path.startsWith('/api/auth/')) {
+      return next();
+    }
+    return strictLimiter(req, res, next);
+  }
+  next();
+});
 
 // Body parser
 app.use(express.json({ limit: '10mb' })); // Increase data size limit
@@ -130,30 +157,130 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
   });
 }));
 
-// Check auth status
+// Check auth status (with caching, no rate limiting)
 app.get('/api/auth/status', (req, res) => {
   try {
+    const cacheKey = 'auth_status';
+    const cached = cache.get(cacheKey);
+    
+    // Check cache first (cache for 10 seconds)
+    if (cached) {
+      return res.json(cached);
+    }
+    
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.json({ authenticated: false });
+      const result = { authenticated: false };
+      cache.set(cacheKey, result, 10000); // Cache for 10 seconds
+      return res.json(result);
     }
     
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
     
     if (!decoded) {
-      return res.json({ authenticated: false });
+      const result = { authenticated: false };
+      cache.set(cacheKey, result, 10000); // Cache for 10 seconds
+      return res.json(result);
     }
     
-    res.json({
+    const result = {
       authenticated: true,
       username: decoded.username
-    });
+    };
+    cache.set(cacheKey, result, 10000); // Cache for 10 seconds
+    res.json(result);
   } catch (error) {
-    res.json({ authenticated: false });
+    const result = { authenticated: false };
+    cache.set('auth_status', result, 10000);
+    res.json(result);
   }
 });
+
+// Check if setup is needed (with caching, no rate limiting)
+app.get('/api/auth/check-setup', (req, res) => {
+  try {
+    const cacheKey = 'check_setup';
+    const cached = cache.get(cacheKey);
+    
+    // Check cache first (cache for 30 seconds)
+    if (cached) {
+      return res.json(cached);
+    }
+    
+    const hasAdmin = dbFunctions.hasAdmin();
+    const result = { setupRequired: !hasAdmin };
+    cache.set(cacheKey, result, 30000); // Cache for 30 seconds
+    res.json(result);
+  } catch (error) {
+    logger.error('Error checking setup status:', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Setup admin (create first admin)
+app.post('/api/auth/setup', asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  
+  // Check if admin already exists
+  if (dbFunctions.hasAdmin()) {
+    throw new ApiError(400, 'المسؤول موجود بالفعل');
+  }
+  
+  if (!password || password.length < 3) {
+    throw new ApiError(400, 'كلمة المرور يجب أن تكون 3 أحرف على الأقل');
+  }
+  
+  const passwordHash = hashPassword(password);
+  const admin = dbFunctions.createAdmin('admin', passwordHash);
+  
+  // Invalidate check-setup cache since admin was created
+  cache.delete('check_setup');
+  
+  logger.info('Admin account created', { username: admin.username });
+  
+  // Generate token and return
+  const token = generateToken(admin.username);
+  res.json({
+    token,
+    username: admin.username,
+    message: 'تم إنشاء حساب المسؤول بنجاح'
+  });
+}));
+
+// Change password (requires authentication)
+app.post('/api/auth/change-password', requireAuth, asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  
+  if (!currentPassword || !newPassword) {
+    throw new ApiError(400, 'كلمة المرور الحالية والجديدة مطلوبة');
+  }
+  
+  if (newPassword.length < 3) {
+    throw new ApiError(400, 'كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل');
+  }
+  
+  // Verify current password
+  const admin = dbFunctions.verifyAdminPasswordOnly(currentPassword, comparePassword);
+  if (!admin) {
+    throw new ApiError(401, 'كلمة المرور الحالية غير صحيحة');
+  }
+  
+  // Update password
+  const newPasswordHash = hashPassword(newPassword);
+  const updatedAdmin = dbFunctions.updateAdminPassword(admin.id, newPasswordHash);
+  
+  if (!updatedAdmin) {
+    throw new ApiError(500, 'فشل تحديث كلمة المرور');
+  }
+  
+  // Invalidate auth status cache since password changed
+  cache.delete('auth_status');
+  
+  logger.info('Admin password changed', { username: updatedAdmin.username });
+  res.json({ message: 'تم تغيير كلمة المرور بنجاح' });
+}));
 
 // Routes
 
@@ -1014,10 +1141,17 @@ app.delete('/api/data/all', requireAuth, asyncHandler((req, res) => {
 
 // ========== Favorites API ==========
 
-// Get all favorites
+// Get all favorites (with caching)
 app.get('/api/favorites', (req, res) => {
   try {
-    const favorites = dbFunctions.getAllFavorites();
+    const cacheKey = 'favorites';
+    let favorites = cache.get(cacheKey);
+    
+    if (!favorites) {
+      favorites = dbFunctions.getAllFavorites();
+      cache.set(cacheKey, favorites, 30000); // Cache for 30 seconds
+    }
+    
     res.json(favorites);
   } catch (error) {
     logger.error('Error in GET /api/favorites:', { error: error.message });
@@ -1064,6 +1198,7 @@ app.post('/api/favorites', requireAuth, (req, res) => {
       description: description || null
     });
     
+    cache.delete('favorites'); // Invalidate favorites cache
     res.status(201).json(favorite);
   } catch (error) {
     logger.error('Error in POST /api/favorites:', { error: error.message });
@@ -1090,6 +1225,7 @@ app.put('/api/favorites/:id', requireAuth, (req, res) => {
       description: description !== undefined ? description : favorite.description
     });
     
+    cache.delete('favorites'); // Invalidate favorites cache
     res.json(updated);
   } catch (error) {
     logger.error('Error in PUT /api/favorites/:id:', { error: error.message, favoriteId: id });
@@ -1107,6 +1243,7 @@ app.delete('/api/favorites/:id', requireAuth, (req, res) => {
     }
     
     dbFunctions.deleteFavorite(id);
+    cache.delete('favorites'); // Invalidate favorites cache
     res.json({ success: true, message: 'تم حذف المفضلة بنجاح' });
   } catch (error) {
     logger.error('Error in DELETE /api/favorites/:id:', { error: error.message, favoriteId: id });
@@ -1116,10 +1253,17 @@ app.delete('/api/favorites/:id', requireAuth, (req, res) => {
 
 // ========== Groups API ==========
 
-// Get all groups
+// Get all groups (with caching)
 app.get('/api/groups', (req, res) => {
   try {
-    const groups = dbFunctions.getAllGroups();
+    const cacheKey = 'groups';
+    let groups = cache.get(cacheKey);
+    
+    if (!groups) {
+      groups = dbFunctions.getAllGroups();
+      cache.set(cacheKey, groups, 30000); // Cache for 30 seconds
+    }
+    
     res.json(groups);
   } catch (error) {
     logger.error('Error in GET /api/groups:', { error: error.message });
@@ -1157,6 +1301,7 @@ app.post('/api/groups', requireAuth, (req, res) => {
       displayOrder: displayOrder || 0
     });
     
+    cache.delete('groups'); // Invalidate groups cache
     res.status(201).json(group);
   } catch (error) {
     logger.error('Error in POST /api/groups:', { error: error.message });
@@ -1185,6 +1330,7 @@ app.put('/api/groups/:id', requireAuth, (req, res) => {
       displayOrder: displayOrder !== undefined ? displayOrder : group.display_order
     });
     
+    cache.delete('groups'); // Invalidate groups cache
     res.json(updated);
   } catch (error) {
     logger.error('Error in PUT /api/groups/:id:', { error: error.message, groupId: id });
@@ -1202,6 +1348,7 @@ app.delete('/api/groups/:id', requireAuth, (req, res) => {
     }
     
     dbFunctions.deleteGroup(id);
+    cache.delete('groups'); // Invalidate groups cache
     res.json({ success: true, message: 'تم حذف المجموعة بنجاح' });
   } catch (error) {
     logger.error('Error in DELETE /api/groups/:id:', { error: error.message, groupId: id });

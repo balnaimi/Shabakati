@@ -853,6 +853,25 @@ export const dbFunctions = {
       }
     }
     return null;
+  },
+
+  // Check if any admin exists
+  hasAdmin() {
+    const admins = this.getAllAdmins();
+    return admins.length > 0;
+  },
+
+  // Update admin password
+  updateAdminPassword(adminId, newPasswordHash) {
+    const stmt = db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?');
+    const result = stmt.run(newPasswordHash, adminId);
+    if (result.changes === 0) {
+      return null;
+    }
+    const selectStmt = db.prepare('SELECT * FROM admins WHERE id = ?');
+    const admin = selectStmt.get(adminId);
+    const { password_hash, ...adminWithoutPassword } = admin;
+    return adminWithoutPassword;
   }
 };
 

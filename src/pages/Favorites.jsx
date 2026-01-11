@@ -10,6 +10,12 @@ function Favorites() {
   const [favorites, setFavorites] = useState([])
   const [groups, setGroups] = useState([])
   const [allHosts, setAllHosts] = useState([])
+  const [stats, setStats] = useState({
+    totalNetworks: 0,
+    totalHosts: 0,
+    onlineHosts: 0,
+    offlineHosts: 0
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -31,14 +37,21 @@ function Favorites() {
     try {
       setLoading(true)
       setError(null)
-      const [favoritesData, groupsData, hostsData] = await Promise.all([
+      const [favoritesData, groupsData, hostsData, statsData] = await Promise.all([
         apiGet('/favorites'),
         apiGet('/groups'),
-        apiGet('/hosts')
+        apiGet('/hosts'),
+        apiGet('/stats')
       ])
       setFavorites(favoritesData)
       setGroups(groupsData)
       setAllHosts(hostsData)
+      setStats({
+        totalNetworks: statsData.totalNetworks,
+        totalHosts: statsData.totalHosts,
+        onlineHosts: statsData.onlineHosts,
+        offlineHosts: statsData.offlineHosts
+      })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -200,6 +213,25 @@ function Favorites() {
               </button>
             </>
           )}
+        </div>
+        
+        <div className="stats">
+          <div className="stat-item">
+            <p>عدد الشبكات</p>
+            <p>{stats.totalNetworks}</p>
+          </div>
+          <div className="stat-item">
+            <p>إجمالي الأجهزة</p>
+            <p>{stats.totalHosts}</p>
+          </div>
+          <div className="stat-item">
+            <p>متصلة</p>
+            <p>{stats.onlineHosts}</p>
+          </div>
+          <div className="stat-item">
+            <p>غير متصلة</p>
+            <p>{stats.offlineHosts}</p>
+          </div>
         </div>
       </div>
 

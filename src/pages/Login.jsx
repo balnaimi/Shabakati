@@ -1,15 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
+import { API_URL } from '../constants';
 import '../index.css';
 
 function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [setupRequired, setSetupRequired] = useState(false);
+  const [checkingSetup, setCheckingSetup] = useState(true);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if setup is required
+    fetch(`${API_URL}/auth/check-setup`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.setupRequired) {
+          setSetupRequired(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setCheckingSetup(false);
+      });
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,6 +50,23 @@ function Login() {
       setLoading(false);
     }
   };
+
+  const handleSetup = () => {
+    navigate('/setup');
+  };
+
+  if (checkingSetup) {
+    return (
+      <div className="app" style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh'
+      }}>
+        <div className="loading">جاري التحميل...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="app" style={{ 
@@ -56,30 +91,45 @@ function Login() {
             {error}
           </div>
         )}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="password">كلمة المرور:</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+
+        {setupRequired ? (
+          <>
+            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+              لم يتم إنشاء حساب للمسؤول بعد. يرجى إنشاء كلمة مرور للمسؤول.
+            </p>
+            <button
+              onClick={handleSetup}
+              className="btn-primary"
+              style={{ width: '100%' }}
+            >
+              إنشاء كلمة مرور المسؤول
+            </button>
+          </>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="password">كلمة المرور:</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+                autoFocus
+              />
+            </div>
+            
+            <button
+              type="submit"
               disabled={loading}
-              autoFocus
-            />
-          </div>
-          
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-primary"
-            style={{ width: '100%' }}
-          >
-            {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
-          </button>
-        </form>
+              className="btn-primary"
+              style={{ width: '100%' }}
+            >
+              {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

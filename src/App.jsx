@@ -12,6 +12,8 @@ const TagsManagement = lazy(() => import('./pages/TagsManagement'))
 const NetworksList = lazy(() => import('./pages/NetworksList'))
 const NetworkView = lazy(() => import('./pages/NetworkView'))
 const Login = lazy(() => import('./pages/Login'))
+const Setup = lazy(() => import('./pages/Setup'))
+const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 
 // Loading component
 const LoadingSpinner = () => (
@@ -29,6 +31,8 @@ function App() {
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/setup" element={<Setup />} />
+                <Route path="/change-password" element={<ChangePassword />} />
                 <Route path="/" element={
                   <Layout>
                     <Favorites />

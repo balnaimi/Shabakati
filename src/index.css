@@ -282,6 +282,16 @@ button:disabled {
   background-color: var(--warning-hover);
 }
 
+.btn-secondary {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
 .btn-small {
   padding: 8px 16px;
   font-size: 12px;
