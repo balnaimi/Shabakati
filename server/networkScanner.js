@@ -219,8 +219,8 @@ function parseCIDR(cidr) {
   const [ip, prefix] = cidr.split('/');
   const prefixLength = parseInt(prefix);
   
-  if (prefixLength < 24 || prefixLength > 30) {
-    throw new Error('CIDR range must be between /24 and /30');
+  if (prefixLength < 22 || prefixLength > 30) {
+    throw new Error('CIDR range must be between /22 and /30');
   }
 
   const ipParts = ip.split('.').map(Number);
@@ -231,7 +231,7 @@ function parseCIDR(cidr) {
   const baseIP = (ipParts[0] << 24) + (ipParts[1] << 16) + (ipParts[2] << 8) + ipParts[3];
   const networkBase = baseIP & (0xFFFFFFFF << hostBits);
 
-  for (let i = 1; i <= hostCount && i <= 254; i++) {
+  for (let i = 1; i <= hostCount; i++) {
     const hostIP = networkBase + i;
     const a = (hostIP >>> 24) & 0xFF;
     const b = (hostIP >>> 16) & 0xFF;

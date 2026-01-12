@@ -274,6 +274,59 @@ function NetworkView() {
     return host.status === 'online' ? 'online' : 'offline'
   }
 
+  // دالة لتجميع IPs حسب الـ octet الثالث
+  const groupIPsByThirdOctet = (networkId, subnet, allIPs) => {
+    const networkParts = networkId.split('.').map(Number)
+    const networkNum = (networkParts[0] << 24) + (networkParts[1] << 16) + (networkParts[2] << 8) + networkParts[3]
+    const hostBits = 32 - subnet
+    const mask = 0xFFFFFFFF << hostBits
+    const networkBase = networkNum & mask
+    const broadcastIP = networkBase + Math.pow(2, hostBits) - 1
+    
+    // حساب network address و broadcast address
+    const networkIP = `${(networkBase >>> 24) & 0xFF}.${(networkBase >>> 16) & 0xFF}.${(networkBase >>> 8) & 0xFF}.${networkBase & 0xFF}`
+    const broadcastIPStr = `${(broadcastIP >>> 24) & 0xFF}.${(broadcastIP >>> 16) & 0xFF}.${(broadcastIP >>> 8) & 0xFF}.${broadcastIP & 0xFF}`
+    
+    const networkParts2 = networkIP.split('.').map(Number)
+    const broadcastParts = broadcastIPStr.split('.').map(Number)
+    
+    const startThirdOctet = networkParts2[2]
+    const endThirdOctet = broadcastParts[2]
+    
+    const groups = {}
+    
+    // إنشاء جميع العناوين في النطاق
+    for (let thirdOctet = startThirdOctet; thirdOctet <= endThirdOctet; thirdOctet++) {
+      const groupIPs = []
+      
+      // تحديد نطاق الـ octet الرابع
+      let startFourth = 0
+      let endFourth = 255
+      
+      if (thirdOctet === startThirdOctet) {
+        // القائمة الأولى: تبدأ من .1 (لأن .0 هو network address)
+        startFourth = 1
+      }
+      
+      if (thirdOctet === endThirdOctet) {
+        // القائمة الأخيرة: تنتهي عند .254 (لأن .255 هو broadcast)
+        endFourth = broadcastParts[3] - 1
+      }
+      
+      // إنشاء العناوين في هذه المجموعة
+      for (let fourthOctet = startFourth; fourthOctet <= endFourth; fourthOctet++) {
+        const ip = `${networkParts2[0]}.${networkParts2[1]}.${thirdOctet}.${fourthOctet}`
+        groupIPs.push(ip)
+      }
+      
+      if (groupIPs.length > 0) {
+        groups[thirdOctet] = groupIPs
+      }
+    }
+    
+    return groups
+  }
+
   if (loading) {
     return <div className="loading">جاري التحميل...</div>
   }
@@ -292,10 +345,6 @@ function NetworkView() {
   // حساب نطاق IP للعرض
   const range = ipRange || calculateIPRange(network.network_id, network.subnet)
   const displayRange = range.range.length > 0 ? range.range : []
-  
-  // إذا كان النطاق كبير جداً (/16 أو أكبر)، نعرض فقط أول 254
-  const maxDisplay = network.subnet >= 24 ? displayRange.length : Math.min(254, displayRange.length)
-  const displayIPs = displayRange.slice(0, maxDisplay)
 
   return (
     <div className="container">
@@ -337,20 +386,20 @@ function NetworkView() {
         gap: '10px', 
         marginTop: '20px', 
         marginBottom: '20px',
-        borderBottom: '2px solid #ddd'
+        borderBottom: `2px solid var(--border-color)`
       }}>
         <button
           onClick={() => setActiveTab('devices')}
           style={{
             padding: '10px 20px',
             border: 'none',
-            backgroundColor: activeTab === 'devices' ? '#4a9eff' : 'transparent',
-            color: activeTab === 'devices' ? 'white' : '#333',
+            backgroundColor: activeTab === 'devices' ? 'var(--primary)' : 'transparent',
+            color: activeTab === 'devices' ? 'white' : 'var(--text-primary)',
             cursor: 'pointer',
-            borderTopLeftRadius: '6px',
-            borderTopRightRadius: '6px',
+            borderTopLeftRadius: 'var(--radius-md)',
+            borderTopRightRadius: 'var(--radius-md)',
             fontWeight: activeTab === 'devices' ? 'bold' : 'normal',
-            transition: 'all 0.2s'
+            transition: 'var(--transition)'
           }}
         >
           الأجهزة
@@ -360,13 +409,13 @@ function NetworkView() {
           style={{
             padding: '10px 20px',
             border: 'none',
-            backgroundColor: activeTab === 'ips' ? '#4a9eff' : 'transparent',
-            color: activeTab === 'ips' ? 'white' : '#333',
+            backgroundColor: activeTab === 'ips' ? 'var(--primary)' : 'transparent',
+            color: activeTab === 'ips' ? 'white' : 'var(--text-primary)',
             cursor: 'pointer',
-            borderTopLeftRadius: '6px',
-            borderTopRightRadius: '6px',
+            borderTopLeftRadius: 'var(--radius-md)',
+            borderTopRightRadius: 'var(--radius-md)',
             fontWeight: activeTab === 'ips' ? 'bold' : 'normal',
-            transition: 'all 0.2s'
+            transition: 'var(--transition)'
           }}
         >
           عرض IP
@@ -477,7 +526,7 @@ function NetworkView() {
                     <td>{host.ip}</td>
                     <td>
                       <span style={{ 
-                        color: host.status === 'online' ? '#28a745' : '#dc3545',
+                        color: host.status === 'online' ? 'var(--success)' : 'var(--danger)',
                         fontWeight: 'bold'
                       }}>
                         {host.status === 'online' ? 'متصل' : 'غير متصل'}
@@ -526,7 +575,7 @@ function NetworkView() {
                         {isHostFavorite(host.id) ? (
                           <button 
                             onClick={() => handleRemoveFromFavorites(host.id)} 
-                            style={{ backgroundColor: '#ffc107', color: 'black', padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                            style={{ backgroundColor: 'var(--warning)', color: 'var(--text-primary)', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '12px' }}
                             title="حذف من المفضلة"
                           >
                             ⭐
@@ -534,7 +583,7 @@ function NetworkView() {
                         ) : (
                           <button 
                             onClick={() => handleAddToFavorites(host.id)} 
-                            style={{ backgroundColor: '#6c757d', color: 'white', padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                            style={{ backgroundColor: 'var(--text-secondary)', color: 'var(--bg-primary)', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '12px' }}
                             title="إضافة للمفضلة"
                           >
                             ⭐
@@ -544,13 +593,13 @@ function NetworkView() {
                           <>
                             <button 
                               onClick={() => handleEditHost(host)} 
-                              style={{ padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              style={{ padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
                             >
                               تعديل
                             </button>
                             <button 
                               onClick={() => handleDeleteHost(host.id)} 
-                              style={{ backgroundColor: '#dc3545', color: 'white', padding: '5px 10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
                             >
                               حذف
                             </button>
@@ -577,76 +626,111 @@ function NetworkView() {
 
       {activeTab === 'ips' && (
         <>
-          {network.subnet < 24 ? (
+          {network.subnet < 22 ? (
             <div className="empty-state">
-              <p>النطاق كبير جداً للعرض ({range.count} عنوان). الرجاء استخدام subnet /24 أو أكبر للعرض البصري.</p>
+              <p>النطاق كبير جداً للعرض ({range.count} عنوان). الرجاء استخدام subnet /22 أو أكبر للعرض البصري.</p>
               <p>الأجهزة المكتشفة: {hosts.length}</p>
             </div>
           ) : (
             <>
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', 
-                gap: '5px',
-                marginTop: '20px'
-              }}>
-                {displayIPs.map((ip, index) => {
-                  const status = getIPStatus(ip)
-                  const lastOctet = getLastOctet(ip)
-                  const host = hosts.find(h => h.ip === ip)
-                  
-                  let bgColor = '#ffffff'
-                  let borderColor = '#ddd'
-                  let color = '#333'
-                  
-                  if (status === 'online') {
-                    bgColor = '#d4edda'
-                    borderColor = '#28a745'
-                    color = '#155724'
-                  } else if (status === 'offline') {
-                    bgColor = '#f8d7da'
-                    borderColor = '#dc3545'
-                    color = '#721c24'
-                  }
-                  
-                  return (
-                    <div
-                      key={ip}
-                      title={host ? `${host.name} (${ip}) - ${host.status === 'online' ? 'متصل' : 'غير متصل'}` : `${ip} - فاضي`}
-                      style={{
-                        width: '40px',
-                        height: '40px',
-                        backgroundColor: bgColor,
-                        border: `2px solid ${borderColor}`,
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        color: color,
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => {
-                        if (host) {
-                          alert(`الجهاز: ${host.name}\nIP: ${ip}\nالحالة: ${host.status === 'online' ? 'متصل' : 'غير متصل'}`)
-                        } else {
-                          alert(`IP فاضي: ${ip}`)
-                        }
-                      }}
-                    >
-                      {lastOctet}
-                    </div>
-                  )
-                })}
-              </div>
+              {(() => {
+                const ipGroups = groupIPsByThirdOctet(network.network_id, network.subnet, displayRange)
+                const sortedOctets = Object.keys(ipGroups).map(Number).sort((a, b) => a - b)
+                
+                return (
+                  <div style={{ marginTop: '20px' }}>
+                    {sortedOctets.map((thirdOctet) => {
+                      const groupIPs = ipGroups[thirdOctet]
+                      const networkParts = network.network_id.split('.').map(Number)
+                      
+                      return (
+                        <div key={thirdOctet} style={{ marginBottom: '30px' }}>
+                          <h3 style={{ 
+                            marginBottom: '15px', 
+                            fontWeight: 'bold',
+                            fontSize: '18px',
+                            color: 'var(--text-primary)'
+                          }}>
+                            {networkParts[0]}.{networkParts[1]}.{thirdOctet}.x
+                          </h3>
+                          <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', 
+                            gap: '5px',
+                            marginBottom: '20px'
+                          }}>
+                            {groupIPs.map((ip) => {
+                              const status = getIPStatus(ip)
+                              const lastOctet = getLastOctet(ip)
+                              const host = hosts.find(h => h.ip === ip)
+                              
+                              let bgColor = 'var(--bg-primary)'
+                              let borderColor = 'var(--border-color)'
+                              let color = 'var(--text-primary)'
+                              
+                              if (status === 'online') {
+                                bgColor = 'var(--success-light)'
+                                borderColor = 'var(--success)'
+                                color = 'var(--success)'
+                              } else if (status === 'offline') {
+                                bgColor = 'var(--danger-light)'
+                                borderColor = 'var(--danger)'
+                                color = 'var(--danger)'
+                              }
+                              
+                              return (
+                                <div
+                                  key={ip}
+                                  title={host ? `${host.name} (${ip}) - ${host.status === 'online' ? 'متصل' : 'غير متصل'}` : `${ip} - متاح`}
+                                  style={{
+                                    width: '40px',
+                                    height: '40px',
+                                    backgroundColor: bgColor,
+                                    border: `2px solid ${borderColor}`,
+                                    borderRadius: 'var(--radius-sm)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    color: color,
+                                    cursor: 'pointer',
+                                    transition: 'var(--transition)'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1.1)'
+                                    e.currentTarget.style.boxShadow = 'var(--shadow-sm)'
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1)'
+                                    e.currentTarget.style.boxShadow = 'none'
+                                  }}
+                                  onClick={() => {
+                                    if (host) {
+                                      alert(`الجهاز: ${host.name}\nIP: ${ip}\nالحالة: ${host.status === 'online' ? 'متصل' : 'غير متصل'}`)
+                                    } else {
+                                      alert(`IP متاح: ${ip}`)
+                                    }
+                                  }}
+                                >
+                                  {lastOctet}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
               
-              <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+              <div style={{ marginTop: '20px', padding: '15px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
                 <p><strong>الإحصائيات:</strong></p>
                 <p>الأجهزة المتصلة: {hosts.filter(h => h.status === 'online').length}</p>
                 <p>الأجهزة غير المتصلة: {hosts.filter(h => h.status === 'offline').length}</p>
                 <p>إجمالي الأجهزة: {hosts.length}</p>
-                <p>IPs الفاضية: {displayIPs.length - hosts.length}</p>
+                <p>IPs المتاحة: {displayRange.length - hosts.length}</p>
               </div>
             </>
           )}
@@ -674,13 +758,14 @@ function NetworkView() {
             className="modal-content" 
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: 'white',
+              backgroundColor: 'var(--bg-primary)',
               padding: '20px',
-              borderRadius: '8px',
+              borderRadius: 'var(--radius-lg)',
               maxWidth: '500px',
               width: '90%',
               maxHeight: '90vh',
-              overflow: 'auto'
+              overflow: 'auto',
+              color: 'var(--text-primary)'
             }}
           >
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -716,7 +801,7 @@ function NetworkView() {
                     </label>
                   ))}
                   {availableTags.length === 0 && (
-                    <p style={{ color: '#666' }}>لا توجد وسوم متاحة. اذهب إلى إدارة الوسوم لإضافة وسوم جديدة.</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>لا توجد وسوم متاحة. اذهب إلى إدارة الوسوم لإضافة وسوم جديدة.</p>
                   )}
                 </div>
               </div>

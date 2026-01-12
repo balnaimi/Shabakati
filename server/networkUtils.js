@@ -95,9 +95,9 @@ export function calculateIPRange(networkId, subnet) {
   // Last usable IP
   const endIP = numberToIP(networkBase + hostCount);
 
-  // Generate range (for small subnets only - /24 or smaller)
+  // Generate range (for subnets /22 or larger)
   const range = [];
-  if (subnet >= 24 && hostCount <= 254) {
+  if (subnet >= 22 && hostCount <= 1022) {
     for (let i = 1; i <= hostCount; i++) {
       range.push(numberToIP(networkBase + i));
     }
