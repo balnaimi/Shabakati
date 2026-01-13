@@ -11,10 +11,10 @@ function getAuthHeaders(customToken = null) {
   let token = customToken;
   
   if (!token) {
-    // Check sessionStorage first (for visitors)
-    token = sessionStorage.getItem('visitorToken');
+    // Check localStorage for visitor token first
+    token = localStorage.getItem('visitorToken');
     
-    // If no visitor token, check localStorage (for admins)
+    // If no visitor token, check localStorage for admin token
     if (!token) {
       token = localStorage.getItem('authToken');
     }
@@ -77,7 +77,7 @@ export async function apiGet(endpoint) {
     
     // Handle 401 Unauthorized - redirect to login
     if (response.status === 401) {
-      sessionStorage.removeItem('visitorToken');
+      localStorage.removeItem('visitorToken');
       localStorage.removeItem('authToken');
       // Don't redirect automatically, let the component handle it
     }
@@ -102,7 +102,7 @@ export async function apiPost(endpoint, data, customToken = null) {
     
     // Handle 401 Unauthorized - redirect to login
     if (response.status === 401) {
-      sessionStorage.removeItem('visitorToken');
+      localStorage.removeItem('visitorToken');
       localStorage.removeItem('authToken');
       // Don't redirect automatically, let the component handle it
     }
@@ -127,7 +127,7 @@ export async function apiPut(endpoint, data) {
     
     // Handle 401 Unauthorized - redirect to login
     if (response.status === 401) {
-      sessionStorage.removeItem('visitorToken');
+      localStorage.removeItem('visitorToken');
       localStorage.removeItem('authToken');
       // Don't redirect automatically, let the component handle it
     }
@@ -151,7 +151,7 @@ export async function apiDelete(endpoint) {
     
     // Handle 401 Unauthorized - redirect to login
     if (response.status === 401) {
-      sessionStorage.removeItem('visitorToken');
+      localStorage.removeItem('visitorToken');
       localStorage.removeItem('authToken');
       // Don't redirect automatically, let the component handle it
     }
@@ -176,7 +176,7 @@ export async function apiPatch(endpoint, data = {}) {
     
     // Handle 401 Unauthorized - redirect to login
     if (response.status === 401) {
-      sessionStorage.removeItem('visitorToken');
+      localStorage.removeItem('visitorToken');
       localStorage.removeItem('authToken');
       // Don't redirect automatically, let the component handle it
     }

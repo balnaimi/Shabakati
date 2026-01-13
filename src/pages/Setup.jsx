@@ -60,7 +60,7 @@ function Setup() {
       
       if (response.token) {
         // Login automatically after setup as visitor
-        sessionStorage.setItem('visitorToken', response.token);
+        localStorage.setItem('visitorToken', response.token);
         navigate('/');
         window.location.reload(); // Reload to update auth state
       } else {

@@ -24,11 +24,11 @@ export function AuthProvider({ children }) {
 
   const checkAuthStatus = async () => {
     try {
-      // Check sessionStorage first (for visitors)
-      let token = sessionStorage.getItem('visitorToken');
+      // Check localStorage for visitor token first
+      let token = localStorage.getItem('visitorToken');
       let isVisitor = true;
       
-      // If no visitor token, check localStorage (for admins)
+      // If no visitor token, check localStorage for admin token
       if (!token) {
         token = localStorage.getItem('authToken');
         isVisitor = false;
@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
       } else {
         // Token is invalid, remove it
         if (isVisitor) {
-          sessionStorage.removeItem('visitorToken');
+          localStorage.removeItem('visitorToken');
         } else {
           localStorage.removeItem('authToken');
         }
@@ -61,7 +61,7 @@ export function AuthProvider({ children }) {
       }
     } catch (error) {
       // If check fails, assume not authenticated
-      sessionStorage.removeItem('visitorToken');
+      localStorage.removeItem('visitorToken');
       localStorage.removeItem('authToken');
       setIsAuthenticated(false);
       setUsername(null);
@@ -76,8 +76,8 @@ export function AuthProvider({ children }) {
       const response = await apiPost('/auth/login', { password });
       
       if (response.token) {
-        // Store visitor token in sessionStorage
-        sessionStorage.setItem('visitorToken', response.token);
+        // Store visitor token in localStorage
+        localStorage.setItem('visitorToken', response.token);
         setIsAuthenticated(true);
         setUsername(response.username || 'visitor');
         setUserType(response.userType || 'visitor');
@@ -96,7 +96,7 @@ export function AuthProvider({ children }) {
   const adminLogin = async (password) => {
     try {
       // Get visitor token for authorization
-      const visitorToken = sessionStorage.getItem('visitorToken');
+      const visitorToken = localStorage.getItem('visitorToken');
       if (!visitorToken) {
         return { success: false, error: 'يجب تسجيل الدخول كزائر أولاً' };
       }
@@ -106,7 +106,7 @@ export function AuthProvider({ children }) {
       if (response.token) {
         // Store admin token in localStorage and remove visitor token
         localStorage.setItem('authToken', response.token);
-        sessionStorage.removeItem('visitorToken');
+        localStorage.removeItem('visitorToken');
         setIsAuthenticated(true);
         setUsername(response.username || 'admin');
         setUserType(response.userType || 'admin');
@@ -123,7 +123,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    sessionStorage.removeItem('visitorToken');
+    localStorage.removeItem('visitorToken');
     localStorage.removeItem('authToken');
     setIsAuthenticated(false);
     setUsername(null);
