@@ -158,13 +158,6 @@ function Favorites() {
     }
   }
 
-  const toggleGroup = (groupId) => {
-    setCollapsedGroups(prev => ({
-      ...prev,
-      [groupId]: !prev[groupId]
-    }))
-  }
-
   // Group favorites by group
   const favoritesByGroup = favorites.reduce((acc, fav) => {
     const groupId = fav.groupId || 'ungrouped'
@@ -174,6 +167,173 @@ function Favorites() {
     acc[groupId].push(fav)
     return acc
   }, {})
+
+  const toggleGroup = (groupId) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }))
+  }
+
+  const handleMoveGroupUp = async (groupId) => {
+    if (!groupId) return
+    
+    try {
+      setError(null)
+      
+      // Find current group
+      const currentGroup = groups.find(g => g.id === groupId)
+      if (!currentGroup) return
+
+      // Use the same logic as sortedGroupsList to get the correct order
+      const sortedGroups = [...groups].sort((a, b) => {
+        const orderA = a.display_order !== undefined ? a.display_order : (a.displayOrder !== undefined ? a.displayOrder : 0)
+        const orderB = b.display_order !== undefined ? b.display_order : (b.displayOrder !== undefined ? b.displayOrder : 0)
+        if (orderA !== orderB) {
+          return orderA - orderB
+        }
+        const dateA = new Date(a.created_at || 0)
+        const dateB = new Date(b.created_at || 0)
+        return dateA - dateB
+      })
+
+      // Filter to only groups that have favorites (same as sortedGroupsList)
+      const groupsWithFavorites = sortedGroups.filter(group => favoritesByGroup[group.id.toString()])
+      
+      // Find current index in the filtered list
+      const currentIndex = groupsWithFavorites.findIndex(g => g.id === groupId)
+      if (currentIndex <= 0) {
+        console.log('Cannot move up: already at top or not found', { currentIndex })
+        return // Already at top
+      }
+
+      const previousGroup = groupsWithFavorites[currentIndex - 1]
+      
+      if (!previousGroup) {
+        console.log('Previous group not found')
+        return
+      }
+      
+      // Instead of swapping, assign new display_order values based on position
+      // This ensures different values even if both groups had the same order
+      const newCurrentOrder = currentIndex - 1  // Move up = lower index = lower order
+      const newPreviousOrder = currentIndex     // Previous becomes current position
+
+      console.log('Moving group up:', { 
+        currentGroup: currentGroup.name, 
+        currentIndex,
+        newCurrentOrder,
+        previousGroup: previousGroup.name, 
+        newPreviousOrder
+      })
+
+      // Update both groups with new positions
+      await Promise.all([
+        apiPut(`/groups/${groupId}`, { displayOrder: newCurrentOrder }),
+        apiPut(`/groups/${previousGroup.id}`, { displayOrder: newPreviousOrder })
+      ])
+
+      // Refresh data
+      await fetchData()
+    } catch (err) {
+      console.error('Error moving group up:', err)
+      setError(err.message)
+    }
+  }
+
+  const handleMoveGroupDown = async (groupId) => {
+    if (!groupId) return
+    
+    try {
+      setError(null)
+      
+      // Find current group
+      const currentGroup = groups.find(g => g.id === groupId)
+      if (!currentGroup) return
+
+      // Use the same logic as sortedGroupsList to get the correct order
+      const sortedGroups = [...groups].sort((a, b) => {
+        const orderA = a.display_order !== undefined ? a.display_order : (a.displayOrder !== undefined ? a.displayOrder : 0)
+        const orderB = b.display_order !== undefined ? b.display_order : (b.displayOrder !== undefined ? b.displayOrder : 0)
+        if (orderA !== orderB) {
+          return orderA - orderB
+        }
+        const dateA = new Date(a.created_at || 0)
+        const dateB = new Date(b.created_at || 0)
+        return dateA - dateB
+      })
+
+      // Filter to only groups that have favorites (same as sortedGroupsList)
+      const groupsWithFavorites = sortedGroups.filter(group => favoritesByGroup[group.id.toString()])
+      
+      // Find current index in the filtered list
+      const currentIndex = groupsWithFavorites.findIndex(g => g.id === groupId)
+      if (currentIndex < 0 || currentIndex >= groupsWithFavorites.length - 1) {
+        console.log('Cannot move down: already at bottom or not found', { currentIndex, total: groupsWithFavorites.length })
+        return // Already at bottom
+      }
+
+      const nextGroup = groupsWithFavorites[currentIndex + 1]
+      
+      if (!nextGroup) {
+        console.log('Next group not found')
+        return
+      }
+      
+      // Instead of swapping, assign new display_order values based on position
+      // This ensures different values even if both groups had the same order
+      const newCurrentOrder = currentIndex + 1  // Move down = higher index = higher order
+      const newNextOrder = currentIndex         // Next becomes current position
+
+      console.log('Moving group down:', { 
+        currentGroup: currentGroup.name, 
+        currentIndex,
+        newCurrentOrder,
+        nextGroup: nextGroup.name, 
+        newNextOrder
+      })
+
+      // Update both groups with new positions
+      await Promise.all([
+        apiPut(`/groups/${groupId}`, { displayOrder: newCurrentOrder }),
+        apiPut(`/groups/${nextGroup.id}`, { displayOrder: newNextOrder })
+      ])
+
+      // Refresh data
+      await fetchData()
+    } catch (err) {
+      console.error('Error moving group down:', err)
+      setError(err.message)
+    }
+  }
+
+  // Get sorted groups list (by display_order) including ungrouped
+  const sortedGroupsList = (() => {
+    // Sort groups by display_order (groups are already sorted from API, but ensure it)
+    const sortedGroups = [...groups].sort((a, b) => {
+      const orderA = a.display_order !== undefined ? a.display_order : (a.displayOrder !== undefined ? a.displayOrder : 0)
+      const orderB = b.display_order !== undefined ? b.display_order : (b.displayOrder !== undefined ? b.displayOrder : 0)
+      if (orderA !== orderB) {
+        return orderA - orderB
+      }
+      // If display_order is same, sort by created_at
+      const dateA = new Date(a.created_at || 0)
+      const dateB = new Date(b.created_at || 0)
+      return dateA - dateB
+    })
+
+    // Create list with group IDs and ungrouped at the end
+    const list = sortedGroups
+      .filter(group => favoritesByGroup[group.id.toString()]) // Only include groups that have favorites
+      .map(group => group.id.toString())
+    
+    // Add ungrouped at the end if it has favorites
+    if (favoritesByGroup['ungrouped']) {
+      list.push('ungrouped')
+    }
+
+    return list
+  })()
 
   // Get group name
   const getGroupName = (groupId) => {
@@ -187,6 +347,14 @@ function Favorites() {
     if (!groupId) return '#6c757d'
     const group = groups.find(g => g.id === groupId)
     return group ? group.color : '#6c757d'
+  }
+
+  // Get group display_order
+  const getGroupDisplayOrder = (groupId) => {
+    if (!groupId) return 999999 // Ungrouped at the end
+    const group = groups.find(g => g.id === groupId)
+    if (!group) return 0
+    return group.display_order !== undefined ? group.display_order : (group.displayOrder !== undefined ? group.displayOrder : 0)
   }
 
   // Get available hosts (not in favorites)
@@ -249,24 +417,83 @@ function Favorites() {
       ) : (
         <div style={{ marginTop: '20px' }}>
           {/* Display favorites by group */}
-          {Object.entries(favoritesByGroup).map(([groupId, groupFavorites]) => {
+          {sortedGroupsList.map((groupId, index) => {
+            const groupFavorites = favoritesByGroup[groupId] || []
             const groupIdNum = groupId === 'ungrouped' ? null : parseInt(groupId)
             const groupName = getGroupName(groupIdNum)
             const groupColor = getGroupColor(groupIdNum)
             const isCollapsed = collapsedGroups[groupId] || false
+            const isUngrouped = groupId === 'ungrouped'
+            const nextGroupId = index < sortedGroupsList.length - 1 ? sortedGroupsList[index + 1] : null
+            const canMoveUp = !isUngrouped && index > 0
+            const canMoveDown = !isUngrouped && index < sortedGroupsList.length - 1 && nextGroupId !== 'ungrouped'
 
             return (
               <div key={groupId} style={{ marginBottom: '30px' }}>
                 <div
-                  onClick={() => toggleGroup(groupId)}
                   className="group-header"
                   style={{
                     backgroundColor: groupColor,
-                    color: 'white'
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
                   }}
                 >
-                  <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{groupName}</span>
-                  <span style={{ marginLeft: 'auto' }}>
+                  {isAuthenticated && !isUngrouped && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleMoveGroupUp(groupIdNum)
+                        }}
+                        disabled={!canMoveUp}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.2)',
+                          border: 'none',
+                          color: 'white',
+                          cursor: canMoveUp ? 'pointer' : 'not-allowed',
+                          padding: '2px 6px',
+                          fontSize: '12px',
+                          borderRadius: '3px',
+                          opacity: canMoveUp ? 1 : 0.5
+                        }}
+                        title="نقل لأعلى"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleMoveGroupDown(groupIdNum)
+                        }}
+                        disabled={!canMoveDown}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.2)',
+                          border: 'none',
+                          color: 'white',
+                          cursor: canMoveDown ? 'pointer' : 'not-allowed',
+                          padding: '2px 6px',
+                          fontSize: '12px',
+                          borderRadius: '3px',
+                          opacity: canMoveDown ? 1 : 0.5
+                        }}
+                        title="نقل لأسفل"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  )}
+                  <span
+                    onClick={() => toggleGroup(groupId)}
+                    style={{ fontSize: '18px', fontWeight: 'bold', flex: 1, cursor: 'pointer' }}
+                  >
+                    {groupName}
+                  </span>
+                  <span
+                    onClick={() => toggleGroup(groupId)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {isCollapsed ? '▼' : '▲'} ({groupFavorites.length})
                   </span>
                 </div>

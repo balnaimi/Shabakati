@@ -26,6 +26,8 @@ function NetworkView() {
   const [editFormData, setEditFormData] = useState({ tagIds: [] })
   const [activeTab, setActiveTab] = useState('devices') // 'devices' or 'ips'
   const [favorites, setFavorites] = useState([])
+  const [newHosts, setNewHosts] = useState([]) // الأجهزة الجديدة المكتشفة من آخر فحص
+  const [hiddenNewHosts, setHiddenNewHosts] = useState(new Set()) // الأجهزة المخفية
 
   useEffect(() => {
     fetchNetwork()
@@ -69,6 +71,18 @@ function NetworkView() {
     }
   }
 
+  const handleHideNewHost = (hostId) => {
+    setHiddenNewHosts(prev => new Set([...prev, hostId]))
+  }
+
+  const handleHideAllNewHosts = () => {
+    const allNewHostIds = newHosts.map(h => h.id)
+    setHiddenNewHosts(new Set(allNewHostIds))
+  }
+
+  // تصفية الأجهزة الجديدة لإظهار فقط غير المخفية
+  const visibleNewHosts = newHosts.filter(host => !hiddenNewHosts.has(host.id))
+
 
   const fetchNetwork = async () => {
     try {
@@ -103,6 +117,10 @@ function NetworkView() {
       setError(null)
       setScanning(true)
       
+      // حفظ الأجهزة الحالية قبل الفحص لتحديد الجديدة
+      const hostsBeforeScan = [...hosts]
+      const existingIPs = new Set(hostsBeforeScan.map(h => h.ip))
+      
       console.log('Starting network scan for network ID:', id)
       const result = await apiPost(`/networks/${id}/scan`, {
         timeout: 2,
@@ -116,7 +134,20 @@ function NetworkView() {
       
       // تحديث الشبكة و الأجهزة
       await fetchNetwork()
-      await fetchHosts()
+      const updatedHosts = await apiGet(`/networks/${id}/hosts`)
+      setHosts(updatedHosts)
+      
+      // تحديد الأجهزة الجديدة
+      if (result.addedCount > 0) {
+        // تحديد الأجهزة الجديدة (التي لم تكن موجودة قبل الفحص)
+        const newHostsList = updatedHosts.filter(host => !existingIPs.has(host.ip))
+        
+        if (newHostsList.length > 0) {
+          setNewHosts(newHostsList)
+          // إعادة تعيين الأجهزة المخفية عند فحص جديد
+          setHiddenNewHosts(new Set())
+        }
+      }
       
       if (result.hosts && result.hosts.length > 0) {
         const addedCount = result.addedCount || result.hosts.length
@@ -425,6 +456,156 @@ function NetworkView() {
       {/* Tab Content */}
       {activeTab === 'devices' && (
         <>
+          {/* قسم الأجهزة الجديدة المكتشفة */}
+          {visibleNewHosts.length > 0 && (
+            <div style={{ 
+              marginTop: '20px', 
+              marginBottom: '30px',
+              padding: '20px',
+              backgroundColor: 'var(--success-light)',
+              border: '2px solid var(--success)',
+              borderRadius: 'var(--radius-md)'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '15px'
+              }}>
+                <h2 style={{ 
+                  margin: 0, 
+                  color: 'var(--success)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  الأجهزة الجديدة المكتشفة ({visibleNewHosts.length})
+                </h2>
+                <button
+                  onClick={handleHideAllNewHosts}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: 'var(--success)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  تمت المشاهدة (إخفاء الكل)
+                </button>
+              </div>
+              
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+                gap: '15px' 
+              }}>
+                {visibleNewHosts.map(host => (
+                  <div
+                    key={host.id}
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      padding: '15px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  >
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'start',
+                      marginBottom: '10px'
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ 
+                          margin: 0, 
+                          marginBottom: '5px', 
+                          color: 'var(--text-primary)',
+                          fontSize: '16px'
+                        }}>
+                          {host.name}
+                        </h3>
+                        <p style={{ 
+                          margin: 0, 
+                          color: 'var(--text-secondary)', 
+                          fontSize: '14px' 
+                        }}>
+                          {host.ip}
+                        </p>
+                      </div>
+                      <span style={{
+                        padding: '4px 8px',
+                        backgroundColor: host.status === 'online' ? 'var(--success)' : 'var(--danger)',
+                        color: 'white',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        {host.status === 'online' ? 'متصل' : 'غير متصل'}
+                      </span>
+                    </div>
+                    
+                    {host.description && (
+                      <p style={{ 
+                        margin: '5px 0', 
+                        fontSize: '13px', 
+                        color: 'var(--text-secondary)',
+                        fontStyle: 'italic'
+                      }}>
+                        {host.description}
+                      </p>
+                    )}
+                    
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '8px', 
+                      marginTop: '10px',
+                      flexWrap: 'wrap'
+                    }}>
+                      {isAuthenticated && (
+                        <>
+                          <button
+                            onClick={() => handleEditHost(host)}
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: 'var(--primary)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 'var(--radius-sm)',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              flex: 1
+                            }}
+                          >
+                            تعديل
+                          </button>
+                          <button
+                            onClick={() => handleHideNewHost(host.id)}
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: 'var(--text-secondary)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 'var(--radius-sm)',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                            title="تمت المشاهدة"
+                          >
+                            ✓
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {hosts.length > 0 && (
         <div style={{ marginTop: '40px' }}>
           <h2>الأجهزة في هذه الشبكة ({filteredHosts.length} من {hosts.length})</h2>

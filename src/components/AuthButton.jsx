@@ -73,7 +73,7 @@ function AuthButton() {
     if (setupRequired) {
       return 'إنشاء كلمة مرور للمسؤول';
     }
-    return 'صلاحية المسؤول';
+    return isAuthenticated ? 'خيارات المسؤول' : 'صلاحية المسؤول';
   };
 
   const getButtonClassName = () => {

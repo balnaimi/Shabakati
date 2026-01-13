@@ -2,7 +2,6 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
@@ -64,44 +63,6 @@ app.use(cors({
 
 // Compression middleware
 app.use(compression());
-
-// Rate limiting
-// General limiter for read operations (more lenient)
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 500, // limit each IP to 500 requests per windowMs
-  message: 'تم تجاوز الحد الأقصى لعدد الطلبات، يرجى المحاولة لاحقاً',
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => {
-    // Skip rate limiting for check-setup and auth/status endpoints
-    return req.path === '/api/auth/check-setup' || req.path === '/api/auth/status';
-  }
-});
-
-// Strict limiter for write/delete operations (more restrictive)
-const strictLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_STRICT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
-  message: 'تم تجاوز الحد الأقصى لعدد الطلبات، يرجى المحاولة لاحقاً',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Apply general limiter to all API routes
-app.use('/api/', limiter);
-
-// Apply strict limiter to write/delete operations (POST, PUT, DELETE, PATCH)
-app.use('/api/', (req, res, next) => {
-  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    // Skip strict limiter for auth endpoints (login, setup, change-password)
-    if (req.path.startsWith('/api/auth/')) {
-      return next();
-    }
-    return strictLimiter(req, res, next);
-  }
-  next();
-});
 
 // Body parser
 app.use(express.json({ limit: '10mb' })); // Increase data size limit
