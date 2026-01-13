@@ -15,7 +15,7 @@ function Layout({ children }) {
 
   const navLinks = [
     { path: '/', label: 'الصفحة الرئيسية' },
-    { path: '/hosts', label: 'لوحة التحكم' }
+    { path: '/hosts', label: 'عرض الشبكات' }
   ]
 
   // لا نعرض navbar في صفحة Login

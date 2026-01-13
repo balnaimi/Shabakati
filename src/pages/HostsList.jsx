@@ -101,8 +101,10 @@ function HostsList() {
         
         {stats.networksWithStats.length === 0 ? (
           <div className="empty-state">
-            <p>لا توجد شبكات. اذهب إلى إدارة الشبكات لإضافة شبكة جديدة.</p>
-            <button onClick={() => navigate('/networks')}>إدارة الشبكات</button>
+            <p>لا توجد شبكات.{isAdmin && ' اذهب إلى إدارة الشبكات لإضافة شبكة جديدة.'}</p>
+            {isAdmin && (
+              <button onClick={() => navigate('/networks')}>إدارة الشبكات</button>
+            )}
           </div>
         ) : (
           <div className="tags-list">
