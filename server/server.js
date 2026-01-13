@@ -11,7 +11,7 @@ import { checkHost } from './hostChecker.js';
 import { scanNetwork } from './networkScanner.js';
 import { getNetworkCIDR, isIPInNetwork, calculateIPRange } from './networkUtils.js';
 import { hashPassword, comparePassword, generateToken, verifyToken } from './auth.js';
-import { requireAuth } from './middleware.js';
+import { requireAdmin, requireVisitor } from './middleware.js';
 import logger from './logger.js';
 import { errorHandler, notFoundHandler, asyncHandler, ApiError } from './errorHandler.js';
 import cache from './cache.js';
@@ -92,7 +92,7 @@ app.get('/', (req, res) => {
 
 // ========== Authentication Routes ==========
 
-// Login endpoint
+// Login endpoint (for visitors)
 app.post('/api/auth/login', asyncHandler(async (req, res) => {
   const { password } = req.body;
   
@@ -100,21 +100,49 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
     throw new ApiError(400, 'كلمة المرور مطلوبة');
   }
   
-  // Verify password against all admins
-  const admin = dbFunctions.verifyAdminPasswordOnly(password, comparePassword);
-  if (!admin) {
-    logger.warn('Failed login attempt', { ip: req.ip });
-    throw new ApiError(401, 'كلمة المرور غير صحيحة');
+  // Verify password against visitors only
+  const visitor = dbFunctions.verifyVisitorPasswordOnly(password, comparePassword);
+  if (!visitor) {
+    logger.warn('Failed visitor login attempt', { ip: req.ip });
+    throw new ApiError(401, 'كلمة مرور الزوار غير صحيحة');
   }
   
-  // Generate token
-  const token = generateToken(admin.username);
-  logger.info('User logged in', { username: admin.username, ip: req.ip });
+  // Generate visitor token
+  const token = generateToken(visitor.username, 'visitor');
+  logger.info('Visitor logged in', { username: visitor.username, ip: req.ip });
+  
+  res.json({
+    token,
+    username: visitor.username,
+    userType: 'visitor',
+    message: 'تم تسجيل الدخول كزائر بنجاح'
+  });
+}));
+
+// Admin login endpoint (for upgrading from visitor to admin)
+app.post('/api/auth/admin-login', requireVisitor, asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  
+  if (!password) {
+    throw new ApiError(400, 'كلمة مرور المسؤول مطلوبة');
+  }
+  
+  // Verify password against admins only
+  const admin = dbFunctions.verifyAdminPasswordOnlyForAdmin(password, comparePassword);
+  if (!admin) {
+    logger.warn('Failed admin login attempt', { ip: req.ip, username: req.user.username });
+    throw new ApiError(401, 'كلمة مرور المسؤول غير صحيحة');
+  }
+  
+  // Generate admin token
+  const token = generateToken(admin.username, 'admin');
+  logger.info('Admin logged in', { username: admin.username, ip: req.ip });
   
   res.json({
     token,
     username: admin.username,
-    message: 'تم تسجيل الدخول بنجاح'
+    userType: 'admin',
+    message: 'تم تسجيل الدخول كمسؤول بنجاح'
   });
 }));
 
@@ -132,7 +160,7 @@ app.get('/api/auth/status', (req, res) => {
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const result = { authenticated: false };
+      const result = { authenticated: false, userType: null };
       cache.set(cacheKey, result, 10000); // Cache for 10 seconds
       return res.json(result);
     }
@@ -141,19 +169,21 @@ app.get('/api/auth/status', (req, res) => {
     const decoded = verifyToken(token);
     
     if (!decoded) {
-      const result = { authenticated: false };
+      const result = { authenticated: false, userType: null };
       cache.set(cacheKey, result, 10000); // Cache for 10 seconds
       return res.json(result);
     }
     
     const result = {
       authenticated: true,
-      username: decoded.username
+      username: decoded.username,
+      userType: decoded.type || 'visitor',
+      isAdmin: decoded.type === 'admin'
     };
     cache.set(cacheKey, result, 10000); // Cache for 10 seconds
     res.json(result);
   } catch (error) {
-    const result = { authenticated: false };
+    const result = { authenticated: false, userType: null };
     cache.set('auth_status', result, 10000);
     res.json(result);
   }
@@ -170,8 +200,8 @@ app.get('/api/auth/check-setup', (req, res) => {
       return res.json(cached);
     }
     
-    const hasAdmin = dbFunctions.hasAdmin();
-    const result = { setupRequired: !hasAdmin };
+    const setupRequired = dbFunctions.isSetupRequired();
+    const result = { setupRequired };
     cache.set(cacheKey, result, 30000); // Cache for 30 seconds
     res.json(result);
   } catch (error) {
@@ -180,38 +210,48 @@ app.get('/api/auth/check-setup', (req, res) => {
   }
 });
 
-// Setup admin (create first admin)
+// Setup (create first visitor and admin)
 app.post('/api/auth/setup', asyncHandler(async (req, res) => {
-  const { password } = req.body;
+  const { visitorPassword, adminPassword } = req.body;
   
-  // Check if admin already exists
-  if (dbFunctions.hasAdmin()) {
-    throw new ApiError(400, 'المسؤول موجود بالفعل');
+  // Check if setup is already done
+  if (!dbFunctions.isSetupRequired()) {
+    throw new ApiError(400, 'الإعداد مكتمل بالفعل');
   }
   
-  if (!password || password.length < 3) {
-    throw new ApiError(400, 'كلمة المرور يجب أن تكون 3 أحرف على الأقل');
+  if (!visitorPassword || visitorPassword.length < 3) {
+    throw new ApiError(400, 'كلمة مرور الزوار يجب أن تكون 3 أحرف على الأقل');
   }
   
-  const passwordHash = hashPassword(password);
-  const admin = dbFunctions.createAdmin('admin', passwordHash);
+  if (!adminPassword || adminPassword.length < 3) {
+    throw new ApiError(400, 'كلمة مرور المسؤول يجب أن تكون 3 أحرف على الأقل');
+  }
   
-  // Invalidate check-setup cache since admin was created
+  // Create visitor account
+  const visitorPasswordHash = hashPassword(visitorPassword);
+  const visitor = dbFunctions.createAdmin('visitor', visitorPasswordHash, 'visitor');
+  
+  // Create admin account
+  const adminPasswordHash = hashPassword(adminPassword);
+  const admin = dbFunctions.createAdmin('admin', adminPasswordHash, 'admin');
+  
+  // Invalidate check-setup cache since setup was completed
   cache.delete('check_setup');
   
-  logger.info('Admin account created', { username: admin.username });
+  logger.info('Setup completed', { visitorCreated: true, adminCreated: true });
   
-  // Generate token and return
-  const token = generateToken(admin.username);
+  // Generate visitor token and return (user starts as visitor)
+  const token = generateToken(visitor.username, 'visitor');
   res.json({
     token,
-    username: admin.username,
-    message: 'تم إنشاء حساب المسؤول بنجاح'
+    username: visitor.username,
+    userType: 'visitor',
+    message: 'تم إنشاء كلمتي المرور بنجاح'
   });
 }));
 
-// Change password (requires authentication)
-app.post('/api/auth/change-password', requireAuth, asyncHandler(async (req, res) => {
+// Change password (requires admin authentication)
+app.post('/api/auth/change-password', requireAdmin, asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   
   if (!currentPassword || !newPassword) {
@@ -222,8 +262,8 @@ app.post('/api/auth/change-password', requireAuth, asyncHandler(async (req, res)
     throw new ApiError(400, 'كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل');
   }
   
-  // Verify current password
-  const admin = dbFunctions.verifyAdminPasswordOnly(currentPassword, comparePassword);
+  // Verify current password (admin only)
+  const admin = dbFunctions.verifyAdminPasswordOnlyForAdmin(currentPassword, comparePassword);
   if (!admin) {
     throw new ApiError(401, 'كلمة المرور الحالية غير صحيحة');
   }
@@ -276,7 +316,7 @@ app.get('/api/hosts', (req, res) => {
 });
 
 // Check host status (must be before /api/hosts/:id)
-app.post('/api/hosts/:id/check-status', requireAuth, async (req, res) => {
+app.post('/api/hosts/:id/check-status', requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const host = dbFunctions.getHostById(id);
@@ -313,7 +353,7 @@ app.post('/api/hosts/:id/check-status', requireAuth, async (req, res) => {
 });
 
 // Toggle host status (must be before /api/hosts/:id)
-app.patch('/api/hosts/:id/toggle-status', requireAuth, (req, res) => {
+app.patch('/api/hosts/:id/toggle-status', requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const host = dbFunctions.toggleHostStatus(id);
@@ -342,7 +382,7 @@ app.get('/api/hosts/:id', (req, res) => {
 });
 
 // Add new host
-app.post('/api/hosts', requireAuth, asyncHandler(async (req, res) => {
+app.post('/api/hosts', requireAdmin, asyncHandler(async (req, res) => {
   const { name, ip, description, url, tagIds } = req.body;
   
   // Validate host name
@@ -405,7 +445,7 @@ app.post('/api/hosts', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // Update host
-app.put('/api/hosts/:id', requireAuth, asyncHandler((req, res) => {
+app.put('/api/hosts/:id', requireAdmin, asyncHandler((req, res) => {
   const id = parseInt(req.params.id);
   const { name, ip, description, url, status, tagIds } = req.body;
 
@@ -462,7 +502,7 @@ app.put('/api/hosts/:id', requireAuth, asyncHandler((req, res) => {
 }));
 
 // Delete host
-app.delete('/api/hosts/:id', requireAuth, (req, res) => {
+app.delete('/api/hosts/:id', requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const result = dbFunctions.deleteHost(id);
@@ -511,7 +551,7 @@ app.get('/api/tags/:id', (req, res) => {
 });
 
 // Add new tag
-app.post('/api/tags', requireAuth, asyncHandler((req, res) => {
+app.post('/api/tags', requireAdmin, asyncHandler((req, res) => {
   const { name, color } = req.body;
   
   // Validate tag name
@@ -545,7 +585,7 @@ app.post('/api/tags', requireAuth, asyncHandler((req, res) => {
 }));
 
 // Update tag
-app.put('/api/tags/:id', requireAuth, asyncHandler((req, res) => {
+app.put('/api/tags/:id', requireAdmin, asyncHandler((req, res) => {
   const id = parseInt(req.params.id);
   const { name, color } = req.body;
 
@@ -583,7 +623,7 @@ app.put('/api/tags/:id', requireAuth, asyncHandler((req, res) => {
 }));
 
 // Delete tag
-app.delete('/api/tags/:id', requireAuth, (req, res) => {
+app.delete('/api/tags/:id', requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const result = dbFunctions.deleteTag(id);
@@ -624,7 +664,7 @@ app.get('/api/export', (req, res) => {
 });
 
 // Import data (JSON)
-app.post('/api/import', requireAuth, async (req, res) => {
+app.post('/api/import', requireAdmin, async (req, res) => {
   try {
     const { hosts, tags } = req.body;
     let imported = 0;
@@ -720,7 +760,7 @@ app.get('/api/stats', (req, res) => {
 });
 
 // Network scan
-app.post('/api/network/scan', requireAuth, async (req, res) => {
+app.post('/api/network/scan', requireAdmin, async (req, res) => {
   try {
     const { networkRange, timeout } = req.body;
     
@@ -774,7 +814,7 @@ app.get('/api/networks/:id', (req, res) => {
 });
 
 // Add new network
-app.post('/api/networks', requireAuth, asyncHandler((req, res) => {
+app.post('/api/networks', requireAdmin, asyncHandler((req, res) => {
   const { name, networkId, subnet } = req.body;
   
   if (!name || !networkId || subnet === undefined) {
@@ -814,7 +854,7 @@ app.post('/api/networks', requireAuth, asyncHandler((req, res) => {
 }));
 
 // Update network
-app.put('/api/networks/:id', requireAuth, (req, res) => {
+app.put('/api/networks/:id', requireAdmin, (req, res) => {
   try {
     const { name, networkId, subnet, lastScanned } = req.body;
     const id = parseInt(req.params.id);
@@ -843,7 +883,7 @@ app.put('/api/networks/:id', requireAuth, (req, res) => {
 });
 
 // Delete network hosts (without deleting the network itself)
-app.delete('/api/networks/:id/hosts', requireAuth, (req, res) => {
+app.delete('/api/networks/:id/hosts', requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
@@ -875,7 +915,7 @@ app.delete('/api/networks/:id/hosts', requireAuth, (req, res) => {
 });
 
 // Delete network with all its hosts
-app.delete('/api/networks/:id', requireAuth, (req, res) => {
+app.delete('/api/networks/:id', requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
@@ -931,7 +971,7 @@ app.get('/api/networks/:id/hosts', (req, res) => {
 });
 
 // Scan network
-app.post('/api/networks/:id/scan', requireAuth, async (req, res) => {
+app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
@@ -1040,7 +1080,7 @@ app.post('/api/networks/:id/scan', requireAuth, async (req, res) => {
 });
 
 // Delete all data
-app.delete('/api/data/all', requireAuth, asyncHandler((req, res) => {
+app.delete('/api/data/all', requireAdmin, asyncHandler((req, res) => {
   try {
     // Use database transaction to ensure all data is deleted
     // Start transaction
@@ -1136,7 +1176,7 @@ app.get('/api/favorites/:id', (req, res) => {
 });
 
 // Add favorite
-app.post('/api/favorites', requireAuth, (req, res) => {
+app.post('/api/favorites', requireAdmin, (req, res) => {
   try {
     const { hostId, url, groupId, displayOrder, customName, description } = req.body;
     
@@ -1168,7 +1208,7 @@ app.post('/api/favorites', requireAuth, (req, res) => {
 });
 
 // Update favorite
-app.put('/api/favorites/:id', requireAuth, (req, res) => {
+app.put('/api/favorites/:id', requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { url, groupId, displayOrder, customName, description } = req.body;
@@ -1195,7 +1235,7 @@ app.put('/api/favorites/:id', requireAuth, (req, res) => {
 });
 
 // Delete favorite
-app.delete('/api/favorites/:id', requireAuth, (req, res) => {
+app.delete('/api/favorites/:id', requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const favorite = dbFunctions.getFavoriteById(id);
@@ -1248,7 +1288,7 @@ app.get('/api/groups/:id', (req, res) => {
 });
 
 // Create group
-app.post('/api/groups', requireAuth, (req, res) => {
+app.post('/api/groups', requireAdmin, (req, res) => {
   try {
     const { name, color, displayOrder } = req.body;
     
@@ -1271,7 +1311,7 @@ app.post('/api/groups', requireAuth, (req, res) => {
 });
 
 // Update group
-app.put('/api/groups/:id', requireAuth, (req, res) => {
+app.put('/api/groups/:id', requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { name, color, displayOrder } = req.body;
@@ -1300,7 +1340,7 @@ app.put('/api/groups/:id', requireAuth, (req, res) => {
 });
 
 // Delete group
-app.delete('/api/groups/:id', requireAuth, (req, res) => {
+app.delete('/api/groups/:id', requireAdmin, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const group = dbFunctions.getGroupById(id);

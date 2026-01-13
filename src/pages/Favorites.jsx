@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 function Favorites() {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAdmin } = useAuth()
   const [favorites, setFavorites] = useState([])
   const [groups, setGroups] = useState([])
   const [allHosts, setAllHosts] = useState([])
@@ -371,7 +371,7 @@ function Favorites() {
       <div className="header">
         <h1>شبكتي</h1>
         <div className="controls">
-          {isAuthenticated && (
+          {isAdmin && (
             <>
               <button onClick={() => setShowAddModal(true)} className="btn-success">
                 إضافة جهاز
@@ -440,7 +440,7 @@ function Favorites() {
                     gap: '10px'
                   }}
                 >
-                  {isAuthenticated && !isUngrouped && (
+                  {isAdmin && !isUngrouped && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       <button
                         onClick={(e) => {
@@ -555,7 +555,7 @@ function Favorites() {
                           >
                             فتح
                           </button>
-                          {isAuthenticated && (
+                          {isAdmin && (
                             <>
                               <button
                                 onClick={(e) => {
@@ -819,7 +819,7 @@ function Favorites() {
                             ({groupFavorites.length} جهاز)
                           </span>
                         </div>
-                        {isAuthenticated && (
+                        {isAdmin && (
                           <button
                             onClick={() => handleDeleteGroup(group.id)}
                             className="btn-danger btn-small"

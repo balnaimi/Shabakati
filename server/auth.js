@@ -22,9 +22,9 @@ export function comparePassword(password, hash) {
 /**
  * Generate JWT token for user
  */
-export function generateToken(username) {
+export function generateToken(username, type = 'admin') {
   return jwt.sign(
-    { username, type: 'admin' },
+    { username, type },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRATION }
   );

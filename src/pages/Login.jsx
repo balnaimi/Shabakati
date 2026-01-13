@@ -83,7 +83,7 @@ function Login() {
       
       <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
         <h1 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          صلاحية المسؤول
+          تسجيل الدخول
         </h1>
         
         {error && (
@@ -95,20 +95,23 @@ function Login() {
         {setupRequired ? (
           <>
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              لم يتم إنشاء حساب للمسؤول بعد. يرجى إنشاء كلمة مرور للمسؤول.
+              هذا هو أول تشغيل للبرنامج. يرجى إعداد كلمة مرور للزوار وكلمة مرور للمسؤول.
             </p>
             <button
               onClick={handleSetup}
               className="btn-primary"
               style={{ width: '100%' }}
             >
-              إنشاء كلمة مرور المسؤول
+              إعداد البرنامج
             </button>
           </>
         ) : (
           <form onSubmit={handleSubmit}>
+            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+              أدخل كلمة مرور الزوار للعرض
+            </p>
             <div className="form-group">
-              <label htmlFor="password">كلمة المرور:</label>
+              <label htmlFor="password">كلمة مرور الزوار:</label>
               <input
                 id="password"
                 type="password"
@@ -117,6 +120,7 @@ function Login() {
                 required
                 disabled={loading}
                 autoFocus
+                placeholder="كلمة مرور الزوار"
               />
             </div>
             
@@ -126,7 +130,7 @@ function Login() {
               className="btn-primary"
               style={{ width: '100%' }}
             >
-              {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
+              {loading ? 'جاري التحقق...' : 'تسجيل الدخول كزائر'}
             </button>
           </form>
         )}

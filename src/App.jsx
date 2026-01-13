@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
-import { AuthProvider } from './contexts/AuthContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout'
 
@@ -22,45 +22,82 @@ const LoadingSpinner = () => (
   </div>
 )
 
+// Protected Route component - requires visitor authentication
+function ProtectedRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!isAuthenticated) {
+    // Redirect to login with return URL
+    return <Navigate to={`/login?from=${encodeURIComponent(location.pathname)}`} replace />;
+  }
+
+  return children;
+}
+
+function AppRoutes() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/setup" element={<Setup />} />
+        <Route path="/change-password" element={
+          <ProtectedRoute>
+            <ChangePassword />
+          </ProtectedRoute>
+        } />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Layout>
+              <Favorites />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/hosts" element={
+          <ProtectedRoute>
+            <Layout>
+              <HostsList />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/tags" element={
+          <ProtectedRoute>
+            <Layout>
+              <TagsManagement />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/networks" element={
+          <ProtectedRoute>
+            <Layout>
+              <NetworksList />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/networks/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <NetworkView />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
           <Router>
-            <Suspense fallback={<LoadingSpinner />}>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/setup" element={<Setup />} />
-                <Route path="/change-password" element={<ChangePassword />} />
-                <Route path="/" element={
-                  <Layout>
-                    <Favorites />
-                  </Layout>
-                } />
-                <Route path="/hosts" element={
-                  <Layout>
-                    <HostsList />
-                  </Layout>
-                } />
-                <Route path="/tags" element={
-                  <Layout>
-                    <TagsManagement />
-                  </Layout>
-                } />
-                <Route path="/networks" element={
-                  <Layout>
-                    <NetworksList />
-                  </Layout>
-                } />
-                <Route path="/networks/:id" element={
-                  <Layout>
-                    <NetworkView />
-                  </Layout>
-                } />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
+            <AppRoutes />
           </Router>
         </AuthProvider>
       </ThemeProvider>

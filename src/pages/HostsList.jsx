@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 function HostsList() {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAdmin } = useAuth()
   const [stats, setStats] = useState({
     totalNetworks: 0,
     totalHosts: 0,
@@ -65,7 +65,7 @@ function HostsList() {
           <p>نظرة عامة على الشبكات والأجهزة</p>
         </div>
         <div className="controls">
-          {isAuthenticated && (
+          {isAdmin && (
             <>
               <button 
                 onClick={() => navigate('/networks')} 

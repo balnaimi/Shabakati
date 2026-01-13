@@ -212,9 +212,17 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'admin',
     created_at TEXT NOT NULL
   )
 `);
+
+// Add type column to existing databases
+try {
+  db.exec('ALTER TABLE admins ADD COLUMN type TEXT NOT NULL DEFAULT \'admin\'');
+} catch (e) {
+  // Column already exists
+}
 
 // Database functions
 export const dbFunctions = {
@@ -812,14 +820,15 @@ export const dbFunctions = {
   },
 
   // Create admin
-  createAdmin(username, passwordHash) {
+  createAdmin(username, passwordHash, type = 'admin') {
     const stmt = db.prepare(`
-      INSERT INTO admins (username, password_hash, created_at)
-      VALUES (?, ?, ?)
+      INSERT INTO admins (username, password_hash, type, created_at)
+      VALUES (?, ?, ?, ?)
     `);
     const result = stmt.run(
       username,
       passwordHash,
+      type,
       new Date().toISOString()
     );
     const selectStmt = db.prepare('SELECT * FROM admins WHERE id = ?');
@@ -855,10 +864,49 @@ export const dbFunctions = {
     return null;
   },
 
+  // Verify visitor password only (without username) - checks visitors only
+  verifyVisitorPasswordOnly(password, comparePasswordFunc) {
+    const stmt = db.prepare('SELECT * FROM admins WHERE type = ?');
+    const visitors = stmt.all('visitor');
+    for (const visitor of visitors) {
+      if (comparePasswordFunc(password, visitor.password_hash)) {
+        return visitor;
+      }
+    }
+    return null;
+  },
+
+  // Verify admin password only (without username) - checks admins only
+  verifyAdminPasswordOnlyForAdmin(password, comparePasswordFunc) {
+    const stmt = db.prepare('SELECT * FROM admins WHERE type = ?');
+    const admins = stmt.all('admin');
+    for (const admin of admins) {
+      if (comparePasswordFunc(password, admin.password_hash)) {
+        return admin;
+      }
+    }
+    return null;
+  },
+
   // Check if any admin exists
   hasAdmin() {
     const admins = this.getAllAdmins();
     return admins.length > 0;
+  },
+
+  // Check if setup is required (needs both visitor and admin)
+  isSetupRequired() {
+    const visitorStmt = db.prepare('SELECT COUNT(*) as count FROM admins WHERE type = ?');
+    const adminStmt = db.prepare('SELECT COUNT(*) as count FROM admins WHERE type = ?');
+    const visitorCount = visitorStmt.get('visitor').count;
+    const adminCount = adminStmt.get('admin').count;
+    return visitorCount === 0 || adminCount === 0;
+  },
+
+  // Get admin by type
+  getAdminByType(type) {
+    const stmt = db.prepare('SELECT * FROM admins WHERE type = ? LIMIT 1');
+    return stmt.get(type);
   },
 
   // Update admin password

@@ -9,7 +9,7 @@ import { useTags } from '../hooks/useTags'
 function NetworkView() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const { isAuthenticated } = useAuth()
+  const { isAdmin } = useAuth()
   const [network, setNetwork] = useState(null)
   const [hosts, setHosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -399,7 +399,7 @@ function NetworkView() {
       )}
 
       <div className="controls">
-        {isAuthenticated && (
+        {isAdmin && (
           <>
             <button onClick={handleScan} disabled={scanning}>
               {scanning ? 'جاري الفحص...' : 'فحص الشبكة'}
@@ -565,7 +565,7 @@ function NetworkView() {
                       marginTop: '10px',
                       flexWrap: 'wrap'
                     }}>
-                      {isAuthenticated && (
+                      {isAdmin && (
                         <>
                           <button
                             onClick={() => handleEditHost(host)}
@@ -770,7 +770,7 @@ function NetworkView() {
                             ⭐
                           </button>
                         )}
-                        {isAuthenticated && (
+                        {isAdmin && (
                           <>
                             <button 
                               onClick={() => handleEditHost(host)} 

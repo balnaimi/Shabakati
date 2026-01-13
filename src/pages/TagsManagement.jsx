@@ -7,7 +7,7 @@ import { useTags } from '../hooks/useTags'
 
 function TagsManagement() {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAdmin } = useAuth()
   const { tags, loading, error: tagsError, refetch: fetchTags } = useTags()
   const [error, setError] = useState(null)
   const [editingTag, setEditingTag] = useState(null)
@@ -85,7 +85,7 @@ function TagsManagement() {
 
       <div>
         <div className="controls">
-          {isAuthenticated && (
+          {isAdmin && (
             <button onClick={() => { setShowAddForm(true); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
               إضافة وسم جديد
             </button>
@@ -130,7 +130,7 @@ function TagsManagement() {
                 <h3>{tag.name}</h3>
               </div>
               <div className="tag-actions">
-                {isAuthenticated && (
+                {isAdmin && (
                   <>
                     <button onClick={() => startEdit(tag)} className="btn-warning">تعديل</button>
                     <button onClick={() => handleDeleteTag(tag.id)} className="btn-danger">حذف</button>

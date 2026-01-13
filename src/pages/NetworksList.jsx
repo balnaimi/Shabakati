@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 function NetworksList() {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAdmin } = useAuth()
   const [networks, setNetworks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -69,7 +69,7 @@ function NetworksList() {
       )}
 
       <div className="controls">
-        {isAuthenticated && (
+        {isAdmin && (
           <button onClick={() => {
             setShowAddForm(true)
             setEditingNetworkId(null)
@@ -120,7 +120,7 @@ function NetworksList() {
               </div>
               <div className="tag-actions">
                 <button onClick={() => navigate(`/networks/${network.id}`)} className="btn-primary">عرض</button>
-                {isAuthenticated && (
+                {isAdmin && (
                   <>
                     <button onClick={() => handleStartEdit(network)} className="btn-warning">تعديل</button>
                     <button onClick={() => handleDeleteNetwork(network.id)} className="btn-danger">حذف</button>
