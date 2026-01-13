@@ -86,6 +86,11 @@ function AuthButton() {
     setShowMenu(false);
   };
 
+  const handleChangeVisitorPassword = () => {
+    navigate('/change-visitor-password');
+    setShowMenu(false);
+  };
+
   // Determine button text and style
   const getButtonText = () => {
     if (setupRequired) {
@@ -145,28 +150,51 @@ function AuthButton() {
             zIndex: 1000
           }}>
             {isAdmin && (
-              <button
-                onClick={handleChangePassword}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  textAlign: 'right',
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  borderBottom: '1px solid var(--border-color)',
-                  borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'var(--bg-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                }}
-              >
-                تغيير كلمة المرور
-              </button>
+              <>
+                <button
+                  onClick={handleChangePassword}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    textAlign: 'right',
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'var(--bg-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  تغيير كلمة مرور المسؤول
+                </button>
+                <button
+                  onClick={handleChangeVisitorPassword}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    textAlign: 'right',
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid var(--border-color)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'var(--bg-hover)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  تغيير كلمة مرور الزوار
+                </button>
+              </>
             )}
             <button
               onClick={handleLogout}
@@ -178,7 +206,7 @@ function AuthButton() {
                 background: 'transparent',
                 color: 'var(--danger)',
                 cursor: 'pointer',
-                borderRadius: isAdmin ? '0 0 var(--radius-sm) var(--radius-sm)' : 'var(--radius-sm)'
+                borderRadius: '0 0 var(--radius-sm) var(--radius-sm)'
               }}
               onMouseEnter={(e) => {
                 e.target.style.backgroundColor = 'var(--bg-hover)';

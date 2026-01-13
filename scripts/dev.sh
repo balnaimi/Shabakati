@@ -65,6 +65,16 @@ cleanup() {
 
 trap cleanup SIGINT SIGTERM
 
+# Kill any process using port 3001 before starting
+if command -v lsof &> /dev/null; then
+    OLD_PID=$(lsof -ti:3001 2>/dev/null || true)
+    if [ ! -z "$OLD_PID" ]; then
+        echo -e "${YELLOW}Killing old process on port 3001 (PID: $OLD_PID)...${NC}"
+        kill -9 $OLD_PID 2>/dev/null || true
+        sleep 1
+    fi
+fi
+
 # Start backend server
 echo -e "${YELLOW}Starting backend server on port 3001...${NC}"
 cd "$PROJECT_DIR/server"

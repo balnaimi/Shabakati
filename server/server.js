@@ -283,6 +283,39 @@ app.post('/api/auth/change-password', requireAdmin, asyncHandler(async (req, res
   res.json({ message: 'تم تغيير كلمة المرور بنجاح' });
 }));
 
+// Change visitor password (requires admin authentication)
+app.post('/api/auth/change-visitor-password', requireAdmin, asyncHandler(async (req, res) => {
+  const { newPassword } = req.body;
+  
+  if (!newPassword) {
+    throw new ApiError(400, 'كلمة المرور الجديدة مطلوبة');
+  }
+  
+  if (newPassword.length < 3) {
+    throw new ApiError(400, 'كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل');
+  }
+  
+  // Get visitor account
+  const visitor = dbFunctions.getAdminByType('visitor');
+  if (!visitor) {
+    throw new ApiError(404, 'حساب الزوار غير موجود');
+  }
+  
+  // Update visitor password
+  const newPasswordHash = hashPassword(newPassword);
+  const updatedVisitor = dbFunctions.updateAdminPassword(visitor.id, newPasswordHash);
+  
+  if (!updatedVisitor) {
+    throw new ApiError(500, 'فشل تحديث كلمة مرور الزوار');
+  }
+  
+  // Invalidate auth status cache since password changed
+  cache.delete('auth_status');
+  
+  logger.info('Visitor password changed', { username: updatedVisitor.username });
+  res.json({ message: 'تم تغيير كلمة مرور الزوار بنجاح' });
+}));
+
 // Routes
 
 // Get all hosts (with pagination support)

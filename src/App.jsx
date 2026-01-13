@@ -14,6 +14,7 @@ const NetworkView = lazy(() => import('./pages/NetworkView'))
 const Login = lazy(() => import('./pages/Login'))
 const Setup = lazy(() => import('./pages/Setup'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
+const ChangeVisitorPassword = lazy(() => import('./pages/ChangeVisitorPassword'))
 
 // Loading component
 const LoadingSpinner = () => (
@@ -48,6 +49,11 @@ function AppRoutes() {
         <Route path="/change-password" element={
           <ProtectedRoute>
             <ChangePassword />
+          </ProtectedRoute>
+        } />
+        <Route path="/change-visitor-password" element={
+          <ProtectedRoute>
+            <ChangeVisitorPassword />
           </ProtectedRoute>
         } />
         <Route path="/" element={
