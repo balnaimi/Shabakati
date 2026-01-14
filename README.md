@@ -36,7 +36,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-البرنامج سيكون متاحاً على: http://localhost:3001
+البرنامج سيكون متاحاً على: http://your-ip:3001 أو http://your-domain:3001
 
 ---
 

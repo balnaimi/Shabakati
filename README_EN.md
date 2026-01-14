@@ -36,7 +36,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-The application will be available at: http://localhost:3001
+The application will be available at: http://your-ip:3001 or http://your-domain:3001
 
 ---
 
