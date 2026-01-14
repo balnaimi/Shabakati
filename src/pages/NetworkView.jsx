@@ -9,7 +9,7 @@ import { useTags } from '../hooks/useTags'
 function NetworkView() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const { isAdmin } = useAuth()
+  const { isAdmin, userType } = useAuth()
   const [network, setNetwork] = useState(null)
   const [hosts, setHosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -28,12 +28,24 @@ function NetworkView() {
   const [favorites, setFavorites] = useState([])
   const [newHosts, setNewHosts] = useState([]) // الأجهزة الجديدة المكتشفة من آخر فحص
   const [hiddenNewHosts, setHiddenNewHosts] = useState(new Set()) // الأجهزة المخفية
+  const [autoScanEnabled, setAutoScanEnabled] = useState(false)
+  const [autoScanInterval, setAutoScanInterval] = useState(300000) // 5 دقائق
+  const [autoScanResults, setAutoScanResults] = useState({ newDevices: [], disconnected: [] })
+  const [loadingAutoScan, setLoadingAutoScan] = useState(false)
 
   useEffect(() => {
     fetchNetwork()
     fetchHosts()
     fetchFavorites()
   }, [id])
+
+  useEffect(() => {
+    if (network) {
+      setAutoScanEnabled(network.auto_scan_enabled === 1)
+      setAutoScanInterval(network.auto_scan_interval || 300000)
+      fetchAutoScanResults()
+    }
+  }, [network])
 
   const fetchFavorites = async () => {
     try {
@@ -112,6 +124,37 @@ function NetworkView() {
     }
   }
 
+  const fetchAutoScanResults = async () => {
+    try {
+      const newDevices = await apiGet(`/networks/${id}/auto-scan-results?type=new_device`)
+      const disconnected = await apiGet(`/networks/${id}/auto-scan-results?type=disconnected`)
+      setAutoScanResults({ 
+        newDevices: newDevices.filter(r => r.host), 
+        disconnected: disconnected.filter(r => r.host) 
+      })
+    } catch (err) {
+      console.error('Error fetching auto scan results:', err)
+    }
+  }
+
+  const handleToggleAutoScan = async () => {
+    try {
+      setLoadingAutoScan(true)
+      const newState = !autoScanEnabled
+      const result = await apiPost(`/networks/${id}/auto-scan`, {
+        enabled: newState,
+        interval: autoScanInterval
+      })
+      setAutoScanEnabled(newState)
+      setNetwork(result)
+      alert(newState ? 'تم تفعيل الفحص التلقائي' : 'تم تعطيل الفحص التلقائي')
+    } catch (err) {
+      alert(`خطأ: ${err.message}`)
+    } finally {
+      setLoadingAutoScan(false)
+    }
+  }
+
   const handleScan = async () => {
     try {
       setError(null)
@@ -136,6 +179,9 @@ function NetworkView() {
       await fetchNetwork()
       const updatedHosts = await apiGet(`/networks/${id}/hosts`)
       setHosts(updatedHosts)
+      
+      // تحديث نتائج الفحص التلقائي
+      await fetchAutoScanResults()
       
       // تحديد الأجهزة الجديدة
       if (result.addedCount > 0) {
@@ -404,6 +450,47 @@ function NetworkView() {
             <button onClick={handleScan} disabled={scanning}>
               {scanning ? 'جاري الفحص...' : 'فحص الشبكة'}
             </button>
+            
+            {/* زر الفحص التلقائي */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '10px',
+              padding: '10px',
+              backgroundColor: 'var(--bg-secondary)',
+              borderRadius: 'var(--radius-md)',
+              border: `2px solid ${autoScanEnabled ? 'var(--success)' : 'var(--border-color)'}`
+            }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={autoScanEnabled}
+                  onChange={handleToggleAutoScan}
+                  disabled={loadingAutoScan}
+                  style={{ 
+                    width: '20px', 
+                    height: '20px',
+                    cursor: 'pointer'
+                  }}
+                />
+                <span>الفحص التلقائي</span>
+              </label>
+              {autoScanEnabled && (
+                <span style={{ 
+                  fontSize: '12px', 
+                  color: 'var(--text-secondary)' 
+                }}>
+                  (كل {Math.round(autoScanInterval / 60000)} دقيقة)
+                </span>
+              )}
+            </div>
+            
             <button onClick={handleClearNetworkHosts} className="btn-danger">
               حذف أجهزة الشبكة
             </button>
@@ -606,22 +693,222 @@ function NetworkView() {
             </div>
           )}
 
+          {/* قسم الأجهزة المكتشفة تلقائياً */}
+          {autoScanResults.newDevices.length > 0 && (
+            <div style={{ 
+              marginTop: '20px', 
+              marginBottom: '30px',
+              padding: '20px',
+              backgroundColor: 'var(--success-light)',
+              border: '2px solid var(--success)',
+              borderRadius: 'var(--radius-md)'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '15px'
+              }}>
+                <h2 style={{ 
+                  margin: 0, 
+                  color: 'var(--success)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  الأجهزة المكتشفة تلقائياً ({autoScanResults.newDevices.length})
+                </h2>
+                {isAdmin && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await apiDelete(`/networks/${id}/auto-scan-results?type=new_device`)
+                        await fetchAutoScanResults()
+                      } catch (err) {
+                        alert(`خطأ: ${err.message}`)
+                      }
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: 'var(--success)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    مسح القائمة
+                  </button>
+                )}
+              </div>
+              
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+                gap: '15px' 
+              }}>
+                {autoScanResults.newDevices.map(result => (
+                  <div
+                    key={result.id}
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      padding: '15px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  >
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'start',
+                      marginBottom: '10px'
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ margin: 0, marginBottom: '5px', color: 'var(--text-primary)' }}>
+                          {result.host?.name || 'غير معروف'}
+                        </h3>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                          {result.host?.ip || 'غير معروف'}
+                        </p>
+                        <p style={{ margin: '5px 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          تم الاكتشاف: {new Date(result.discovered_at).toLocaleString('ar-SA')}
+                        </p>
+                      </div>
+                      <span style={{
+                        padding: '4px 8px',
+                        backgroundColor: result.host?.status === 'online' ? 'var(--success)' : 'var(--danger)',
+                        color: 'white',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        {result.host?.status === 'online' ? 'متصل' : 'غير متصل'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* قسم الأجهزة المنقطعة */}
+          {autoScanResults.disconnected.length > 0 && (
+            <div style={{ 
+              marginTop: '20px', 
+              marginBottom: '30px',
+              padding: '20px',
+              backgroundColor: 'var(--danger-light)',
+              border: '2px solid var(--danger)',
+              borderRadius: 'var(--radius-md)'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '15px'
+              }}>
+                <h2 style={{ 
+                  margin: 0, 
+                  color: 'var(--danger)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  الأجهزة المنقطعة ({autoScanResults.disconnected.length})
+                </h2>
+                {isAdmin && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await apiDelete(`/networks/${id}/auto-scan-results?type=disconnected`)
+                        await fetchAutoScanResults()
+                      } catch (err) {
+                        alert(`خطأ: ${err.message}`)
+                      }
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: 'var(--danger)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    مسح القائمة
+                  </button>
+                )}
+              </div>
+              
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+                gap: '15px' 
+              }}>
+                {autoScanResults.disconnected.map(result => (
+                  <div
+                    key={result.id}
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      padding: '15px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  >
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'start',
+                      marginBottom: '10px'
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ margin: 0, marginBottom: '5px', color: 'var(--text-primary)' }}>
+                          {result.host?.name || 'غير معروف'}
+                        </h3>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                          {result.host?.ip || 'غير معروف'}
+                        </p>
+                        <p style={{ margin: '5px 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          تم الانقطاع: {new Date(result.discovered_at).toLocaleString('ar-SA')}
+                        </p>
+                      </div>
+                      <span style={{
+                        padding: '4px 8px',
+                        backgroundColor: 'var(--danger)',
+                        color: 'white',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        غير متصل
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {hosts.length > 0 && (
         <div style={{ marginTop: '40px' }}>
           <h2>الأجهزة في هذه الشبكة ({filteredHosts.length} من {hosts.length})</h2>
           
-          <div className="filters" style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div className="filters" style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'nowrap', alignItems: 'center' }}>
             <input
               type="text"
               placeholder="بحث (اسم، IP)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ padding: '8px', flex: '1', minWidth: '200px' }}
+              style={{ padding: '8px', flex: '1 1 auto', minWidth: '200px', maxWidth: '400px' }}
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ padding: '8px' }}
+              style={{ padding: '8px', width: '180px', flexShrink: 0 }}
             >
               <option value="all">جميع الحالات</option>
               <option value="online">متصل</option>
@@ -630,7 +917,7 @@ function NetworkView() {
             <select
               value={tagFilter || 'all'}
               onChange={(e) => setTagFilter(e.target.value === 'all' ? null : e.target.value)}
-              style={{ padding: '8px' }}
+              style={{ padding: '8px', width: '180px', flexShrink: 0 }}
             >
               <option value="all">جميع الوسوم</option>
               {availableTags.map(tag => (
@@ -697,7 +984,7 @@ function NetworkView() {
                   >
                     آخر فحص {sortBy === 'lastChecked' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th>الإجراءات</th>
+                  {userType !== 'visitor' && <th>الإجراءات</th>}
                 </tr>
               </thead>
               <tbody>
@@ -751,43 +1038,45 @@ function NetworkView() {
                         <span>-</span>
                       )}
                     </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        {isHostFavorite(host.id) ? (
-                          <button 
-                            onClick={() => handleRemoveFromFavorites(host.id)} 
-                            style={{ backgroundColor: 'var(--warning)', color: 'var(--text-primary)', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '12px' }}
-                            title="حذف من المفضلة"
-                          >
-                            ⭐
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => handleAddToFavorites(host.id)} 
-                            style={{ backgroundColor: 'var(--text-secondary)', color: 'var(--bg-primary)', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '12px' }}
-                            title="إضافة للمفضلة"
-                          >
-                            ⭐
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <>
+                    {userType !== 'visitor' && (
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {isHostFavorite(host.id) ? (
                             <button 
-                              onClick={() => handleEditHost(host)} 
-                              style={{ padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                              onClick={() => handleRemoveFromFavorites(host.id)} 
+                              style={{ backgroundColor: 'var(--warning)', color: 'var(--text-primary)', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '12px' }}
+                              title="حذف من المفضلة"
                             >
-                              تعديل
+                              ⭐
                             </button>
+                          ) : (
                             <button 
-                              onClick={() => handleDeleteHost(host.id)} 
-                              style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                              onClick={() => handleAddToFavorites(host.id)} 
+                              style={{ backgroundColor: 'var(--text-secondary)', color: 'var(--bg-primary)', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '12px' }}
+                              title="إضافة للمفضلة"
                             >
-                              حذف
+                              ⭐
                             </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
+                          )}
+                          {isAdmin && (
+                            <>
+                              <button 
+                                onClick={() => handleEditHost(host)} 
+                                style={{ padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                              >
+                                تعديل
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteHost(host.id)} 
+                                style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                              >
+                                حذف
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

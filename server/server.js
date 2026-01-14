@@ -10,6 +10,7 @@ import db from './database.js';
 import { checkHost } from './hostChecker.js';
 import { scanNetwork } from './networkScanner.js';
 import { getNetworkCIDR, isIPInNetwork, calculateIPRange } from './networkUtils.js';
+import { initializeAutoScans, startAutoScan, stopAutoScan } from './autoScanService.js';
 import { hashPassword, comparePassword, generateToken, verifyToken } from './auth.js';
 import { requireAdmin, requireVisitor } from './middleware.js';
 import logger from './logger.js';
@@ -1112,6 +1113,87 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
   }
 });
 
+// Enable/disable auto scan for network
+app.post('/api/networks/:id/auto-scan', requireAdmin, asyncHandler(async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { enabled, interval } = req.body;
+  
+  const network = dbFunctions.getNetworkById(id);
+  if (!network) {
+    throw new ApiError(404, 'الشبكة غير موجودة');
+  }
+  
+  const scanInterval = interval || 300000; // Default 5 minutes
+  
+  if (scanInterval < 60000) { // Minimum 1 minute
+    throw new ApiError(400, 'فترة الفحص يجب أن تكون دقيقة واحدة على الأقل');
+  }
+  
+  // Update database
+  dbFunctions.updateNetworkAutoScan(id, enabled, scanInterval);
+  
+  // Start or stop auto scan service
+  if (enabled) {
+    startAutoScan(id);
+  } else {
+    stopAutoScan(id);
+  }
+  
+  const updatedNetwork = dbFunctions.getNetworkById(id);
+  cache.delete('networks');
+  
+  logger.info(`Auto scan ${enabled ? 'enabled' : 'disabled'} for network ${id}`);
+  res.json(updatedNetwork);
+}));
+
+// Get auto scan results for network
+app.get('/api/networks/:id/auto-scan-results', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { type } = req.query; // 'new_device' or 'disconnected'
+    
+    const network = dbFunctions.getNetworkById(id);
+    if (!network) {
+      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+    }
+    
+    const results = dbFunctions.getAutoScanResults(id, type || null);
+    
+    // Get host details for each result
+    const resultsWithHosts = results.map(result => {
+      const host = dbFunctions.getHostById(result.host_id);
+      return {
+        ...result,
+        host: host
+      };
+    });
+    
+    res.json(resultsWithHosts);
+  } catch (error) {
+    logger.error('Error in GET /api/networks/:id/auto-scan-results:', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Clear auto scan results for network
+app.delete('/api/networks/:id/auto-scan-results', requireAdmin, (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { type } = req.query; // 'new_device' or 'disconnected'
+    
+    const network = dbFunctions.getNetworkById(id);
+    if (!network) {
+      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+    }
+    
+    dbFunctions.clearAutoScanResults(id, type || null);
+    res.json({ success: true, message: 'تم حذف النتائج بنجاح' });
+  } catch (error) {
+    logger.error('Error in DELETE /api/networks/:id/auto-scan-results:', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Delete all data
 app.delete('/api/data/all', requireAdmin, asyncHandler((req, res) => {
   try {
@@ -1427,6 +1509,9 @@ app.listen(PORT, '0.0.0.0', () => {
   logger.info(`📡 API available on all interfaces: http://0.0.0.0:${PORT}/api`);
   logger.info(`🌐 Access from local network at: http://<SERVER_IP>:${PORT}/api`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Initialize auto scans
+  initializeAutoScans();
 }).on('error', (err) => {
   logger.error('Failed to start server:', err);
   process.exit(1);

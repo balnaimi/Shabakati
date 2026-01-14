@@ -79,6 +79,38 @@ db.exec(`
   )
 `);
 
+// Add auto scan columns to networks table
+try {
+  db.exec('ALTER TABLE networks ADD COLUMN auto_scan_enabled INTEGER DEFAULT 0');
+} catch (e) {}
+try {
+  db.exec('ALTER TABLE networks ADD COLUMN auto_scan_interval INTEGER DEFAULT 300000');
+} catch (e) {}
+
+// Create auto_scan_results table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS auto_scan_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    network_id INTEGER NOT NULL,
+    scan_type TEXT NOT NULL,
+    host_id INTEGER NOT NULL,
+    discovered_at TEXT NOT NULL,
+    FOREIGN KEY (network_id) REFERENCES networks(id) ON DELETE CASCADE,
+    FOREIGN KEY (host_id) REFERENCES hosts(id) ON DELETE CASCADE
+  )
+`);
+
+// Add indexes for auto_scan_results
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_auto_scan_results_network_id ON auto_scan_results(network_id)');
+} catch (e) {}
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_auto_scan_results_host_id ON auto_scan_results(host_id)');
+} catch (e) {}
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_auto_scan_results_scan_type ON auto_scan_results(scan_type)');
+} catch (e) {}
+
 // Add tags column if it doesn't exist (for existing databases)
 try {
   db.exec('ALTER TABLE hosts ADD COLUMN tags TEXT');
@@ -601,6 +633,60 @@ export const dbFunctions = {
   deleteNetwork(id) {
     const stmt = db.prepare('DELETE FROM networks WHERE id = ?');
     return stmt.run(id);
+  },
+
+  // ========== Auto Scan functions ==========
+  
+  // Update network auto scan settings
+  updateNetworkAutoScan(networkId, enabled, interval = 300000) {
+    const stmt = db.prepare(`
+      UPDATE networks 
+      SET auto_scan_enabled = ?, auto_scan_interval = ?
+      WHERE id = ?
+    `);
+    stmt.run(enabled ? 1 : 0, interval, networkId);
+    return this.getNetworkById(networkId);
+  },
+
+  // Get networks with auto scan enabled
+  getNetworksWithAutoScan() {
+    const stmt = db.prepare('SELECT * FROM networks WHERE auto_scan_enabled = 1');
+    return stmt.all();
+  },
+
+  // Add auto scan result
+  addAutoScanResult(networkId, scanType, hostId) {
+    const stmt = db.prepare(`
+      INSERT INTO auto_scan_results (network_id, scan_type, host_id, discovered_at)
+      VALUES (?, ?, ?, ?)
+    `);
+    stmt.run(networkId, scanType, hostId, new Date().toISOString());
+  },
+
+  // Get auto scan results for network
+  getAutoScanResults(networkId, scanType = null) {
+    let query = 'SELECT * FROM auto_scan_results WHERE network_id = ?';
+    const params = [networkId];
+    
+    if (scanType) {
+      query += ' AND scan_type = ?';
+      params.push(scanType);
+    }
+    
+    query += ' ORDER BY discovered_at DESC';
+    const stmt = db.prepare(query);
+    return stmt.all(...params);
+  },
+
+  // Clear auto scan results for network
+  clearAutoScanResults(networkId, scanType = null) {
+    if (scanType) {
+      const stmt = db.prepare('DELETE FROM auto_scan_results WHERE network_id = ? AND scan_type = ?');
+      return stmt.run(networkId, scanType);
+    } else {
+      const stmt = db.prepare('DELETE FROM auto_scan_results WHERE network_id = ?');
+      return stmt.run(networkId);
+    }
   },
 
   // ========== Groups functions ==========
