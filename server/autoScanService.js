@@ -156,10 +156,14 @@ async function performAutoScan(networkId) {
  */
 export function initializeAutoScans() {
   const networks = dbFunctions.getNetworksWithAutoScan();
-  logger.info(`[AutoScan] Initializing auto scan for ${networks.length} networks`);
   
-  for (const network of networks) {
-    startAutoScan(network.id);
+  // Only log and initialize if there are networks with auto scan enabled
+  if (networks.length > 0) {
+    logger.info(`[AutoScan] Initializing auto scan for ${networks.length} networks`);
+    
+    for (const network of networks) {
+      startAutoScan(network.id);
+    }
   }
 }
 
