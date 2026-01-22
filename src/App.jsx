@@ -8,7 +8,6 @@ import { LanguageProvider } from './contexts/LanguageContext'
 import { useTranslation } from './hooks/useTranslation'
 import Layout from './components/Layout'
 
-// Lazy loading للصفحات لتحسين الأداء
 const Favorites = lazy(() => import('./pages/Favorites'))
 const HostsList = lazy(() => import('./pages/HostsList'))
 const TagsManagement = lazy(() => import('./pages/TagsManagement'))

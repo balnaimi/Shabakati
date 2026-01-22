@@ -229,14 +229,12 @@ function Favorites() {
       // Find current index in the filtered list
       const currentIndex = groupsWithFavorites.findIndex(g => g.id === groupId)
       if (currentIndex <= 0) {
-        console.log('Cannot move up: already at top or not found', { currentIndex })
         return // Already at top
       }
 
       const previousGroup = groupsWithFavorites[currentIndex - 1]
       
       if (!previousGroup) {
-        console.log('Previous group not found')
         return
       }
       
@@ -244,14 +242,6 @@ function Favorites() {
       // This ensures different values even if both groups had the same order
       const newCurrentOrder = currentIndex - 1  // Move up = lower index = lower order
       const newPreviousOrder = currentIndex     // Previous becomes current position
-
-      console.log('Moving group up:', { 
-        currentGroup: currentGroup.name, 
-        currentIndex,
-        newCurrentOrder,
-        previousGroup: previousGroup.name, 
-        newPreviousOrder
-      })
 
       // Update both groups with new positions
       await Promise.all([
@@ -262,7 +252,6 @@ function Favorites() {
       // Refresh data
       await fetchData()
     } catch (err) {
-      console.error('Error moving group up:', err)
       setError(err.message)
     }
   }
@@ -295,14 +284,12 @@ function Favorites() {
       // Find current index in the filtered list
       const currentIndex = groupsWithFavorites.findIndex(g => g.id === groupId)
       if (currentIndex < 0 || currentIndex >= groupsWithFavorites.length - 1) {
-        console.log('Cannot move down: already at bottom or not found', { currentIndex, total: groupsWithFavorites.length })
         return // Already at bottom
       }
 
       const nextGroup = groupsWithFavorites[currentIndex + 1]
       
       if (!nextGroup) {
-        console.log('Next group not found')
         return
       }
       
@@ -310,14 +297,6 @@ function Favorites() {
       // This ensures different values even if both groups had the same order
       const newCurrentOrder = currentIndex + 1  // Move down = higher index = higher order
       const newNextOrder = currentIndex         // Next becomes current position
-
-      console.log('Moving group down:', { 
-        currentGroup: currentGroup.name, 
-        currentIndex,
-        newCurrentOrder,
-        nextGroup: nextGroup.name, 
-        newNextOrder
-      })
 
       // Update both groups with new positions
       await Promise.all([
@@ -328,7 +307,6 @@ function Favorites() {
       // Refresh data
       await fetchData()
     } catch (err) {
-      console.error('Error moving group down:', err)
       setError(err.message)
     }
   }

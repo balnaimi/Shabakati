@@ -45,7 +45,6 @@ function HostsList() {
       setError(null)
       await apiDelete('/data/all')
       
-      // إعادة جلب الإحصائيات بعد الحذف
       await fetchStats()
       
       alert(t('messages.success.dataCleared'))

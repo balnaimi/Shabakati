@@ -1,4 +1,3 @@
-import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 
 function ThemeToggle() {
@@ -10,12 +9,16 @@ function ThemeToggle() {
       className="theme-toggle"
       aria-label={theme === 'dark' ? 'تبديل إلى الوضع الفاتح' : 'تبديل إلى الوضع الداكن'}
       title={theme === 'dark' ? 'تبديل إلى الوضع الفاتح' : 'تبديل إلى الوضع الداكن'}
+      style={{
+        fontSize: '20px',
+        lineHeight: '1',
+        padding: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
     >
-      {theme === 'dark' ? (
-        <Sun size={20} />
-      ) : (
-        <Moon size={20} />
-      )}
+      {theme === 'dark' ? '☀️' : '🌙'}
     </button>
   )
 }

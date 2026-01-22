@@ -1,5 +1,6 @@
 import { createConnection } from 'net';
 import ping from 'ping';
+import logger from './logger.js';
 
 /**
  * Check host connection status using ping
@@ -28,7 +29,7 @@ export async function checkHostStatus(ip, timeout = 3) {
       packetLoss: result.packetLoss ? parseFloat(result.packetLoss) : 0
     };
   } catch (error) {
-    console.error('Error in ping:', error.message);
+    logger.error('Error in ping:', error.message);
     return { alive: false };
   }
 }
@@ -173,10 +174,10 @@ export async function checkHost(ip, url = null) {
   // If URL exists, check it first (most reliable)
   if (url && url.trim()) {
     try {
-      console.log(`Checking URL: ${url}`);
+      logger.debug(`Checking URL: ${url}`);
       const urlStatus = await checkURLStatus(url, 5);
       if (urlStatus) {
-        console.log(`URL available: ${url}`);
+        logger.debug(`URL available: ${url}`);
         // Try ping to get latency
         pingInfo = await checkHostStatus(ip, 3);
         return {
@@ -185,44 +186,44 @@ export async function checkHost(ip, url = null) {
           packetLoss: pingInfo.packetLoss || 0
         };
       }
-      console.log(`URL unavailable: ${url}`);
+      logger.debug(`URL unavailable: ${url}`);
     } catch (error) {
-      console.error('Error checking URL:', error.message);
+      logger.error('Error checking URL:', error.message);
     }
   }
 
   // Check IP using ping first
   try {
-    console.log(`Checking IP using ping: ${ip}`);
+    logger.debug(`Checking IP using ping: ${ip}`);
     pingInfo = await checkHostStatus(ip, 3);
     if (pingInfo.alive) {
-      console.log(`Ping succeeded: ${ip}`);
+      logger.debug(`Ping succeeded: ${ip}`);
       return {
         status: 'online',
         latency: pingInfo.latency,
         packetLoss: pingInfo.packetLoss || 0
       };
     }
-    console.log(`Ping failed: ${ip}`);
+    logger.debug(`Ping failed: ${ip}`);
   } catch (error) {
-    console.error('Error in ping:', error.message);
+    logger.error('Error in ping:', error.message);
   }
 
   // If ping failed, try connection on common ports
   try {
-    console.log(`Checking IP on common ports: ${ip}`);
+    logger.debug(`Checking IP on common ports: ${ip}`);
     const portStatus = await checkHostStatusMultiplePorts(ip);
     if (portStatus) {
-      console.log(`Port connection succeeded: ${ip}`);
+      logger.debug(`Port connection succeeded: ${ip}`);
       return {
         status: 'online',
         latency: null,
         packetLoss: 100 // Cannot measure packet loss from port check
       };
     }
-    console.log(`Port connection failed: ${ip}`);
+    logger.debug(`Port connection failed: ${ip}`);
   } catch (error) {
-    console.error('Error checking ports:', error.message);
+    logger.error('Error checking ports:', error.message);
   }
 
   return {

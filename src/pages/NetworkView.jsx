@@ -31,10 +31,10 @@ function NetworkView() {
   const [editFormData, setEditFormData] = useState({ tagIds: [] })
   const [activeTab, setActiveTab] = useState('devices') // 'devices' or 'ips'
   const [favorites, setFavorites] = useState([])
-  const [newHosts, setNewHosts] = useState([]) // الأجهزة الجديدة المكتشفة من آخر فحص
-  const [hiddenNewHosts, setHiddenNewHosts] = useState(new Set()) // الأجهزة المخفية
+  const [newHosts, setNewHosts] = useState([])
+  const [hiddenNewHosts, setHiddenNewHosts] = useState(new Set())
   const [autoScanEnabled, setAutoScanEnabled] = useState(false)
-  const [autoScanInterval, setAutoScanInterval] = useState(300000) // 5 دقائق
+  const [autoScanInterval, setAutoScanInterval] = useState(300000)
   const [autoScanResults, setAutoScanResults] = useState({ newDevices: [], disconnected: [] })
   const [loadingAutoScan, setLoadingAutoScan] = useState(false)
 
@@ -97,7 +97,6 @@ function NetworkView() {
     setHiddenNewHosts(new Set(allNewHostIds))
   }
 
-  // تصفية الأجهزة الجديدة لإظهار فقط غير المخفية
   const visibleNewHosts = newHosts.filter(host => !hiddenNewHosts.has(host.id))
 
 
@@ -108,7 +107,6 @@ function NetworkView() {
       const data = await apiGet(`/networks/${id}`)
       setNetwork(data)
       
-      // حساب نطاق IP
       if (data) {
         const range = calculateIPRange(data.network_id, data.subnet)
         setIpRange(range)
@@ -165,38 +163,28 @@ function NetworkView() {
       setError(null)
       setScanning(true)
       
-      // حفظ الأجهزة الحالية قبل الفحص لتحديد الجديدة
       const hostsBeforeScan = [...hosts]
       const existingIPs = new Set(hostsBeforeScan.map(h => h.ip))
       
-      console.log('Starting network scan for network ID:', id)
       const result = await apiPost(`/networks/${id}/scan`, {
         timeout: 2,
-        addHosts: true, // دائماً نضيف الأجهزة المكتشفة
-        language: language // إرسال لغة الواجهة الحالية
+        addHosts: true,
+        language: language
       })
       
-      console.log('Scan result:', result)
-      
-      // إضافة delay صغير للتأكد من اكتمال إضافة الأجهزة في قاعدة البيانات
       await new Promise(resolve => setTimeout(resolve, 500))
       
-      // تحديث الشبكة و الأجهزة
       await fetchNetwork()
       const updatedHosts = await apiGet(`/networks/${id}/hosts`)
       setHosts(updatedHosts)
       
-      // تحديث نتائج الفحص التلقائي
       await fetchAutoScanResults()
       
-      // تحديد الأجهزة الجديدة
       if (result.addedCount > 0) {
-        // تحديد الأجهزة الجديدة (التي لم تكن موجودة قبل الفحص)
         const newHostsList = updatedHosts.filter(host => !existingIPs.has(host.ip))
         
         if (newHostsList.length > 0) {
           setNewHosts(newHostsList)
-          // إعادة تعيين الأجهزة المخفية عند فحص جديد
           setHiddenNewHosts(new Set())
         }
       }
@@ -225,7 +213,6 @@ function NetworkView() {
       setError(null)
       const result = await apiDelete(`/networks/${id}/hosts`)
       
-      // تحديث البيانات بعد الحذف
       await fetchHosts()
       await fetchNetwork()
       
@@ -244,7 +231,6 @@ function NetworkView() {
       setError(null)
       await apiDelete(`/hosts/${hostId}`)
       
-      // تحديث قائمة الأجهزة بعد الحذف
       await fetchHosts()
       await fetchNetwork()
     } catch (err) {
@@ -357,7 +343,6 @@ function NetworkView() {
     return host.status === 'online' ? 'online' : 'offline'
   }
 
-  // دالة لتجميع IPs حسب الـ octet الثالث
   const groupIPsByThirdOctet = (networkId, subnet, allIPs) => {
     const networkParts = networkId.split('.').map(Number)
     const networkNum = (networkParts[0] << 24) + (networkParts[1] << 16) + (networkParts[2] << 8) + networkParts[3]
@@ -366,7 +351,6 @@ function NetworkView() {
     const networkBase = networkNum & mask
     const broadcastIP = networkBase + Math.pow(2, hostBits) - 1
     
-    // حساب network address و broadcast address
     const networkIP = `${(networkBase >>> 24) & 0xFF}.${(networkBase >>> 16) & 0xFF}.${(networkBase >>> 8) & 0xFF}.${networkBase & 0xFF}`
     const broadcastIPStr = `${(broadcastIP >>> 24) & 0xFF}.${(broadcastIP >>> 16) & 0xFF}.${(broadcastIP >>> 8) & 0xFF}.${broadcastIP & 0xFF}`
     
@@ -378,7 +362,6 @@ function NetworkView() {
     
     const groups = {}
     
-    // إنشاء جميع العناوين في النطاق
     for (let thirdOctet = startThirdOctet; thirdOctet <= endThirdOctet; thirdOctet++) {
       const groupIPs = []
       
@@ -425,7 +408,6 @@ function NetworkView() {
     )
   }
 
-  // حساب نطاق IP للعرض
   const range = ipRange || calculateIPRange(network.network_id, network.subnet)
   const displayRange = range.range.length > 0 ? range.range : []
 

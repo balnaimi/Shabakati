@@ -3,6 +3,7 @@ import { lookup, reverse } from 'dns';
 import { promisify } from 'util';
 import ping from 'ping';
 import { dbFunctions } from './database.js';
+import logger from './logger.js';
 
 const dnsLookup = promisify(lookup);
 const dnsReverse = promisify(reverse);
@@ -31,7 +32,7 @@ export async function scanNetwork(networkRange, timeout = 2) {
       ipRange = [networkRange];
     }
 
-    console.log(`Starting scan of ${ipRange.length} IP addresses...`);
+    logger.info(`Starting scan of ${ipRange.length} IP addresses...`);
 
     // Scan all addresses in parallel (optimized - larger batch size and faster)
     // Increased batch size for better performance (200 instead of 100)
@@ -74,7 +75,7 @@ export async function scanNetwork(networkRange, timeout = 2) {
     
     for (let i = 0; i < ipRange.length; i += batchSize) {
       const batch = ipRange.slice(i, i + batchSize);
-      console.log(`Scanning batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(ipRange.length / batchSize)} (${batch.length} addresses)`);
+      logger.debug(`Scanning batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(ipRange.length / batchSize)} (${batch.length} addresses)`);
       
       // Optimization: check ping and all ports in parallel
       const promises = batch.map(async (ip) => {
@@ -125,22 +126,22 @@ export async function scanNetwork(networkRange, timeout = 2) {
       activeHosts.push(...active);
       
       if (active.length > 0) {
-        console.log(`  ✓ Found ${active.length} active hosts in this batch`);
+        logger.debug(`Found ${active.length} active hosts in this batch`);
       }
     }
 
-    console.log(`Found ${activeHosts.length} active hosts`);
+    logger.info(`Found ${activeHosts.length} active hosts`);
     
     // Now get hostnames in parallel
     if (activeHosts.length > 0) {
-      console.log(`Getting hostnames from DNS for ${activeHosts.length} hosts...`);
+      logger.debug(`Getting hostnames from DNS for ${activeHosts.length} hosts...`);
       
       // Get all hosts from database once
       let existingHosts = [];
       try {
         existingHosts = dbFunctions.getAllHosts();
       } catch (error) {
-        console.error('Error reading database:', error);
+        logger.error('Error reading database:', error);
       }
       
       const hostnamePromises = activeHosts.map(async (host) => {
@@ -156,7 +157,7 @@ export async function scanNetwork(networkRange, timeout = 2) {
             existingName = existingHost.name;
             if (existingHost.name) {
               hostname = existingHost.name;
-              console.log(`  ✓ Found name in database for ${host.ip}: ${hostname}`);
+              logger.debug(`Found name in database for ${host.ip}: ${hostname}`);
             }
             return { ...host, hostname, isExisting, existingName };
           }
@@ -182,7 +183,7 @@ export async function scanNetwork(networkRange, timeout = 2) {
               if (hostname.includes('.')) {
                 hostname = hostname.split('.')[0];
               }
-              console.log(`  ✓ DNS reverse lookup succeeded for ${host.ip}: ${hostname}`);
+              logger.debug(`DNS reverse lookup succeeded for ${host.ip}: ${hostname}`);
             } else {
               // Don't print failure message for each IP to reduce noise
             }
@@ -198,14 +199,14 @@ export async function scanNetwork(networkRange, timeout = 2) {
       const hostsWithNames = await Promise.all(hostnamePromises);
       const foundNames = hostsWithNames.filter(h => h.hostname).length;
       const existingCount = hostsWithNames.filter(h => h.isExisting).length;
-      console.log(`Got ${foundNames} names from ${activeHosts.length} hosts`);
-      console.log(`Found ${existingCount} previously added devices`);
+      logger.info(`Got ${foundNames} names from ${activeHosts.length} hosts`);
+      logger.info(`Found ${existingCount} previously added devices`);
       return hostsWithNames;
     }
     
     return activeHosts;
   } catch (error) {
-    console.error('Error scanning network:', error);
+    logger.error('Error scanning network:', error);
     throw error;
   }
 }

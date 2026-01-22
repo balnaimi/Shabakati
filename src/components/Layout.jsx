@@ -21,7 +21,6 @@ function Layout({ children }) {
     { path: '/hosts', label: t('navigation.viewNetworks') }
   ]
 
-  // لا نعرض navbar في صفحة Login
   if (location.pathname === '/login') {
     return <>{children}</>
   }
