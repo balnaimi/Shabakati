@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
+import LanguageToggle from '../components/LanguageToggle';
 import { API_URL } from '../constants';
+import { useTranslation } from '../hooks/useTranslation';
 import '../index.css';
 
 function Login() {
@@ -13,6 +15,7 @@ function Login() {
   const [checkingSetup, setCheckingSetup] = useState(true);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Check if setup is required
@@ -42,10 +45,10 @@ function Login() {
         const from = new URLSearchParams(window.location.search).get('from') || '/';
         navigate(from);
       } else {
-        setError(result.error || 'فشل تسجيل الدخول');
+        setError(result.error || t('pages.login.loginFailed'));
       }
     } catch (err) {
-      setError(err.message || 'حدث خطأ أثناء تسجيل الدخول');
+      setError(err.message || t('pages.login.loginError'));
     } finally {
       setLoading(false);
     }
@@ -63,7 +66,7 @@ function Login() {
         alignItems: 'center', 
         minHeight: '100vh'
       }}>
-        <div className="loading">جاري التحميل...</div>
+        <div className="loading">{t('common.loading')}</div>
       </div>
     );
   }
@@ -77,13 +80,21 @@ function Login() {
       flexDirection: 'column',
       gap: '20px'
     }}>
-      <div style={{ position: 'absolute', top: '20px', left: '20px' }}>
+      <div style={{ 
+        position: 'absolute', 
+        top: '20px', 
+        left: '20px',
+        display: 'flex',
+        gap: '10px',
+        alignItems: 'center'
+      }}>
+        <LanguageToggle />
         <ThemeToggle />
       </div>
       
       <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
         <h1 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          تسجيل الدخول
+          {t('pages.login.title')}
         </h1>
         
         {error && (
@@ -95,23 +106,23 @@ function Login() {
         {setupRequired ? (
           <>
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              هذا هو أول تشغيل للبرنامج. يرجى إعداد كلمة مرور للزوار وكلمة مرور للمسؤول.
+              {t('pages.login.setupRequired')}
             </p>
             <button
               onClick={handleSetup}
               className="btn-primary"
               style={{ width: '100%' }}
             >
-              إعداد البرنامج
+              {t('pages.login.setupButton')}
             </button>
           </>
         ) : (
           <form onSubmit={handleSubmit}>
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-              أدخل كلمة مرور الزوار للعرض
+              {t('pages.login.visitorPasswordHint')}
             </p>
             <div className="form-group">
-              <label htmlFor="password">كلمة مرور الزوار:</label>
+              <label htmlFor="password">{t('pages.login.visitorPassword')}</label>
               <input
                 id="password"
                 type="password"
@@ -120,7 +131,7 @@ function Login() {
                 required
                 disabled={loading}
                 autoFocus
-                placeholder="كلمة مرور الزوار"
+                placeholder={t('pages.login.visitorPasswordPlaceholder')}
               />
             </div>
             
@@ -130,7 +141,7 @@ function Login() {
               className="btn-primary"
               style={{ width: '100%' }}
             >
-              {loading ? 'جاري التحقق...' : 'تسجيل الدخول كزائر'}
+              {loading ? t('pages.login.verifying') : t('pages.login.loginButton')}
             </button>
           </form>
         )}

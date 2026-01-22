@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiPost } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 import Layout from '../components/Layout';
 
 function ChangePassword() {
@@ -13,6 +14,7 @@ function ChangePassword() {
   const [loading, setLoading] = useState(false);
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   if (!isAuthenticated) {
     navigate('/login');
@@ -25,17 +27,17 @@ function ChangePassword() {
     setSuccess('');
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError('جميع الحقول مطلوبة');
+      setError(t('pages.changePassword.allFieldsRequired'));
       return;
     }
 
     if (newPassword.length < 3) {
-      setError('كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل');
+      setError(t('pages.changePassword.passwordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('كلمات المرور الجديدة غير متطابقة');
+      setError(t('pages.changePassword.passwordMismatch'));
       return;
     }
 
@@ -47,7 +49,7 @@ function ChangePassword() {
         newPassword
       });
       
-      setSuccess('تم تغيير كلمة المرور بنجاح');
+      setSuccess(t('pages.changePassword.success'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -58,7 +60,7 @@ function ChangePassword() {
         navigate('/');
       }, 3000);
     } catch (err) {
-      setError(err.message || 'حدث خطأ أثناء تغيير كلمة المرور');
+      setError(err.message || t('pages.changePassword.error'));
     } finally {
       setLoading(false);
     }
@@ -68,7 +70,7 @@ function ChangePassword() {
     <Layout>
       <div className="container">
         <div className="header">
-          <h1>تغيير كلمة المرور</h1>
+          <h1>{t('pages.changePassword.title')}</h1>
         </div>
 
         <div className="card" style={{ maxWidth: '500px', margin: '0 auto' }}>
@@ -86,7 +88,7 @@ function ChangePassword() {
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="currentPassword">كلمة المرور الحالية:</label>
+              <label htmlFor="currentPassword">{t('pages.changePassword.currentPassword')}</label>
               <input
                 id="currentPassword"
                 type="password"
@@ -99,7 +101,7 @@ function ChangePassword() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="newPassword">كلمة المرور الجديدة:</label>
+              <label htmlFor="newPassword">{t('pages.changePassword.newPassword')}</label>
               <input
                 id="newPassword"
                 type="password"
@@ -112,7 +114,7 @@ function ChangePassword() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="confirmPassword">تأكيد كلمة المرور الجديدة:</label>
+              <label htmlFor="confirmPassword">{t('pages.changePassword.confirmPassword')}</label>
               <input
                 id="confirmPassword"
                 type="password"
@@ -130,7 +132,7 @@ function ChangePassword() {
                 disabled={loading}
                 className="btn-primary"
               >
-                {loading ? 'جاري التغيير...' : 'تغيير كلمة المرور'}
+                {loading ? t('pages.changePassword.changing') : t('pages.changePassword.changeButton')}
               </button>
               <button
                 type="button"
@@ -138,7 +140,7 @@ function ChangePassword() {
                 className="btn-secondary"
                 disabled={loading}
               >
-                إلغاء
+                {t('common.cancel')}
               </button>
             </div>
           </form>

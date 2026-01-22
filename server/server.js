@@ -27,6 +27,12 @@ import {
   validateColor
 } from './validators.js';
 
+// Translation object for scan descriptions
+const scanDescriptions = {
+  ar: (networkName) => `تم اكتشافه من فحص الشبكة ${networkName}`,
+  en: (networkName) => `Discovered from network scan ${networkName}`
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -1013,7 +1019,8 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'الشبكة غير موجودة' });
     }
 
-    const { timeout, addHosts } = req.body;
+    const { timeout, addHosts, language = 'ar' } = req.body;
+    const userLanguage = (language === 'en' || language === 'ar') ? language : 'ar';
     const scanTimeout = timeout || 2;
     const shouldAddHosts = addHosts === true;
 
@@ -1047,7 +1054,11 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
             dbFunctions.addHost({
               name: host.hostname || host.existingName || `Host ${host.ip.split('.').pop()}`,
               ip: host.ip,
-              description: host.description || `تم اكتشافه من فحص الشبكة ${network.name}`,
+              description: host.description || JSON.stringify({
+                type: 'system',
+                ar: scanDescriptions.ar(network.name),
+                en: scanDescriptions.en(network.name)
+              }),
               url: '',
               status: 'online',
               tagIds: [],

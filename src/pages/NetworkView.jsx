@@ -3,8 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiPost, apiDelete, apiPut } from '../utils/api'
 import { calculateIPRange, getLastOctet } from '../utils/networkUtils'
+import { getDescription } from '../utils/descriptionUtils'
 import { useAuth } from '../contexts/AuthContext'
 import { useTags } from '../hooks/useTags'
+import { useTranslation } from '../hooks/useTranslation'
+import { useLanguage } from '../contexts/LanguageContext'
 
 function NetworkView() {
   const navigate = useNavigate()
@@ -22,6 +25,8 @@ function NetworkView() {
   const [sortBy, setSortBy] = useState('name')
   const [sortOrder, setSortOrder] = useState('asc')
   const { tags: availableTags } = useTags()
+  const { t } = useTranslation()
+  const { language } = useLanguage()
   const [editingHostId, setEditingHostId] = useState(null)
   const [editFormData, setEditFormData] = useState({ tagIds: [] })
   const [activeTab, setActiveTab] = useState('devices') // 'devices' or 'ips'
@@ -64,9 +69,9 @@ function NetworkView() {
     try {
       await apiPost('/favorites', { hostId: parseInt(hostId) })
       await fetchFavorites()
-      alert('تم إضافة الجهاز للمفضلة بنجاح')
+      alert(t('messages.success.addedToFavorites'))
     } catch (err) {
-      alert(`خطأ: ${err.message}`)
+      alert(`${t('common.error')}: ${err.message}`)
     }
   }
 
@@ -76,10 +81,10 @@ function NetworkView() {
       if (favorite) {
         await apiDelete(`/favorites/${favorite.id}`)
         await fetchFavorites()
-        alert('تم حذف الجهاز من المفضلة')
+        alert(t('messages.success.removedFromFavorites'))
       }
     } catch (err) {
-      alert(`خطأ: ${err.message}`)
+      alert(`${t('common.error')}: ${err.message}`)
     }
   }
 
@@ -147,9 +152,9 @@ function NetworkView() {
       })
       setAutoScanEnabled(newState)
       setNetwork(result)
-      alert(newState ? 'تم تفعيل الفحص التلقائي' : 'تم تعطيل الفحص التلقائي')
+      alert(newState ? t('pages.networkView.autoScanEnabled') : t('pages.networkView.autoScanDisabled'))
     } catch (err) {
-      alert(`خطأ: ${err.message}`)
+      alert(`${t('common.error')}: ${err.message}`)
     } finally {
       setLoadingAutoScan(false)
     }
@@ -167,7 +172,8 @@ function NetworkView() {
       console.log('Starting network scan for network ID:', id)
       const result = await apiPost(`/networks/${id}/scan`, {
         timeout: 2,
-        addHosts: true // دائماً نضيف الأجهزة المكتشفة
+        addHosts: true, // دائماً نضيف الأجهزة المكتشفة
+        language: language // إرسال لغة الواجهة الحالية
       })
       
       console.log('Scan result:', result)
@@ -197,21 +203,21 @@ function NetworkView() {
       
       if (result.hosts && result.hosts.length > 0) {
         const addedCount = result.addedCount || result.hosts.length
-        alert(`تم اكتشاف ${result.hosts.length} جهاز وتم إضافة ${addedCount} جهاز جديد`)
+        alert(t('pages.networkView.scanResult', { total: result.hosts.length, added: addedCount }))
       } else {
-        alert('لم يتم اكتشاف أي أجهزة')
+        alert(t('pages.networkView.scanResultNoDevices'))
       }
     } catch (err) {
       console.error('Scan error:', err)
       setError(err.message)
-      alert(`خطأ في فحص الشبكة: ${err.message}`)
+      alert(`${t('common.error')}: ${err.message}`)
     } finally {
       setScanning(false)
     }
   }
 
   const handleClearNetworkHosts = async () => {
-    if (!window.confirm('هل أنت متأكد من حذف جميع الأجهزة في هذه الشبكة؟')) {
+    if (!window.confirm(t('messages.confirm.clearAllHosts'))) {
       return
     }
 
@@ -223,14 +229,14 @@ function NetworkView() {
       await fetchHosts()
       await fetchNetwork()
       
-      alert(result.message || 'تم حذف الأجهزة بنجاح')
+      alert(result.message || t('messages.success.hostsDeleted'))
     } catch (err) {
       setError(err.message)
     }
   }
 
   const handleDeleteHost = async (hostId) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا الجهاز؟')) {
+    if (!window.confirm(t('messages.confirm.deleteHost'))) {
       return
     }
 
@@ -405,15 +411,15 @@ function NetworkView() {
   }
 
   if (loading) {
-    return <div className="loading">جاري التحميل...</div>
+    return <div className="loading">{t('common.loading')}</div>
   }
 
   if (!network) {
     return (
       <div className="container">
         <div className="empty-state">
-          <h2>الشبكة غير موجودة</h2>
-          <button onClick={() => navigate('/networks')}>العودة للشبكات</button>
+          <h2>{t('pages.networkView.title')}</h2>
+          <button onClick={() => navigate('/networks')}>{t('common.back')}</button>
         </div>
       </div>
     )
@@ -430,11 +436,11 @@ function NetworkView() {
       </div>
 
       <div className="card" style={{ marginBottom: '20px' }}>
-        <p><strong>Network ID:</strong> {network.network_id}</p>
-        <p><strong>Subnet:</strong> /{network.subnet}</p>
-        <p><strong>النطاق:</strong> {range.start} - {range.end} ({range.count} عنوان)</p>
+        <p><strong>{t('forms.networkId')}:</strong> {network.network_id}</p>
+        <p><strong>{t('forms.subnet')}:</strong> /{network.subnet}</p>
+        <p><strong>{t('pages.networkView.range') || 'Range'}:</strong> {range.start} - {range.end} ({range.count} {t('pages.networkView.addresses') || 'addresses'})</p>
         {network.last_scanned && (
-          <p><strong>آخر فحص:</strong> {new Date(network.last_scanned).toLocaleString('ar-SA')}</p>
+          <p><strong>{t('pages.networksList.lastScanned')}:</strong> {new Date(network.last_scanned).toLocaleString()}</p>
         )}
       </div>
 
@@ -448,7 +454,7 @@ function NetworkView() {
         {isAdmin && (
           <>
             <button onClick={handleScan} disabled={scanning}>
-              {scanning ? 'جاري الفحص...' : 'فحص الشبكة'}
+              {scanning ? t('pages.networkView.scanning') : t('pages.networkView.scan')}
             </button>
             
             {/* زر الفحص التلقائي */}
@@ -479,20 +485,20 @@ function NetworkView() {
                     cursor: 'pointer'
                   }}
                 />
-                <span>الفحص التلقائي</span>
+                <span>{t('pages.networkView.autoScan')}</span>
               </label>
               {autoScanEnabled && (
                 <span style={{ 
                   fontSize: '12px', 
                   color: 'var(--text-secondary)' 
                 }}>
-                  (كل {Math.round(autoScanInterval / 60000)} دقيقة)
+                  ({Math.round(autoScanInterval / 60000)} min)
                 </span>
               )}
             </div>
             
             <button onClick={handleClearNetworkHosts} className="btn-danger">
-              حذف أجهزة الشبكة
+              {t('pages.networkView.clearAllHosts')}
             </button>
           </>
         )}
@@ -520,7 +526,7 @@ function NetworkView() {
             transition: 'var(--transition)'
           }}
         >
-          الأجهزة
+          {t('pages.networkView.devices')}
         </button>
         <button
           onClick={() => setActiveTab('ips')}
@@ -536,7 +542,7 @@ function NetworkView() {
             transition: 'var(--transition)'
           }}
         >
-          عرض IP
+          {t('pages.networkView.ipAddresses')}
         </button>
       </div>
 
@@ -566,7 +572,7 @@ function NetworkView() {
                   alignItems: 'center',
                   gap: '10px'
                 }}>
-                  الأجهزة الجديدة المكتشفة ({visibleNewHosts.length})
+                  {t('pages.networkView.newDevices')} ({visibleNewHosts.length})
                 </h2>
                 <button
                   onClick={handleHideAllNewHosts}
@@ -580,7 +586,7 @@ function NetworkView() {
                     fontSize: '14px'
                   }}
                 >
-                  تمت المشاهدة (إخفاء الكل)
+                  {t('pages.networkView.hideAll')}
                 </button>
               </div>
               
@@ -631,18 +637,18 @@ function NetworkView() {
                         fontSize: '12px',
                         fontWeight: 'bold'
                       }}>
-                        {host.status === 'online' ? 'متصل' : 'غير متصل'}
+                        {host.status === 'online' ? t('common.online') : t('common.offline')}
                       </span>
                     </div>
                     
-                    {host.description && (
+                    {getDescription(host.description, language) && (
                       <p style={{ 
                         margin: '5px 0', 
                         fontSize: '13px', 
                         color: 'var(--text-secondary)',
                         fontStyle: 'italic'
                       }}>
-                        {host.description}
+                        {getDescription(host.description, language)}
                       </p>
                     )}
                     
@@ -667,7 +673,7 @@ function NetworkView() {
                               flex: 1
                             }}
                           >
-                            تعديل
+                            {t('common.edit')}
                           </button>
                           <button
                             onClick={() => handleHideNewHost(host.id)}
@@ -680,7 +686,7 @@ function NetworkView() {
                               cursor: 'pointer',
                               fontSize: '12px'
                             }}
-                            title="تمت المشاهدة"
+                            title={t('pages.networkView.viewed') || 'Viewed'}
                           >
                             ✓
                           </button>
@@ -716,7 +722,7 @@ function NetworkView() {
                   alignItems: 'center',
                   gap: '10px'
                 }}>
-                  الأجهزة المكتشفة تلقائياً ({autoScanResults.newDevices.length})
+                  {t('pages.networkView.newDevices')} ({autoScanResults.newDevices.length})
                 </h2>
                 {isAdmin && (
                   <button
@@ -725,7 +731,7 @@ function NetworkView() {
                         await apiDelete(`/networks/${id}/auto-scan-results?type=new_device`)
                         await fetchAutoScanResults()
                       } catch (err) {
-                        alert(`خطأ: ${err.message}`)
+                        alert(`${t('common.error')}: ${err.message}`)
                       }
                     }}
                     style={{
@@ -784,7 +790,7 @@ function NetworkView() {
                         fontSize: '12px',
                         fontWeight: 'bold'
                       }}>
-                        {result.host?.status === 'online' ? 'متصل' : 'غير متصل'}
+                        {result.host?.status === 'online' ? t('common.online') : t('common.offline')}
                       </span>
                     </div>
                   </div>
@@ -816,7 +822,7 @@ function NetworkView() {
                   alignItems: 'center',
                   gap: '10px'
                 }}>
-                  الأجهزة المنقطعة ({autoScanResults.disconnected.length})
+                  {t('pages.networkView.disconnected')} ({autoScanResults.disconnected.length})
                 </h2>
                 {isAdmin && (
                   <button
@@ -825,7 +831,7 @@ function NetworkView() {
                         await apiDelete(`/networks/${id}/auto-scan-results?type=disconnected`)
                         await fetchAutoScanResults()
                       } catch (err) {
-                        alert(`خطأ: ${err.message}`)
+                        alert(`${t('common.error')}: ${err.message}`)
                       }
                     }}
                     style={{
@@ -884,7 +890,7 @@ function NetworkView() {
                         fontSize: '12px',
                         fontWeight: 'bold'
                       }}>
-                        غير متصل
+                        {t('common.offline')}
                       </span>
                     </div>
                   </div>
@@ -895,12 +901,12 @@ function NetworkView() {
 
           {hosts.length > 0 && (
         <div style={{ marginTop: '40px' }}>
-          <h2>الأجهزة في هذه الشبكة ({filteredHosts.length} من {hosts.length})</h2>
+          <h2>{t('pages.networkView.devices')} ({filteredHosts.length} / {hosts.length})</h2>
           
           <div className="filters" style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'nowrap', alignItems: 'center' }}>
             <input
               type="text"
-              placeholder="بحث (اسم، IP)..."
+              placeholder={t('pages.networkView.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ padding: '8px', flex: '1 1 auto', minWidth: '200px', maxWidth: '400px' }}
@@ -910,16 +916,16 @@ function NetworkView() {
               onChange={(e) => setStatusFilter(e.target.value)}
               style={{ padding: '8px', width: '180px', flexShrink: 0 }}
             >
-              <option value="all">جميع الحالات</option>
-              <option value="online">متصل</option>
-              <option value="offline">غير متصل</option>
+              <option value="all">{t('common.all')}</option>
+              <option value="online">{t('common.online')}</option>
+              <option value="offline">{t('common.offline')}</option>
             </select>
             <select
               value={tagFilter || 'all'}
               onChange={(e) => setTagFilter(e.target.value === 'all' ? null : e.target.value)}
               style={{ padding: '8px', width: '180px', flexShrink: 0 }}
             >
-              <option value="all">جميع الوسوم</option>
+              <option value="all">{t('common.all')}</option>
               {availableTags.map(tag => (
                 <option key={tag.id} value={tag.id}>{tag.name}</option>
               ))}
@@ -941,7 +947,7 @@ function NetworkView() {
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    الاسم {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    {t('common.name')} {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => {
@@ -954,7 +960,7 @@ function NetworkView() {
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    IP {sortBy === 'ip' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    {t('common.ip')} {sortBy === 'ip' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => {
@@ -967,10 +973,10 @@ function NetworkView() {
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    الحالة {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    {t('common.status')} {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th>الوصف</th>
-                  <th>الوسوم</th>
+                  <th>{t('common.description')}</th>
+                  <th>{t('common.tags')}</th>
                   <th 
                     onClick={() => {
                       if (sortBy === 'lastChecked') {
@@ -982,9 +988,9 @@ function NetworkView() {
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    آخر فحص {sortBy === 'lastChecked' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    {t('pages.networksList.lastScanned')} {sortBy === 'lastChecked' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
-                  {userType !== 'visitor' && <th>الإجراءات</th>}
+                  {userType !== 'visitor' && <th>{t('common.actions') || 'Actions'}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -997,17 +1003,20 @@ function NetworkView() {
                         color: host.status === 'online' ? 'var(--success)' : 'var(--danger)',
                         fontWeight: 'bold'
                       }}>
-                        {host.status === 'online' ? 'متصل' : 'غير متصل'}
+                        {host.status === 'online' ? t('common.online') : t('common.offline')}
                       </span>
                     </td>
                     <td>
-                      {host.description ? (
-                        <span title={host.description}>
-                          {host.description.length > 50 ? `${host.description.substring(0, 50)}...` : host.description}
-                        </span>
-                      ) : (
-                        <span>-</span>
-                      )}
+                      {(() => {
+                        const desc = getDescription(host.description, language);
+                        return desc ? (
+                          <span title={desc}>
+                            {desc.length > 50 ? `${desc.substring(0, 50)}...` : desc}
+                          </span>
+                        ) : (
+                          <span>-</span>
+                        );
+                      })()}
                     </td>
                     <td>
                       {host.tags && Array.isArray(host.tags) && host.tags.length > 0 ? (
@@ -1045,7 +1054,7 @@ function NetworkView() {
                             <button 
                               onClick={() => handleRemoveFromFavorites(host.id)} 
                               style={{ backgroundColor: 'var(--warning)', color: 'var(--text-primary)', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '12px' }}
-                              title="حذف من المفضلة"
+                              title={t('pages.networkView.removeFromFavorites')}
                             >
                               ⭐
                             </button>
@@ -1053,7 +1062,7 @@ function NetworkView() {
                             <button 
                               onClick={() => handleAddToFavorites(host.id)} 
                               style={{ backgroundColor: 'var(--text-secondary)', color: 'var(--bg-primary)', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '12px' }}
-                              title="إضافة للمفضلة"
+                              title={t('pages.networkView.addToFavorites')}
                             >
                               ⭐
                             </button>
@@ -1064,13 +1073,13 @@ function NetworkView() {
                                 onClick={() => handleEditHost(host)} 
                                 style={{ padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
                               >
-                                تعديل
+                                {t('common.edit')}
                               </button>
                               <button 
                                 onClick={() => handleDeleteHost(host.id)} 
                                 style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
                               >
-                                حذف
+                                {t('common.delete')}
                               </button>
                             </>
                           )}
@@ -1087,8 +1096,8 @@ function NetworkView() {
 
           {hosts.length === 0 && (
             <div className="empty-state" style={{ marginTop: '40px' }}>
-              <p>لا توجد أجهزة مضافة في هذه الشبكة بعد.</p>
-              <p>قم بفحص الشبكة لإضافة الأجهزة المكتشفة.</p>
+              <p>{t('pages.networkView.noHosts')}</p>
+              <p>{t('pages.networkView.scanToAdd') || 'Scan the network to add discovered devices.'}</p>
             </div>
           )}
         </>
@@ -1098,8 +1107,8 @@ function NetworkView() {
         <>
           {network.subnet < 22 ? (
             <div className="empty-state">
-              <p>النطاق كبير جداً للعرض ({range.count} عنوان). الرجاء استخدام subnet /22 أو أكبر للعرض البصري.</p>
-              <p>الأجهزة المكتشفة: {hosts.length}</p>
+              <p>{t('pages.networkView.rangeTooLarge', { count: range.count })}</p>
+              <p>{t('pages.networkView.discoveredDevices') || 'Discovered Devices'}: {hosts.length}</p>
             </div>
           ) : (
             <>
@@ -1151,7 +1160,7 @@ function NetworkView() {
                               return (
                                 <div
                                   key={ip}
-                                  title={host ? `${host.name} (${ip}) - ${host.status === 'online' ? 'متصل' : 'غير متصل'}` : `${ip} - متاح`}
+                                  title={host ? t('pages.networkView.deviceInfo', { name: host.name, ip: ip, status: host.status === 'online' ? t('common.online') : t('common.offline') }) : t('pages.networkView.ipAvailable', { ip: ip })}
                                   style={{
                                     width: '40px',
                                     height: '40px',
@@ -1177,9 +1186,9 @@ function NetworkView() {
                                   }}
                                   onClick={() => {
                                     if (host) {
-                                      alert(`الجهاز: ${host.name}\nIP: ${ip}\nالحالة: ${host.status === 'online' ? 'متصل' : 'غير متصل'}`)
+                                      alert(t('pages.networkView.deviceInfo', { name: host.name, ip: ip, status: host.status === 'online' ? t('common.online') : t('common.offline') }))
                                     } else {
-                                      alert(`IP متاح: ${ip}`)
+                                      alert(t('pages.networkView.ipAvailable', { ip: ip }))
                                     }
                                   }}
                                 >
@@ -1196,11 +1205,11 @@ function NetworkView() {
               })()}
               
               <div style={{ marginTop: '20px', padding: '15px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
-                <p><strong>الإحصائيات:</strong></p>
-                <p>الأجهزة المتصلة: {hosts.filter(h => h.status === 'online').length}</p>
-                <p>الأجهزة غير المتصلة: {hosts.filter(h => h.status === 'offline').length}</p>
-                <p>إجمالي الأجهزة: {hosts.length}</p>
-                <p>IPs المتاحة: {displayRange.length - hosts.length}</p>
+                <p><strong>{t('pages.networkView.statistics') || 'Statistics'}:</strong></p>
+                <p>{t('pages.networkView.onlineDevices') || 'Online Devices'}: {hosts.filter(h => h.status === 'online').length}</p>
+                <p>{t('pages.networkView.offlineDevices') || 'Offline Devices'}: {hosts.filter(h => h.status === 'offline').length}</p>
+                <p>{t('pages.networkView.totalDevices') || 'Total Devices'}: {hosts.length}</p>
+                <p>{t('pages.networkView.availableIPs') || 'Available IPs'}: {displayRange.length - hosts.length}</p>
               </div>
             </>
           )}
@@ -1239,20 +1248,20 @@ function NetworkView() {
             }}
           >
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2>تعديل وسوم الجهاز</h2>
-              <button onClick={handleCancelEdit}>إغلاق</button>
+              <h2>{t('pages.networkView.editHostTags') || 'Edit Host Tags'}</h2>
+              <button onClick={handleCancelEdit}>{t('common.close')}</button>
             </div>
             
             {hosts.find(h => h.id === editingHostId) && (
               <div style={{ marginBottom: '20px' }}>
-                <p><strong>الاسم:</strong> {hosts.find(h => h.id === editingHostId).name}</p>
-                <p><strong>IP:</strong> {hosts.find(h => h.id === editingHostId).ip}</p>
+                <p><strong>{t('common.name')}:</strong> {hosts.find(h => h.id === editingHostId).name}</p>
+                <p><strong>{t('common.ip')}:</strong> {hosts.find(h => h.id === editingHostId).ip}</p>
               </div>
             )}
             
             <form onSubmit={handleUpdateHost}>
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>الوسوم:</label>
+                <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>{t('common.tags')}:</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {availableTags.map(tag => (
                     <label key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1271,17 +1280,17 @@ function NetworkView() {
                     </label>
                   ))}
                   {availableTags.length === 0 && (
-                    <p style={{ color: 'var(--text-secondary)' }}>لا توجد وسوم متاحة. اذهب إلى إدارة الوسوم لإضافة وسوم جديدة.</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>{t('pages.networkView.noTagsAvailable') || 'No tags available. Go to Tags Management to add new tags.'}</p>
                   )}
                 </div>
               </div>
               
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" onClick={handleCancelEdit}>
-                  إلغاء
+                  {t('common.cancel')}
                 </button>
                 <button type="submit">
-                  حفظ
+                  {t('common.save')}
                 </button>
               </div>
             </form>

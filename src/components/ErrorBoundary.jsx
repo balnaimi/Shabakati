@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import { useTranslation } from '../hooks/useTranslation'
 
 /**
  * Error Boundary للتعامل مع الأخطاء في React components
@@ -19,30 +20,35 @@ class ErrorBoundary extends Component {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="container">
-          <div className="empty-state">
-            <h2>
-              حدث خطأ غير متوقع
-            </h2>
-            <p>
-              نعتذر عن الإزعاج. يرجى تحديث الصفحة والمحاولة مرة أخرى.
-            </p>
-            <button
-              onClick={() => {
-                this.setState({ hasError: false, error: null })
-                window.location.reload()
-              }}
-            >
-              تحديث الصفحة
-            </button>
-          </div>
-        </div>
-      )
+      return <ErrorDisplay onReload={() => {
+        this.setState({ hasError: false, error: null })
+        window.location.reload()
+      }} />
     }
 
     return this.props.children
   }
+}
+
+function ErrorDisplay({ onReload }) {
+  const { t } = useTranslation()
+  return (
+    <div className="container">
+      <div className="empty-state">
+        <h2>
+          {t('messages.error.unexpected')}
+        </h2>
+        <p>
+          {t('messages.error.refreshPage')}
+        </p>
+        <button
+          onClick={onReload}
+        >
+          {t('messages.error.refreshButton')}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export default ErrorBoundary

@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useTranslation } from '../hooks/useTranslation'
 
 function HostsList() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
+  const { t } = useTranslation()
   const [stats, setStats] = useState({
     totalNetworks: 0,
     totalHosts: 0,
@@ -35,8 +37,7 @@ function HostsList() {
   }
 
   const handleClearAllData = async () => {
-    const confirmMessage = 'تحذير: سيتم حذف جميع الأجهزة والشبكات والوسوم.\n\nهل أنت متأكد تماماً من حذف جميع البيانات؟'
-    if (!window.confirm(confirmMessage)) {
+    if (!window.confirm(t('messages.confirm.clearAllData'))) {
       return
     }
 
@@ -47,22 +48,22 @@ function HostsList() {
       // إعادة جلب الإحصائيات بعد الحذف
       await fetchStats()
       
-      alert('تم حذف جميع البيانات بنجاح')
+      alert(t('messages.success.dataCleared'))
     } catch (err) {
       setError(err.message)
     }
   }
 
   if (loading) {
-    return <div className="loading">جاري التحميل...</div>
+    return <div className="loading">{t('common.loading')}</div>
   }
 
   return (
     <div className="container">
       <div className="header">
         <div>
-          <h1>لوحة تحكم الشبكات</h1>
-          <p>نظرة عامة على الشبكات والأجهزة</p>
+          <h1>{t('pages.hostsList.title')}</h1>
+          <p>{t('pages.hostsList.subtitle')}</p>
         </div>
         <div className="controls">
           {isAdmin && (
@@ -71,19 +72,19 @@ function HostsList() {
                 onClick={() => navigate('/networks')} 
                 className="btn-primary"
               >
-                إدارة الشبكات
+                {t('pages.hostsList.manageNetworks')}
               </button>
               <button 
                 onClick={() => navigate('/tags')} 
                 className="btn-primary"
               >
-                إدارة الوسوم
+                {t('pages.hostsList.manageTags')}
               </button>
               <button 
                 onClick={handleClearAllData} 
                 className="btn-danger"
               >
-                حذف جميع البيانات
+                {t('pages.hostsList.clearAllData')}
               </button>
             </>
           )}
@@ -97,17 +98,17 @@ function HostsList() {
       )}
 
       <div>
-        <h2>الشبكات ({stats.networksWithStats.length})</h2>
+        <h2>{t('pages.hostsList.networks')} ({stats.networksWithStats.length})</h2>
         
         {stats.networksWithStats.length === 0 ? (
           <div className="empty-state">
             {isAdmin ? (
               <>
-                <p>لا توجد شبكات. اذهب إلى إدارة الشبكات لإضافة شبكة جديدة.</p>
-                <button onClick={() => navigate('/networks')}>إدارة الشبكات</button>
+                <p>{t('pages.hostsList.noNetworks')}</p>
+                <button onClick={() => navigate('/networks')}>{t('pages.hostsList.manageNetworks')}</button>
               </>
             ) : (
-              <p>لا توجد أي شبكة. يرجى الدخول بصلاحية المسؤول لإضافة شبكة أو شبكات.</p>
+              <p>{t('pages.hostsList.noNetworksVisitor')}</p>
             )}
           </div>
         ) : (
@@ -118,13 +119,13 @@ function HostsList() {
                   <h3>{network.networkName}</h3>
                   <p>{network.networkCIDR}</p>
                   <div style={{ marginTop: '10px', display: 'flex', gap: '15px', fontSize: '14px', flexWrap: 'wrap' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>الأجهزة: {network.totalHosts}</span>
-                    <span style={{ color: 'var(--success)' }}>متصل: {network.onlineHosts}</span>
-                    <span style={{ color: 'var(--danger)' }}>غير متصل: {network.offlineHosts}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{t('pages.hostsList.hosts')}: {network.totalHosts}</span>
+                    <span style={{ color: 'var(--success)' }}>{t('pages.hostsList.online')}: {network.onlineHosts}</span>
+                    <span style={{ color: 'var(--danger)' }}>{t('pages.hostsList.offline')}: {network.offlineHosts}</span>
                   </div>
                 </div>
                 <div className="tag-actions">
-                  <button onClick={() => navigate(`/networks/${network.networkId}`)} className="btn-primary">عرض</button>
+                  <button onClick={() => navigate(`/networks/${network.networkId}`)} className="btn-primary">{t('pages.hostsList.view')}</button>
                 </div>
               </div>
             ))}

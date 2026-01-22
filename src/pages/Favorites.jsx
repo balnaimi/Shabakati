@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useTranslation } from '../hooks/useTranslation'
 
 function Favorites() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
+  const { t } = useTranslation()
   const [favorites, setFavorites] = useState([])
   const [groups, setGroups] = useState([])
   const [allHosts, setAllHosts] = useState([])
@@ -78,7 +80,7 @@ function Favorites() {
   }
 
   const handleDeleteFavorite = async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا الجهاز من المفضلة؟')) {
+    if (!window.confirm(t('messages.confirm.deleteFavorite'))) {
       return
     }
     try {
@@ -170,7 +172,7 @@ function Favorites() {
   }
 
   const handleDeleteGroup = async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه المجموعة؟ سيتم إزالة جميع الأجهزة من المجموعة.')) {
+    if (!window.confirm(t('messages.confirm.deleteGroup'))) {
       return
     }
     try {
@@ -361,9 +363,9 @@ function Favorites() {
 
   // Get group name
   const getGroupName = (groupId) => {
-    if (!groupId) return 'بدون مجموعة'
+    if (!groupId) return t('common.withoutGroup')
     const group = groups.find(g => g.id === groupId)
-    return group ? group.name : 'غير معروف'
+    return group ? group.name : t('common.unknown')
   }
 
   // Get group color
@@ -387,21 +389,21 @@ function Favorites() {
   )
 
   if (loading) {
-    return <div className="loading">جاري التحميل...</div>
+    return <div className="loading">{t('common.loading')}</div>
   }
 
   return (
     <div className="container">
       <div className="header">
-        <h1>شبكتي</h1>
+        <h1>{t('pages.favorites.title')}</h1>
         <div className="controls">
           {isAdmin && (
             <>
               <button onClick={() => setShowAddModal(true)} className="btn-success">
-                إضافة جهاز
+                {t('pages.favorites.addDevice')}
               </button>
               <button onClick={() => setShowGroupModal(true)} className="btn-primary">
-                إدارة المجموعات
+                {t('pages.favorites.manageGroups')}
               </button>
             </>
           )}
@@ -409,19 +411,19 @@ function Favorites() {
         
         <div className="stats">
           <div className="stat-item">
-            <p>عدد الشبكات</p>
+            <p>{t('pages.favorites.totalNetworks')}</p>
             <p>{stats.totalNetworks}</p>
           </div>
           <div className="stat-item">
-            <p>إجمالي الأجهزة</p>
+            <p>{t('pages.favorites.totalHosts')}</p>
             <p>{stats.totalHosts}</p>
           </div>
           <div className="stat-item">
-            <p>متصلة</p>
+            <p>{t('pages.favorites.onlineHosts')}</p>
             <p>{stats.onlineHosts}</p>
           </div>
           <div className="stat-item">
-            <p>غير متصلة</p>
+            <p>{t('pages.favorites.offlineHosts')}</p>
             <p>{stats.offlineHosts}</p>
           </div>
         </div>
@@ -435,11 +437,11 @@ function Favorites() {
 
       {favorites.length === 0 ? (
         <div className="empty-state" style={{ marginTop: '40px' }}>
-          <p>لا توجد أجهزة في المفضلة بعد.</p>
+          <p>{t('pages.favorites.noFavorites')}</p>
           {isAdmin ? (
-            <p>اضغط على "إضافة جهاز" لإضافة أجهزة من أي شبكة للمفضلة.</p>
+            <p>{t('pages.favorites.noFavoritesAdmin')}</p>
           ) : (
-            <p>يرجى الدخول بصلاحية المسؤول لإضافة أجهزة من أي شبكة للمفضلة.</p>
+            <p>{t('pages.favorites.noFavoritesVisitor')}</p>
           )}
         </div>
       ) : (
@@ -486,7 +488,7 @@ function Favorites() {
                           borderRadius: '3px',
                           opacity: canMoveUp ? 1 : 0.5
                         }}
-                        title="نقل لأعلى"
+                        title={t('pages.favorites.moveUp')}
                       >
                         ↑
                       </button>
@@ -506,7 +508,7 @@ function Favorites() {
                           borderRadius: '3px',
                           opacity: canMoveDown ? 1 : 0.5
                         }}
-                        title="نقل لأسفل"
+                        title={t('pages.favorites.moveDown')}
                       >
                         ↓
                       </button>
@@ -540,7 +542,7 @@ function Favorites() {
                             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>{favorite.host.ip}</p>
                           </div>
                           <span className={`status-badge ${favorite.host.status === 'online' ? 'status-online' : 'status-offline'}`}>
-                            {favorite.host.status === 'online' ? 'متصل' : 'غير متصل'}
+                            {favorite.host.status === 'online' ? t('common.online') : t('common.offline')}
                           </span>
                         </div>
 
@@ -581,7 +583,7 @@ function Favorites() {
                             className="btn-primary btn-small"
                             style={{ flex: 1 }}
                           >
-                            فتح
+                            {t('common.open')}
                           </button>
                           {isAdmin && (
                             <>
@@ -592,7 +594,7 @@ function Favorites() {
                                 }}
                                 className="btn-warning btn-small"
                               >
-                                تعديل
+                                {t('common.edit')}
                               </button>
                               <button
                                 onClick={(e) => {
@@ -601,7 +603,7 @@ function Favorites() {
                                 }}
                                 className="btn-danger btn-small"
                               >
-                                حذف
+                                {t('common.delete')}
                               </button>
                             </>
                           )}
@@ -627,49 +629,49 @@ function Favorites() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h2>إضافة جهاز للمفضلة</h2>
-              <button onClick={() => setShowAddModal(false)}>إغلاق</button>
+              <h2>{t('pages.favorites.addFavoriteModal.title')}</h2>
+              <button onClick={() => setShowAddModal(false)}>{t('common.close')}</button>
             </div>
 
             <form onSubmit={handleAddFavorite}>
               <div className="form-group">
-                <label>الجهاز:</label>
+                <label>{t('common.device')}:</label>
                 <select
                   value={addFormData.hostId}
                   onChange={(e) => setAddFormData({ ...addFormData, hostId: e.target.value })}
                   required
                 >
-                  <option value="">اختر جهاز...</option>
+                  <option value="">{t('pages.favorites.addFavoriteModal.selectDevice')}</option>
                   {availableHosts.map(host => (
                     <option key={host.id} value={host.id}>
-                      {host.name} ({host.ip}) - {host.status === 'online' ? 'متصل' : 'غير متصل'}
+                      {host.name} ({host.ip}) - {host.status === 'online' ? t('common.online') : t('common.offline')}
                     </option>
                   ))}
                 </select>
                 {availableHosts.length === 0 && (
                   <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '5px' }}>
-                    جميع الأجهزة موجودة في المفضلة بالفعل
+                    {t('pages.favorites.addFavoriteModal.allDevicesInFavorites')}
                   </p>
                 )}
               </div>
 
               <div className="form-group">
-                <label>URL (اختياري):</label>
+                <label>{t('common.url')} ({t('common.optional')}):</label>
                 <input
                   type="text"
                   value={addFormData.url}
                   onChange={(e) => setAddFormData({ ...addFormData, url: e.target.value })}
-                  placeholder="http://example.com أو https://example.com"
+                  placeholder={t('pages.favorites.addFavoriteModal.urlPlaceholder')}
                 />
               </div>
 
               <div className="form-group">
-                <label>المجموعة (اختياري):</label>
+                <label>{t('common.group')} ({t('common.optional')}):</label>
                 <select
                   value={addFormData.groupId}
                   onChange={(e) => setAddFormData({ ...addFormData, groupId: e.target.value })}
                 >
-                  <option value="">بدون مجموعة</option>
+                  <option value="">{t('pages.favorites.addFavoriteModal.groupPlaceholder')}</option>
                   {groups.map(group => (
                     <option key={group.id} value={group.id}>
                       {group.name}
@@ -680,10 +682,10 @@ function Favorites() {
 
               <div className="modal-footer">
                 <button type="button" onClick={() => setShowAddModal(false)}>
-                  إلغاء
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" disabled={availableHosts.length === 0} className="btn-primary">
-                  إضافة
+                  {t('common.add')}
                 </button>
               </div>
             </form>
@@ -705,56 +707,56 @@ function Favorites() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h2>تعديل المفضلة</h2>
+              <h2>{t('pages.favorites.editFavoriteModal.title')}</h2>
               <button onClick={() => {
                 setShowEditModal(false)
                 setEditingFavorite(null)
-              }}>إغلاق</button>
+              }}>{t('common.close')}</button>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <p><strong>الجهاز:</strong> {editingFavorite.host.name} ({editingFavorite.host.ip})</p>
+              <p><strong>{t('pages.favorites.editFavoriteModal.device')}:</strong> {editingFavorite.host.name} ({editingFavorite.host.ip})</p>
             </div>
 
             <form onSubmit={handleUpdateFavorite}>
               <div className="form-group">
-                <label>اسم الجهاز المخصص:</label>
+                <label>{t('pages.favorites.editFavoriteModal.customName')}:</label>
                 <input
                   type="text"
                   value={editFormData.customName}
                   onChange={(e) => setEditFormData({ ...editFormData, customName: e.target.value })}
                   placeholder={editingFavorite.host.name}
                 />
-                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>اتركه فارغاً لاستخدام الاسم الافتراضي</small>
+                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{t('pages.favorites.editFavoriteModal.customNameHint')}</small>
               </div>
 
               <div className="form-group">
-                <label>الوصف:</label>
+                <label>{t('common.description')}:</label>
                 <textarea
                   value={editFormData.description}
                   onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                  placeholder="أضف وصفاً للجهاز..."
+                  placeholder={t('pages.favorites.editFavoriteModal.descriptionPlaceholder')}
                   rows="3"
                 />
               </div>
 
               <div className="form-group">
-                <label>URL:</label>
+                <label>{t('common.url')}:</label>
                 <input
                   type="text"
                   value={editFormData.url}
                   onChange={(e) => setEditFormData({ ...editFormData, url: e.target.value })}
-                  placeholder="http://example.com أو https://example.com"
+                  placeholder={t('pages.favorites.addFavoriteModal.urlPlaceholder')}
                 />
               </div>
 
               <div className="form-group">
-                <label>المجموعة:</label>
+                <label>{t('common.group')}:</label>
                 <select
                   value={editFormData.groupId}
                   onChange={(e) => setEditFormData({ ...editFormData, groupId: e.target.value })}
                 >
-                  <option value="">بدون مجموعة</option>
+                  <option value="">{t('common.withoutGroup')}</option>
                   {groups.map(group => (
                     <option key={group.id} value={group.id}>
                       {group.name}
@@ -768,10 +770,10 @@ function Favorites() {
                   setShowEditModal(false)
                   setEditingFavorite(null)
                 }}>
-                  إلغاء
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" className="btn-primary">
-                  حفظ
+                  {t('common.save')}
                 </button>
               </div>
             </form>
@@ -794,18 +796,18 @@ function Favorites() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h2>إدارة المجموعات</h2>
+              <h2>{t('pages.favorites.groupsModal.title')}</h2>
               <button onClick={() => {
                 setShowGroupModal(false)
                 setEditingGroup(null)
                 setGroupFormData({ name: '', color: '#4a9eff' })
-              }}>إغلاق</button>
+              }}>{t('common.close')}</button>
             </div>
 
             <form onSubmit={editingGroup ? handleUpdateGroup : handleCreateGroup} className="card" style={{ marginBottom: '30px' }}>
-              <h3 style={{ marginTop: 0 }}>{editingGroup ? 'تعديل المجموعة' : 'إنشاء مجموعة جديدة'}</h3>
+              <h3 style={{ marginTop: 0 }}>{editingGroup ? t('pages.favorites.groupsModal.editGroup') : t('pages.favorites.groupsModal.createGroup')}</h3>
               <div className="form-group">
-                <label>اسم المجموعة:</label>
+                <label>{t('pages.favorites.groupsModal.groupName')}:</label>
                 <input
                   type="text"
                   value={groupFormData.name}
@@ -815,7 +817,7 @@ function Favorites() {
               </div>
 
               <div className="form-group">
-                <label>اللون:</label>
+                <label>{t('common.color')}:</label>
                 <input
                   type="color"
                   value={groupFormData.color}
@@ -825,7 +827,7 @@ function Favorites() {
 
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button type="submit" className={editingGroup ? 'btn-primary' : 'btn-success'}>
-                  {editingGroup ? 'حفظ التعديلات' : 'إنشاء مجموعة'}
+                  {editingGroup ? t('pages.favorites.groupsModal.saveChanges') : t('pages.favorites.groupsModal.createButton')}
                 </button>
                 {editingGroup && (
                   <button 
@@ -836,16 +838,16 @@ function Favorites() {
                     }}
                     className="btn-secondary"
                   >
-                    إلغاء
+                    {t('common.cancel')}
                   </button>
                 )}
               </div>
             </form>
 
             <div>
-              <h3>المجموعات الموجودة</h3>
+              <h3>{t('common.groups')}</h3>
               {groups.length === 0 ? (
-                <p style={{ color: 'var(--text-secondary)' }}>لا توجد مجموعات</p>
+                <p style={{ color: 'var(--text-secondary)' }}>{t('pages.favorites.groupsModal.noGroups')}</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {groups.map(group => {
@@ -866,7 +868,7 @@ function Favorites() {
                           />
                           <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{group.name}</span>
                           <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                            ({groupFavorites.length} جهاز)
+                            ({groupFavorites.length === 1 ? t('pages.favorites.groupsModal.deviceCountOne') : t('pages.favorites.groupsModal.deviceCount', { count: groupFavorites.length })})
                           </span>
                         </div>
                         {isAdmin && (
@@ -875,13 +877,13 @@ function Favorites() {
                               onClick={() => startEditGroup(group)}
                               className="btn-warning btn-small"
                             >
-                              تعديل
+                              {t('common.edit')}
                             </button>
                             <button
                               onClick={() => handleDeleteGroup(group.id)}
                               className="btn-danger btn-small"
                             >
-                              حذف
+                              {t('common.delete')}
                             </button>
                           </div>
                         )}

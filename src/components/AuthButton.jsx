@@ -2,11 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../constants';
+import { useTranslation } from '../hooks/useTranslation';
 import AdminLoginModal from './AdminLoginModal';
 
 function AuthButton() {
   const { isAuthenticated, username, userType, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [showMenu, setShowMenu] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [setupRequired, setSetupRequired] = useState(false);
@@ -94,12 +96,12 @@ function AuthButton() {
   // Determine button text and style
   const getButtonText = () => {
     if (setupRequired) {
-      return 'إعداد البرنامج';
+      return t('auth.setup');
     }
     if (isAuthenticated) {
-      return isAdmin ? 'خيارات المسؤول' : 'خيارات';
+      return isAdmin ? t('auth.adminOptions') : t('auth.options');
     }
-    return 'تسجيل الدخول';
+    return t('auth.login');
   };
 
   const getButtonClassName = () => {
@@ -123,9 +125,9 @@ function AuthButton() {
           <button
             onClick={handleAdminLoginClick}
             className="btn-success"
-            aria-label="صلاحية المسؤول"
+            aria-label={t('auth.adminAccess')}
           >
-            صلاحية المسؤول
+            {t('auth.adminAccess')}
           </button>
         )}
         <button 
@@ -171,7 +173,7 @@ function AuthButton() {
                     e.target.style.backgroundColor = 'transparent';
                   }}
                 >
-                  تغيير كلمة مرور المسؤول
+                  {t('auth.changeAdminPassword')}
                 </button>
                 <button
                   onClick={handleChangeVisitorPassword}
@@ -192,7 +194,7 @@ function AuthButton() {
                     e.target.style.backgroundColor = 'transparent';
                   }}
                 >
-                  تغيير كلمة مرور الزوار
+                  {t('auth.changeVisitorPassword')}
                 </button>
               </>
             )}
@@ -215,7 +217,7 @@ function AuthButton() {
                 e.target.style.backgroundColor = 'transparent';
               }}
             >
-              {isAdmin ? 'إلغاء صلاحية المسؤول' : 'تسجيل الخروج'}
+              {isAdmin ? t('auth.revokeAdmin') : t('auth.logout')}
             </button>
           </div>
         )}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiPost } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 import Layout from '../components/Layout';
 
 function ChangeVisitorPassword() {
@@ -12,6 +13,7 @@ function ChangeVisitorPassword() {
   const [loading, setLoading] = useState(false);
   const { isAdmin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   if (!isAuthenticated || !isAdmin) {
     navigate('/');
@@ -24,17 +26,17 @@ function ChangeVisitorPassword() {
     setSuccess('');
 
     if (!newPassword || !confirmPassword) {
-      setError('جميع الحقول مطلوبة');
+      setError(t('pages.changeVisitorPassword.allFieldsRequired'));
       return;
     }
 
     if (newPassword.length < 3) {
-      setError('كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل');
+      setError(t('pages.changeVisitorPassword.passwordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('كلمات المرور الجديدة غير متطابقة');
+      setError(t('pages.changeVisitorPassword.passwordMismatch'));
       return;
     }
 
@@ -45,7 +47,7 @@ function ChangeVisitorPassword() {
         newPassword
       });
       
-      setSuccess('تم تغيير كلمة مرور الزوار بنجاح');
+      setSuccess(t('pages.changeVisitorPassword.success'));
       setNewPassword('');
       setConfirmPassword('');
       
@@ -55,7 +57,7 @@ function ChangeVisitorPassword() {
         navigate('/');
       }, 3000);
     } catch (err) {
-      setError(err.message || 'حدث خطأ أثناء تغيير كلمة مرور الزوار');
+      setError(err.message || t('pages.changeVisitorPassword.error'));
     } finally {
       setLoading(false);
     }
@@ -65,7 +67,7 @@ function ChangeVisitorPassword() {
     <Layout>
       <div className="container">
         <div className="header">
-          <h1>تغيير كلمة مرور الزوار</h1>
+          <h1>{t('pages.changeVisitorPassword.title')}</h1>
         </div>
 
         <div className="card" style={{ maxWidth: '500px', margin: '0 auto' }}>
@@ -83,7 +85,7 @@ function ChangeVisitorPassword() {
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="newPassword">كلمة المرور الجديدة للزوار:</label>
+              <label htmlFor="newPassword">{t('pages.changeVisitorPassword.newPassword')}</label>
               <input
                 id="newPassword"
                 type="password"
@@ -97,7 +99,7 @@ function ChangeVisitorPassword() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="confirmPassword">تأكيد كلمة المرور الجديدة:</label>
+              <label htmlFor="confirmPassword">{t('pages.changeVisitorPassword.confirmPassword')}</label>
               <input
                 id="confirmPassword"
                 type="password"
@@ -115,7 +117,7 @@ function ChangeVisitorPassword() {
                 disabled={loading}
                 className="btn-primary"
               >
-                {loading ? 'جاري التغيير...' : 'تغيير كلمة المرور'}
+                {loading ? t('pages.changeVisitorPassword.changing') : t('pages.changeVisitorPassword.changeButton')}
               </button>
               <button
                 type="button"
@@ -123,7 +125,7 @@ function ChangeVisitorPassword() {
                 className="btn-secondary"
                 disabled={loading}
               >
-                إلغاء
+                {t('common.cancel')}
               </button>
             </div>
           </form>

@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiDelete, apiPost, apiPut } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useTranslation } from '../hooks/useTranslation'
 
 function NetworksList() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
+  const { t } = useTranslation()
   const [networks, setNetworks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -32,7 +34,7 @@ function NetworksList() {
   }
 
   const handleDeleteNetwork = async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه الشبكة وجميع الأجهزة المرتبطة بها؟')) return
+    if (!window.confirm(t('messages.confirm.deleteNetwork'))) return
     try {
       setError(null)
       await apiDelete(`/networks/${id}`)
@@ -53,13 +55,13 @@ function NetworksList() {
   }
 
   if (loading) {
-    return <div className="loading">جاري التحميل...</div>
+    return <div className="loading">{t('common.loading')}</div>
   }
 
   return (
     <div className="container">
       <div className="header">
-        <h1>إدارة الشبكات</h1>
+        <h1>{t('pages.networksList.title')}</h1>
       </div>
 
       {error && (
@@ -75,7 +77,7 @@ function NetworksList() {
             setEditingNetworkId(null)
             setFormData({ name: '', networkId: '', subnet: '' })
           }}>
-            إضافة شبكة جديدة
+            {t('pages.networksList.addNetwork')}
           </button>
         )}
       </div>
@@ -103,7 +105,7 @@ function NetworksList() {
 
       {networks.length === 0 ? (
         <div className="empty-state">
-          <p>لا توجد شبكات. أضف شبكة جديدة للبدء.</p>
+          <p>{t('pages.networksList.noNetworks')}</p>
         </div>
       ) : (
         <div className="tags-list">
@@ -114,16 +116,16 @@ function NetworksList() {
                 <p>{network.network_id}/{network.subnet}</p>
                 {network.last_scanned && (
                   <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    آخر فحص: {new Date(network.last_scanned).toLocaleString('ar-SA')}
+                    {t('pages.networksList.lastScanned')}: {new Date(network.last_scanned).toLocaleString()}
                   </p>
                 )}
               </div>
               <div className="tag-actions">
-                <button onClick={() => navigate(`/networks/${network.id}`)} className="btn-primary">عرض</button>
+                <button onClick={() => navigate(`/networks/${network.id}`)} className="btn-primary">{t('pages.networksList.view')}</button>
                 {isAdmin && (
                   <>
-                    <button onClick={() => handleStartEdit(network)} className="btn-warning">تعديل</button>
-                    <button onClick={() => handleDeleteNetwork(network.id)} className="btn-danger">حذف</button>
+                    <button onClick={() => handleStartEdit(network)} className="btn-warning">{t('common.edit')}</button>
+                    <button onClick={() => handleDeleteNetwork(network.id)} className="btn-danger">{t('common.delete')}</button>
                   </>
                 )}
               </div>
@@ -138,20 +140,21 @@ function NetworksList() {
 function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, apiPost, apiPut }) {
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const { t } = useTranslation()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
     if (!formData.name.trim()) {
-      setError('اسم الشبكة مطلوب')
+      setError(t('forms.networkNameRequired'))
       return
     }
     if (!formData.networkId.trim()) {
-      setError('Network ID مطلوب')
+      setError(t('forms.networkIdRequired'))
       return
     }
     if (!formData.subnet || parseInt(formData.subnet) < 0 || parseInt(formData.subnet) > 32) {
-      setError('Subnet يجب أن يكون بين 0 و 32')
+      setError(t('forms.subnetRequired'))
       return
     }
 
@@ -184,29 +187,29 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
   return (
     <form className="form" onSubmit={handleSubmit}>
       <div className="form-group">
-        <label>اسم الشبكة *</label>
+        <label>{t('forms.networkName')} *</label>
         <input
           type="text"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
-          placeholder="مثال: الشبكة الرئيسية"
+          placeholder={t('forms.networkName')}
         />
       </div>
 
       <div className="form-group">
-        <label>Network ID *</label>
+        <label>{t('forms.networkId')} *</label>
         <input
           type="text"
           value={formData.networkId}
           onChange={(e) => setFormData({ ...formData, networkId: e.target.value })}
           required
-          placeholder="مثال: 192.168.1.0"
+          placeholder={t('forms.networkId')}
         />
       </div>
 
       <div className="form-group">
-        <label>Subnet *</label>
+        <label>{t('forms.subnet')} *</label>
         <input
           type="number"
           min="0"
@@ -214,7 +217,7 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
           value={formData.subnet}
           onChange={(e) => setFormData({ ...formData, subnet: e.target.value })}
           required
-          placeholder="مثال: 24"
+          placeholder={t('forms.subnet')}
         />
       </div>
 
@@ -226,10 +229,10 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
 
       <div className="form-actions">
         <button type="submit" disabled={submitting} className="btn-primary">
-          {submitting ? 'جاري الحفظ...' : (networkId ? 'حفظ التعديلات' : 'إضافة')}
+          {submitting ? t('common.loading') : (networkId ? t('pages.tagsManagement.saveChanges') : t('common.add'))}
         </button>
         <button type="button" onClick={onClose}>
-          إلغاء
+          {t('common.cancel')}
         </button>
       </div>
     </form>

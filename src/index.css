@@ -95,13 +95,60 @@ html {
 }
 
 body {
-  font-family: 'Tajawal', sans-serif;
+  font-family: 'Tajawal', 'Inter', 'Roboto', 'system-ui', -apple-system, sans-serif;
   line-height: 1.6;
   color: var(--text-primary);
   background-color: var(--bg-secondary);
   transition: background-color 0.3s ease, color 0.3s ease;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* RTL Support */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .navbar-links,
+[dir="rtl"] .controls,
+[dir="rtl"] .form-actions,
+[dir="rtl"] .modal-footer {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .stat-item,
+[dir="rtl"] .tag-item,
+[dir="rtl"] .favorite-card {
+  text-align: right;
+}
+
+/* LTR Support */
+[dir="ltr"] {
+  direction: ltr;
+  text-align: left;
+}
+
+[dir="ltr"] .navbar-links,
+[dir="ltr"] .controls,
+[dir="ltr"] .form-actions,
+[dir="ltr"] .modal-footer {
+  flex-direction: row;
+}
+
+[dir="ltr"] .stat-item,
+[dir="ltr"] .tag-item,
+[dir="ltr"] .favorite-card {
+  text-align: left;
+}
+
+/* Font family based on language */
+[lang="ar"] {
+  font-family: 'Tajawal', sans-serif;
+}
+
+[lang="en"] {
+  font-family: 'Inter', 'Roboto', 'system-ui', -apple-system, sans-serif;
 }
 
 /* ============================================

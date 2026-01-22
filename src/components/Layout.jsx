@@ -1,10 +1,13 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import AuthButton from './AuthButton'
 import ThemeToggle from './ThemeToggle'
+import LanguageToggle from './LanguageToggle'
+import { useTranslation } from '../hooks/useTranslation'
 
 function Layout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
 
   const isActive = (path) => {
     if (path === '/') {
@@ -14,8 +17,8 @@ function Layout({ children }) {
   }
 
   const navLinks = [
-    { path: '/', label: 'الصفحة الرئيسية' },
-    { path: '/hosts', label: 'عرض الشبكات' }
+    { path: '/', label: t('navigation.home') },
+    { path: '/hosts', label: t('navigation.viewNetworks') }
   ]
 
   // لا نعرض navbar في صفحة Login
@@ -27,7 +30,7 @@ function Layout({ children }) {
     <div className="app">
       <nav className="navbar">
         <div className="navbar-content">
-          <h1 className="navbar-title">شبكتي</h1>
+          <h1 className="navbar-title">{t('pages.favorites.title')}</h1>
           <div className="navbar-links">
             {navLinks.map(link => (
               <button
@@ -43,6 +46,7 @@ function Layout({ children }) {
                 {link.label}
               </button>
             ))}
+            <LanguageToggle />
             <ThemeToggle />
             <AuthButton />
           </div>

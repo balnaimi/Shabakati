@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 
 function AdminLoginModal({ isOpen, onClose, onSuccess }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { adminLogin } = useAuth();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,10 +24,10 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
         }
         onClose();
       } else {
-        setError(result.error || 'فشل تسجيل الدخول كمسؤول');
+        setError(result.error || t('auth.adminLoginFailed'));
       }
     } catch (err) {
-      setError(err.message || 'حدث خطأ أثناء تسجيل الدخول كمسؤول');
+      setError(err.message || t('auth.adminLoginError'));
     } finally {
       setLoading(false);
     }
@@ -66,7 +68,7 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0 }}>صلاحية المسؤول</h2>
+          <h2 style={{ margin: 0 }}>{t('auth.adminAccessTitle')}</h2>
           <button
             onClick={handleClose}
             style={{
@@ -82,14 +84,14 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
               alignItems: 'center',
               justifyContent: 'center'
             }}
-            aria-label="إغلاق"
+            aria-label={t('common.close')}
           >
             ×
           </button>
         </div>
 
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          أدخل كلمة مرور المسؤول للوصول إلى صلاحيات التعديل والإدارة.
+          {t('auth.adminAccessDescription')}
         </p>
 
         {error && (
@@ -100,7 +102,7 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="adminPassword">كلمة مرور المسؤول:</label>
+            <label htmlFor="adminPassword">{t('auth.adminPassword')}</label>
             <input
               id="adminPassword"
               type="password"
@@ -109,7 +111,7 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
               required
               disabled={loading}
               autoFocus
-              placeholder="كلمة مرور المسؤول"
+              placeholder={t('auth.adminPasswordPlaceholder')}
             />
           </div>
 
@@ -128,7 +130,7 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
                 cursor: loading ? 'not-allowed' : 'pointer'
               }}
             >
-              إلغاء
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -136,7 +138,7 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
               className="btn-primary"
               style={{ flex: 1 }}
             >
-              {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
+              {loading ? t('pages.login.verifying') : t('auth.adminLoginButton')}
             </button>
           </div>
         </form>

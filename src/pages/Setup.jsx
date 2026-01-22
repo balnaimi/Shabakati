@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../constants';
 import { apiPost } from '../utils/api';
 import ThemeToggle from '../components/ThemeToggle';
+import LanguageToggle from '../components/LanguageToggle';
+import { useTranslation } from '../hooks/useTranslation';
 import '../index.css';
 
 function Setup() {
@@ -13,6 +15,7 @@ function Setup() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Check if setup is still needed
@@ -31,22 +34,22 @@ function Setup() {
     setError('');
 
     if (!visitorPassword || visitorPassword.length < 3) {
-      setError('كلمة مرور الزوار يجب أن تكون 3 أحرف على الأقل');
+      setError(t('pages.setup.visitorPasswordMinLength'));
       return;
     }
 
     if (visitorPassword !== visitorConfirmPassword) {
-      setError('كلمات مرور الزوار غير متطابقة');
+      setError(t('pages.setup.visitorPasswordMismatch'));
       return;
     }
 
     if (!adminPassword || adminPassword.length < 3) {
-      setError('كلمة مرور المسؤول يجب أن تكون 3 أحرف على الأقل');
+      setError(t('pages.setup.adminPasswordMinLength'));
       return;
     }
 
     if (adminPassword !== adminConfirmPassword) {
-      setError('كلمات مرور المسؤول غير متطابقة');
+      setError(t('pages.setup.adminPasswordMismatch'));
       return;
     }
 
@@ -64,10 +67,10 @@ function Setup() {
         navigate('/');
         window.location.reload(); // Reload to update auth state
       } else {
-        setError('فشل إنشاء كلمتي المرور');
+        setError(t('pages.setup.setupFailed'));
       }
     } catch (err) {
-      setError(err.message || 'حدث خطأ أثناء إنشاء كلمتي المرور');
+      setError(err.message || t('pages.setup.setupError'));
     } finally {
       setLoading(false);
     }
@@ -82,17 +85,25 @@ function Setup() {
       flexDirection: 'column',
       gap: '20px'
     }}>
-      <div style={{ position: 'absolute', top: '20px', left: '20px' }}>
+      <div style={{ 
+        position: 'absolute', 
+        top: '20px', 
+        left: '20px',
+        display: 'flex',
+        gap: '10px',
+        alignItems: 'center'
+      }}>
+        <LanguageToggle />
         <ThemeToggle />
       </div>
       
       <div className="card" style={{ width: '100%', maxWidth: '500px' }}>
         <h1 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          إعداد البرنامج
+          {t('pages.setup.title')}
         </h1>
         
         <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          هذا هو أول تشغيل للبرنامج. يرجى إنشاء كلمة مرور للزوار وكلمة مرور للمسؤول.
+          {t('pages.setup.subtitle')}
         </p>
         
         {error && (
@@ -103,9 +114,9 @@ function Setup() {
         
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-            <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>كلمة مرور الزوار</h3>
+            <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>{t('pages.setup.visitorPassword')}</h3>
             <div className="form-group">
-              <label htmlFor="visitorPassword">كلمة مرور الزوار:</label>
+              <label htmlFor="visitorPassword">{t('pages.setup.visitorPasswordLabel')}</label>
               <input
                 id="visitorPassword"
                 type="password"
@@ -115,12 +126,12 @@ function Setup() {
                 disabled={loading}
                 autoFocus
                 minLength={3}
-                placeholder="للعرض فقط"
+                placeholder={t('pages.setup.visitorPasswordPlaceholder')}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="visitorConfirmPassword">تأكيد كلمة مرور الزوار:</label>
+              <label htmlFor="visitorConfirmPassword">{t('pages.setup.visitorPasswordConfirm')}</label>
               <input
                 id="visitorConfirmPassword"
                 type="password"
@@ -134,9 +145,9 @@ function Setup() {
           </div>
 
           <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-            <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>كلمة مرور المسؤول</h3>
+            <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>{t('pages.setup.adminPassword')}</h3>
             <div className="form-group">
-              <label htmlFor="adminPassword">كلمة مرور المسؤول:</label>
+              <label htmlFor="adminPassword">{t('pages.setup.adminPasswordLabel')}</label>
               <input
                 id="adminPassword"
                 type="password"
@@ -145,12 +156,12 @@ function Setup() {
                 required
                 disabled={loading}
                 minLength={3}
-                placeholder="للتعديل والإدارة"
+                placeholder={t('pages.setup.adminPasswordPlaceholder')}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="adminConfirmPassword">تأكيد كلمة مرور المسؤول:</label>
+              <label htmlFor="adminConfirmPassword">{t('pages.setup.adminPasswordConfirm')}</label>
               <input
                 id="adminConfirmPassword"
                 type="password"
@@ -169,7 +180,7 @@ function Setup() {
             className="btn-primary"
             style={{ width: '100%' }}
           >
-            {loading ? 'جاري الإنشاء...' : 'إنشاء كلمتي المرور'}
+            {loading ? t('pages.setup.creating') : t('pages.setup.createPasswords')}
           </button>
         </form>
       </div>

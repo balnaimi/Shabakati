@@ -4,11 +4,13 @@ import { API_URL } from '../constants'
 import { apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useTags } from '../hooks/useTags'
+import { useTranslation } from '../hooks/useTranslation'
 
 function TagsManagement() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
   const { tags, loading, error: tagsError, refetch: fetchTags } = useTags()
+  const { t } = useTranslation()
   const [error, setError] = useState(null)
   const [editingTag, setEditingTag] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -17,7 +19,7 @@ function TagsManagement() {
   const handleAddTag = async (e) => {
     e.preventDefault()
     if (!formData.name.trim()) {
-      setError('اسم الوسم مطلوب')
+      setError(t('pages.tagsManagement.tagNameRequired'))
       return
     }
 
@@ -35,7 +37,7 @@ function TagsManagement() {
   const handleUpdateTag = async (e) => {
     e.preventDefault()
     if (!formData.name.trim()) {
-      setError('اسم الوسم مطلوب')
+      setError(t('pages.tagsManagement.tagNameRequired'))
       return
     }
 
@@ -51,7 +53,7 @@ function TagsManagement() {
   }
 
   const handleDeleteTag = async (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا الوسم؟')) return
+    if (!window.confirm(t('messages.confirm.deleteTag'))) return
     try {
       setError(null)
       await apiDelete(`/tags/${id}`)
@@ -68,13 +70,13 @@ function TagsManagement() {
   }
 
   if (loading) {
-    return <div className="loading">جاري التحميل...</div>
+    return <div className="loading">{t('common.loading')}</div>
   }
 
   return (
     <div className="container">
       <div className="header">
-        <h1>إدارة الوسوم</h1>
+        <h1>{t('pages.tagsManagement.title')}</h1>
       </div>
 
       {(error || tagsError) && (
@@ -87,25 +89,25 @@ function TagsManagement() {
         <div className="controls">
           {isAdmin && (
             <button onClick={() => { setShowAddForm(true); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
-              إضافة وسم جديد
+              {t('pages.tagsManagement.addTag')}
             </button>
           )}
         </div>
-        <h2>الوسوم ({tags.length})</h2>
+        <h2>{t('pages.tagsManagement.tags')} ({tags.length})</h2>
 
         {(showAddForm || editingTag) && (
           <form className="form" onSubmit={editingTag ? handleUpdateTag : handleAddTag}>
             <div className="form-group">
               <input
                 type="text"
-                placeholder="اسم الوسم"
+                placeholder={t('pages.tagsManagement.tagName')}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
               />
             </div>
             <div className="form-group">
-              <label>اللون:</label>
+              <label>{t('common.color')}:</label>
               <input
                 type="color"
                 value={formData.color}
@@ -114,10 +116,10 @@ function TagsManagement() {
             </div>
             <div className="form-actions">
               <button type="submit" className="btn-primary">
-                {editingTag ? 'حفظ التعديلات' : 'إضافة'}
+                {editingTag ? t('pages.tagsManagement.saveChanges') : t('common.add')}
               </button>
               <button type="button" onClick={() => { setShowAddForm(false); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
-                إلغاء
+                {t('common.cancel')}
               </button>
             </div>
           </form>
@@ -132,8 +134,8 @@ function TagsManagement() {
               <div className="tag-actions">
                 {isAdmin && (
                   <>
-                    <button onClick={() => startEdit(tag)} className="btn-warning">تعديل</button>
-                    <button onClick={() => handleDeleteTag(tag.id)} className="btn-danger">حذف</button>
+                    <button onClick={() => startEdit(tag)} className="btn-warning">{t('common.edit')}</button>
+                    <button onClick={() => handleDeleteTag(tag.id)} className="btn-danger">{t('common.delete')}</button>
                   </>
                 )}
               </div>
@@ -143,7 +145,7 @@ function TagsManagement() {
 
         {tags.length === 0 && !showAddForm && (
           <div className="empty-state">
-            <p>لا توجد وسوم. أضف وسم جديد للبدء.</p>
+            <p>{t('pages.tagsManagement.noTags')}</p>
           </div>
         )}
       </div>
