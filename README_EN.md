@@ -7,10 +7,32 @@ A modern dashboard for managing and monitoring devices on your network with SQLi
 ## Features
 
 - 📡 Network and device management
-- 🔍 Automatic network scanning to discover devices
+- 🔍 Automatic and manual network scanning to discover devices
 - 📊 Visual statistics display
-- 🏷️ Tag management
+- 🏷️ Complete tag management
 - 💾 SQLite database
+- 🌐 Multi-language support (Arabic/English) with easy switching
+- 🌓 Dark/Light mode
+- ⭐ Favorites and groups management (create, edit, delete, reorder)
+- 🔐 Authentication system (Admin and Visitor)
+- 🔑 Password change (Admin and Visitor)
+- 📈 Detailed network view with device grouping
+- 📊 Comprehensive statistics (online/offline devices)
+- 🎯 Modern and responsive user interface
+
+---
+
+## 📑 Available Pages
+
+- **Setup Page** - Initial password setup on first run
+- **Login Page** - User authentication
+- **Networks List** - View and manage all networks
+- **Network View** - Detailed view of a specific network with device grouping
+- **Hosts List** - View all devices across all networks
+- **Favorites** - Manage favorite devices and groups
+- **Tags Management** - Create and manage tags
+- **Change Admin Password** - Change administrator password
+- **Change Visitor Password** - Change visitor password
 
 ---
 
@@ -66,6 +88,52 @@ After running, the application will be available at:
 cd server
 node resetDatabase.js
 ```
+
+---
+
+## 👤 Add Admin User
+
+To add a new admin user:
+
+```bash
+cd server
+node addAdmin.js [username] [password]
+```
+
+Or using environment variable:
+
+```bash
+cd server
+ADMIN_PASSWORD=yourpassword node addAdmin.js [username]
+```
+
+**Example:**
+```bash
+cd server
+node addAdmin.js admin mypassword123
+```
+
+---
+
+## 📦 Dependencies
+
+### Frontend
+- React 18.3.1
+- React DOM 18.3.1
+- React Router DOM 6.28.0
+- Vite 7.2.7 (Build tool)
+
+### Backend
+- Express 4.22.1
+- SQLite (better-sqlite3 12.6.0)
+- bcrypt 6.0.0 (Password hashing)
+- jsonwebtoken 9.0.3 (Authentication)
+- winston 3.19.0 (Logging)
+- ping 1.0.0 (Host checking)
+- validator 13.15.26 (Data validation)
+
+### Requirements
+- Node.js 24 LTS or later
 
 ---
 
