@@ -3,13 +3,13 @@ import { createContext, useContext, useState, useEffect } from 'react'
 const ThemeContext = createContext()
 
 export function ThemeProvider({ children }) {
-  // تحقق من التفضيل المحفوظ أو تفضيل النظام
+  // Check saved preference or system preference
   const getInitialTheme = () => {
     const savedTheme = localStorage.getItem('theme')
     if (savedTheme) {
       return savedTheme
     }
-    // تحقق من تفضيل النظام
+    // Check system preference
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       return 'dark'
     }
@@ -19,7 +19,7 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(getInitialTheme)
 
   useEffect(() => {
-    // تحديث الـ class في الـ HTML element
+    // Update the class in the HTML element
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])

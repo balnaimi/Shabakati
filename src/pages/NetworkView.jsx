@@ -365,21 +365,21 @@ function NetworkView() {
     for (let thirdOctet = startThirdOctet; thirdOctet <= endThirdOctet; thirdOctet++) {
       const groupIPs = []
       
-      // تحديد نطاق الـ octet الرابع
+      // Determine the range of the fourth octet
       let startFourth = 0
       let endFourth = 255
       
       if (thirdOctet === startThirdOctet) {
-        // القائمة الأولى: تبدأ من .1 (لأن .0 هو network address)
+        // First list: starts from .1 (because .0 is network address)
         startFourth = 1
       }
       
       if (thirdOctet === endThirdOctet) {
-        // القائمة الأخيرة: تنتهي عند .254 (لأن .255 هو broadcast)
+        // Last list: ends at .254 (because .255 is broadcast)
         endFourth = broadcastParts[3] - 1
       }
       
-      // إنشاء العناوين في هذه المجموعة
+      // Create addresses in this group
       for (let fourthOctet = startFourth; fourthOctet <= endFourth; fourthOctet++) {
         const ip = `${networkParts2[0]}.${networkParts2[1]}.${thirdOctet}.${fourthOctet}`
         groupIPs.push(ip)
@@ -439,7 +439,7 @@ function NetworkView() {
               {scanning ? t('pages.networkView.scanning') : t('pages.networkView.scan')}
             </button>
             
-            {/* زر الفحص التلقائي */}
+            {/* Auto scan button */}
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -531,7 +531,7 @@ function NetworkView() {
       {/* Tab Content */}
       {activeTab === 'devices' && (
         <>
-          {/* قسم الأجهزة الجديدة المكتشفة */}
+          {/* Newly discovered devices section */}
           {visibleNewHosts.length > 0 && (
             <div style={{ 
               marginTop: '20px', 
@@ -681,7 +681,7 @@ function NetworkView() {
             </div>
           )}
 
-          {/* قسم الأجهزة المكتشفة تلقائياً */}
+          {/* Auto-discovered devices section */}
           {autoScanResults.newDevices.length > 0 && (
             <div style={{ 
               marginTop: '20px', 
@@ -781,7 +781,7 @@ function NetworkView() {
             </div>
           )}
 
-          {/* قسم الأجهزة المنقطعة */}
+          {/* Disconnected devices section */}
           {autoScanResults.disconnected.length > 0 && (
             <div style={{ 
               marginTop: '20px', 

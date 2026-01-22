@@ -1,9 +1,9 @@
 /* ============================================
-   CSS Variables - نظام الألوان للثيم
+   CSS Variables - Theme Color System
    ============================================ */
 
 :root {
-  /* Light Theme - الوضع الفاتح */
+  /* Light Theme */
   --bg-primary: #ffffff;
   --bg-secondary: #f5f5f5;
   --bg-tertiary: #f8f9fa;
@@ -45,7 +45,7 @@
 }
 
 [data-theme="dark"] {
-  /* Dark Theme - الوضع الداكن */
+  /* Dark Theme */
   --bg-primary: #1a1a1a;
   --bg-secondary: #2d2d2d;
   --bg-tertiary: #3a3a3a;

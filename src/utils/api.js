@@ -1,7 +1,7 @@
 import { API_URL } from '../constants'
 
 /**
- * Utility functions لمعالجة API calls مع تحسين معالجة الأخطاء
+ * Utility functions for handling API calls with improved error handling
  */
 
 /**
@@ -32,7 +32,7 @@ function getAuthHeaders(customToken = null) {
 }
 
 /**
- * معالجة استجابة API مع فحص الأخطاء
+ * Handle API response with error checking
  */
 export async function handleApiResponse(response) {
   const contentType = response.headers.get('content-type')
@@ -40,7 +40,7 @@ export async function handleApiResponse(response) {
   if (!response.ok) {
     let errorMessage = `فشل في العملية: ${response.status} ${response.statusText}`
     try {
-      // محاولة قراءة JSON حتى لو كان contentType غير صحيح
+      // Try to read JSON even if contentType is incorrect
       const text = await response.text()
       
       if (contentType && contentType.includes('application/json')) {
@@ -49,11 +49,11 @@ export async function handleApiResponse(response) {
         errorMessage = errorData.error
         }
       } else if (text) {
-        // إذا كان نص وليس JSON، استخدم النص
+        // If it's text and not JSON, use the text
         errorMessage = text.length > 200 ? text.substring(0, 200) : text
       }
     } catch (e) {
-      // إذا فشل parse، استخدم الرسالة الافتراضية
+      // If parse fails, use the default message
     }
     throw new Error(errorMessage)
   }
@@ -67,7 +67,7 @@ export async function handleApiResponse(response) {
 }
 
 /**
- * GET request مع معالجة الأخطاء
+ * GET request with error handling
  */
 export async function apiGet(endpoint) {
   try {
@@ -90,7 +90,7 @@ export async function apiGet(endpoint) {
 }
 
 /**
- * POST request مع معالجة الأخطاء
+ * POST request with error handling
  */
 export async function apiPost(endpoint, data, customToken = null) {
   try {
@@ -115,7 +115,7 @@ export async function apiPost(endpoint, data, customToken = null) {
 }
 
 /**
- * PUT request مع معالجة الأخطاء
+ * PUT request with error handling
  */
 export async function apiPut(endpoint, data) {
   try {
@@ -140,7 +140,7 @@ export async function apiPut(endpoint, data) {
 }
 
 /**
- * DELETE request مع معالجة الأخطاء
+ * DELETE request with error handling
  */
 export async function apiDelete(endpoint) {
   try {
@@ -164,7 +164,7 @@ export async function apiDelete(endpoint) {
 }
 
 /**
- * PATCH request مع معالجة الأخطاء
+ * PATCH request with error handling
  */
 export async function apiPatch(endpoint, data = {}) {
   try {
