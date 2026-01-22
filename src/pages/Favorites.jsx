@@ -22,6 +22,7 @@ function Favorites() {
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingFavorite, setEditingFavorite] = useState(null)
+  const [editingGroup, setEditingGroup] = useState(null)
   const [collapsedGroups, setCollapsedGroups] = useState({})
   
   // Form states
@@ -138,11 +139,34 @@ function Favorites() {
         color: groupFormData.color
       })
       setShowGroupModal(false)
+      setEditingGroup(null)
       setGroupFormData({ name: '', color: '#4a9eff' })
       await fetchData()
     } catch (err) {
       setError(err.message)
     }
+  }
+
+  const handleUpdateGroup = async (e) => {
+    e.preventDefault()
+    if (!editingGroup) return
+    try {
+      setError(null)
+      await apiPut(`/groups/${editingGroup.id}`, {
+        name: groupFormData.name,
+        color: groupFormData.color
+      })
+      setEditingGroup(null)
+      setGroupFormData({ name: '', color: '#4a9eff' })
+      await fetchData()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const startEditGroup = (group) => {
+    setEditingGroup(group)
+    setGroupFormData({ name: group.name, color: group.color })
   }
 
   const handleDeleteGroup = async (id) => {
@@ -759,7 +783,11 @@ function Favorites() {
       {showGroupModal && (
         <div
           className="modal-overlay"
-          onClick={() => setShowGroupModal(false)}
+          onClick={() => {
+            setShowGroupModal(false)
+            setEditingGroup(null)
+            setGroupFormData({ name: '', color: '#4a9eff' })
+          }}
         >
           <div
             className="modal-content"
@@ -767,11 +795,15 @@ function Favorites() {
           >
             <div className="modal-header">
               <h2>إدارة المجموعات</h2>
-              <button onClick={() => setShowGroupModal(false)}>إغلاق</button>
+              <button onClick={() => {
+                setShowGroupModal(false)
+                setEditingGroup(null)
+                setGroupFormData({ name: '', color: '#4a9eff' })
+              }}>إغلاق</button>
             </div>
 
-            <form onSubmit={handleCreateGroup} className="card" style={{ marginBottom: '30px' }}>
-              <h3 style={{ marginTop: 0 }}>إنشاء مجموعة جديدة</h3>
+            <form onSubmit={editingGroup ? handleUpdateGroup : handleCreateGroup} className="card" style={{ marginBottom: '30px' }}>
+              <h3 style={{ marginTop: 0 }}>{editingGroup ? 'تعديل المجموعة' : 'إنشاء مجموعة جديدة'}</h3>
               <div className="form-group">
                 <label>اسم المجموعة:</label>
                 <input
@@ -791,9 +823,23 @@ function Favorites() {
                 />
               </div>
 
-              <button type="submit" className="btn-success">
-                إنشاء مجموعة
-              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button type="submit" className={editingGroup ? 'btn-primary' : 'btn-success'}>
+                  {editingGroup ? 'حفظ التعديلات' : 'إنشاء مجموعة'}
+                </button>
+                {editingGroup && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setEditingGroup(null)
+                      setGroupFormData({ name: '', color: '#4a9eff' })
+                    }}
+                    className="btn-secondary"
+                  >
+                    إلغاء
+                  </button>
+                )}
+              </div>
             </form>
 
             <div>
@@ -824,12 +870,20 @@ function Favorites() {
                           </span>
                         </div>
                         {isAdmin && (
-                          <button
-                            onClick={() => handleDeleteGroup(group.id)}
-                            className="btn-danger btn-small"
-                          >
-                            حذف
-                          </button>
+                          <div style={{ display: 'flex', gap: '5px' }}>
+                            <button
+                              onClick={() => startEditGroup(group)}
+                              className="btn-warning btn-small"
+                            >
+                              تعديل
+                            </button>
+                            <button
+                              onClick={() => handleDeleteGroup(group.id)}
+                              className="btn-danger btn-small"
+                            >
+                              حذف
+                            </button>
+                          </div>
                         )}
                       </div>
                     )

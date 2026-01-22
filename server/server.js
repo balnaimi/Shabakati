@@ -1497,6 +1497,28 @@ app.get('/.well-known/*', (req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+// Handle favicon.ico requests (browsers automatically request this)
+app.get('/favicon.ico', (req, res) => {
+  // Try multiple possible paths for favicon
+  const possiblePaths = [
+    join(__dirname, '..', 'public', 'favicon.svg'),
+    join(__dirname, '..', 'dist', 'favicon.svg'),
+    join(__dirname, 'dist', 'favicon.svg'),
+    join(__dirname, '..', 'public', 'favicon.ico'),
+    join(__dirname, '..', 'dist', 'favicon.ico'),
+    join(__dirname, 'dist', 'favicon.ico')
+  ];
+  
+  for (const faviconPath of possiblePaths) {
+    if (existsSync(faviconPath)) {
+      return res.sendFile(faviconPath);
+    }
+  }
+  
+  // Return 204 No Content to silently handle the request without logging an error
+  res.status(204).end();
+});
+
 // 404 handler (must be before error handler)
 app.use(notFoundHandler);
 
