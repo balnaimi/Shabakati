@@ -73,8 +73,8 @@ function AuthButton() {
   };
 
   const handleAdminLoginSuccess = () => {
-    // Refresh page to update auth state
-    window.location.reload();
+    // Auth state will be updated automatically via Context
+    // No need to reload the page
   };
 
   const handleLogout = () => {

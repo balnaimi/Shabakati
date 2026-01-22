@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { apiPost, apiGet } from '../utils/api';
 
 const AuthContext = createContext();
@@ -17,12 +17,7 @@ export function AuthProvider({ children }) {
   const [userType, setUserType] = useState(null); // 'visitor' or 'admin'
   const [loading, setLoading] = useState(true);
 
-  // Check authentication status on mount
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
     try {
       // Check localStorage for visitor token first
       let token = localStorage.getItem('visitorToken');
@@ -69,9 +64,14 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (password) => {
+  // Check authentication status on mount
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
+
+  const login = useCallback(async (password) => {
     try {
       const response = await apiPost('/auth/login', { password });
       
@@ -91,9 +91,9 @@ export function AuthProvider({ children }) {
         error: error.message || 'حدث خطأ أثناء تسجيل الدخول' 
       };
     }
-  };
+  }, []);
 
-  const adminLogin = async (password) => {
+  const adminLogin = useCallback(async (password) => {
     try {
       // Get visitor token for authorization
       const visitorToken = localStorage.getItem('visitorToken');
@@ -110,6 +110,10 @@ export function AuthProvider({ children }) {
         setIsAuthenticated(true);
         setUsername(response.username || 'admin');
         setUserType(response.userType || 'admin');
+        
+        // Refresh auth status to ensure all components get updated state
+        await checkAuthStatus();
+        
         return { success: true, userType: response.userType || 'admin' };
       } else {
         return { success: false, error: 'فشل تسجيل الدخول كمسؤول' };
@@ -120,31 +124,32 @@ export function AuthProvider({ children }) {
         error: error.message || 'حدث خطأ أثناء تسجيل الدخول كمسؤول' 
       };
     }
-  };
+  }, [checkAuthStatus]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('visitorToken');
     localStorage.removeItem('authToken');
     setIsAuthenticated(false);
     setUsername(null);
     setUserType(null);
-  };
+  }, []);
 
-  const isAdmin = () => {
+  // Calculate isAdmin based on current userType
+  const isAdmin = useMemo(() => {
     return userType === 'admin';
-  };
+  }, [userType]);
 
-  const value = {
+  const value = useMemo(() => ({
     isAuthenticated,
     username,
     userType,
-    isAdmin: isAdmin(),
+    isAdmin,
     loading,
     login,
     adminLogin,
     logout,
     checkAuthStatus
-  };
+  }), [isAuthenticated, username, userType, isAdmin, loading, login, adminLogin, logout, checkAuthStatus]);
 
   return (
     <AuthContext.Provider value={value}>
