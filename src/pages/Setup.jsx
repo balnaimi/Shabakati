@@ -5,7 +5,7 @@ import { apiPost } from '../utils/api';
 import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import { useTranslation } from '../hooks/useTranslation';
-import '../index.css';
+import { LogoIcon, KeyIcon, AdminIcon, UserIcon, AlertIcon, CheckIcon } from '../components/Icons';
 
 function Setup() {
   const [visitorPassword, setVisitorPassword] = useState('');
@@ -83,14 +83,16 @@ function Setup() {
       alignItems: 'center', 
       minHeight: '100vh',
       flexDirection: 'column',
-      gap: '20px'
+      gap: 'var(--spacing-lg)',
+      padding: 'var(--spacing-md)'
     }}>
+      {/* Theme and Language Controls */}
       <div style={{ 
         position: 'absolute', 
-        top: '20px', 
-        left: '20px',
+        top: 'var(--spacing-lg)', 
+        insetInlineStart: 'var(--spacing-lg)',
         display: 'flex',
-        gap: '10px',
+        gap: 'var(--spacing-sm)',
         alignItems: 'center'
       }}>
         <LanguageToggle />
@@ -98,25 +100,94 @@ function Setup() {
       </div>
       
       <div className="card" style={{ width: '100%', maxWidth: '500px' }}>
-        <h1 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          {t('pages.setup.title')}
-        </h1>
+        {/* Logo and Title */}
+        <div style={{ 
+          textAlign: 'center', 
+          marginBlockEnd: 'var(--spacing-xl)' 
+        }}>
+          <div style={{
+            width: 64,
+            height: 64,
+            margin: '0 auto var(--spacing-md)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))',
+            borderRadius: 'var(--radius-xl)',
+            color: 'var(--text-inverse)',
+            boxShadow: 'var(--shadow-md)'
+          }}>
+            <LogoIcon size={32} />
+          </div>
+          <h1 style={{ 
+            fontSize: 'var(--font-size-2xl)',
+            fontWeight: 'var(--font-weight-bold)',
+            color: 'var(--text-primary)',
+            marginBlockEnd: 'var(--spacing-sm)'
+          }}>
+            {t('pages.setup.title')}
+          </h1>
+          <p style={{ 
+            color: 'var(--text-secondary)',
+            fontSize: 'var(--font-size-sm)',
+            maxWidth: '400px',
+            margin: '0 auto',
+            lineHeight: 'var(--line-height-relaxed)'
+          }}>
+            {t('pages.setup.subtitle')}
+          </p>
+        </div>
         
-        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          {t('pages.setup.subtitle')}
-        </p>
-        
+        {/* Error Message */}
         {error && (
-          <div className="error-message" style={{ marginBottom: '1.5rem' }}>
-            {error}
+          <div className="error-message" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
+            <AlertIcon size={18} />
+            <span>{error}</span>
           </div>
         )}
         
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-            <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>{t('pages.setup.visitorPassword')}</h3>
-            <div className="form-group">
-              <label htmlFor="visitorPassword">{t('pages.setup.visitorPasswordLabel')}</label>
+          {/* Visitor Password Section */}
+          <div style={{ 
+            marginBlockEnd: 'var(--spacing-lg)', 
+            padding: 'var(--spacing-lg)', 
+            backgroundColor: 'var(--bg-secondary)', 
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border-color)'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 'var(--spacing-sm)',
+              marginBlockEnd: 'var(--spacing-md)'
+            }}>
+              <div style={{
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'var(--success-light)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--success)'
+              }}>
+                <UserIcon size={20} />
+              </div>
+              <h3 style={{ 
+                margin: 0, 
+                fontSize: 'var(--font-size-lg)',
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--text-primary)' 
+              }}>
+                {t('pages.setup.visitorPassword')}
+              </h3>
+            </div>
+            
+            <div className="form-group" style={{ marginBlockEnd: 'var(--spacing-md)' }}>
+              <label htmlFor="visitorPassword">
+                <KeyIcon size={14} />
+                <span>{t('pages.setup.visitorPasswordLabel')}</span>
+              </label>
               <input
                 id="visitorPassword"
                 type="password"
@@ -130,8 +201,11 @@ function Setup() {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="visitorConfirmPassword">{t('pages.setup.visitorPasswordConfirm')}</label>
+            <div className="form-group" style={{ marginBlockEnd: 0 }}>
+              <label htmlFor="visitorConfirmPassword">
+                <CheckIcon size={14} />
+                <span>{t('pages.setup.visitorPasswordConfirm')}</span>
+              </label>
               <input
                 id="visitorConfirmPassword"
                 type="password"
@@ -144,10 +218,47 @@ function Setup() {
             </div>
           </div>
 
-          <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-            <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>{t('pages.setup.adminPassword')}</h3>
-            <div className="form-group">
-              <label htmlFor="adminPassword">{t('pages.setup.adminPasswordLabel')}</label>
+          {/* Admin Password Section */}
+          <div style={{ 
+            marginBlockEnd: 'var(--spacing-xl)', 
+            padding: 'var(--spacing-lg)', 
+            backgroundColor: 'var(--bg-secondary)', 
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--border-color)'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 'var(--spacing-sm)',
+              marginBlockEnd: 'var(--spacing-md)'
+            }}>
+              <div style={{
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'var(--danger-light)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--danger)'
+              }}>
+                <AdminIcon size={20} />
+              </div>
+              <h3 style={{ 
+                margin: 0, 
+                fontSize: 'var(--font-size-lg)',
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--text-primary)' 
+              }}>
+                {t('pages.setup.adminPassword')}
+              </h3>
+            </div>
+            
+            <div className="form-group" style={{ marginBlockEnd: 'var(--spacing-md)' }}>
+              <label htmlFor="adminPassword">
+                <KeyIcon size={14} />
+                <span>{t('pages.setup.adminPasswordLabel')}</span>
+              </label>
               <input
                 id="adminPassword"
                 type="password"
@@ -160,8 +271,11 @@ function Setup() {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="adminConfirmPassword">{t('pages.setup.adminPasswordConfirm')}</label>
+            <div className="form-group" style={{ marginBlockEnd: 0 }}>
+              <label htmlFor="adminConfirmPassword">
+                <CheckIcon size={14} />
+                <span>{t('pages.setup.adminPasswordConfirm')}</span>
+              </label>
               <input
                 id="adminConfirmPassword"
                 type="password"
@@ -177,10 +291,20 @@ function Setup() {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary"
+            className="btn-primary btn-large"
             style={{ width: '100%' }}
           >
-            {loading ? t('pages.setup.creating') : t('pages.setup.createPasswords')}
+            {loading ? (
+              <>
+                <span className="loading-spinner-icon" style={{ width: 20, height: 20, borderWidth: 2 }} />
+                <span>{t('pages.setup.creating')}</span>
+              </>
+            ) : (
+              <>
+                <CheckIcon size={20} />
+                <span>{t('pages.setup.createPasswords')}</span>
+              </>
+            )}
           </button>
         </form>
       </div>

@@ -3,6 +3,7 @@ import AuthButton from './AuthButton'
 import ThemeToggle from './ThemeToggle'
 import LanguageToggle from './LanguageToggle'
 import { useTranslation } from '../hooks/useTranslation'
+import { HomeIcon, NetworkIcon, LogoIcon } from './Icons'
 
 function Layout({ children }) {
   const navigate = useNavigate()
@@ -17,8 +18,8 @@ function Layout({ children }) {
   }
 
   const navLinks = [
-    { path: '/', label: t('navigation.home') },
-    { path: '/hosts', label: t('navigation.viewNetworks') }
+    { path: '/', label: t('navigation.home'), icon: HomeIcon },
+    { path: '/hosts', label: t('navigation.viewNetworks'), icon: NetworkIcon }
   ]
 
   if (location.pathname === '/login') {
@@ -29,22 +30,33 @@ function Layout({ children }) {
     <div className="app">
       <nav className="navbar">
         <div className="navbar-content">
-          <h1 className="navbar-title">{t('pages.favorites.title')}</h1>
-          <div className="navbar-links">
-            {navLinks.map(link => (
-              <button
-                key={link.path}
-                onClick={() => navigate(link.path)}
-                className={isActive(link.path) ? 'btn-primary' : ''}
-                style={{
-                  backgroundColor: isActive(link.path) ? 'var(--primary)' : 'transparent',
-                  color: isActive(link.path) ? 'white' : 'var(--text-primary)',
-                  border: `1px solid ${isActive(link.path) ? 'var(--primary)' : 'var(--border-color)'}`
-                }}
-              >
-                {link.label}
-              </button>
-            ))}
+          <div className="navbar-brand">
+            <div className="navbar-logo">
+              <LogoIcon size={20} />
+            </div>
+            <h1 className="navbar-title">{t('app.name')}</h1>
+          </div>
+          
+          <div className="navbar-menu">
+            <div className="navbar-links">
+              {navLinks.map(link => {
+                const Icon = link.icon
+                const active = isActive(link.path)
+                return (
+                  <button
+                    key={link.path}
+                    onClick={() => navigate(link.path)}
+                    className={`nav-link ${active ? 'active' : ''}`}
+                  >
+                    <Icon size={18} />
+                    <span>{link.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          
+          <div className="navbar-actions">
             <LanguageToggle />
             <ThemeToggle />
             <AuthButton />

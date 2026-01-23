@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { API_URL } from '../constants';
 import { useTranslation } from '../hooks/useTranslation';
-import '../index.css';
+import { LogoIcon, LoginIcon, SettingsIcon, KeyIcon, AlertIcon } from '../components/Icons';
 
 function Login() {
   const [password, setPassword] = useState('');
@@ -66,7 +67,7 @@ function Login() {
         alignItems: 'center', 
         minHeight: '100vh'
       }}>
-        <div className="loading">{t('common.loading')}</div>
+        <LoadingSpinner />
       </div>
     );
   }
@@ -78,51 +79,101 @@ function Login() {
       alignItems: 'center', 
       minHeight: '100vh',
       flexDirection: 'column',
-      gap: '20px'
+      gap: 'var(--spacing-lg)',
+      padding: 'var(--spacing-md)'
     }}>
+      {/* Theme and Language Controls */}
       <div style={{ 
         position: 'absolute', 
-        top: '20px', 
-        left: '20px',
+        top: 'var(--spacing-lg)', 
+        insetInlineStart: 'var(--spacing-lg)',
         display: 'flex',
-        gap: '10px',
+        gap: 'var(--spacing-sm)',
         alignItems: 'center'
       }}>
         <LanguageToggle />
         <ThemeToggle />
       </div>
       
-      <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
-        <h1 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          {t('pages.login.title')}
-        </h1>
+      <div className="card" style={{ width: '100%', maxWidth: '420px' }}>
+        {/* Logo and Title */}
+        <div style={{ 
+          textAlign: 'center', 
+          marginBlockEnd: 'var(--spacing-xl)' 
+        }}>
+          <div style={{
+            width: 64,
+            height: 64,
+            margin: '0 auto var(--spacing-md)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))',
+            borderRadius: 'var(--radius-xl)',
+            color: 'var(--text-inverse)',
+            boxShadow: 'var(--shadow-md)'
+          }}>
+            <LogoIcon size={32} />
+          </div>
+          <h1 style={{ 
+            fontSize: 'var(--font-size-2xl)',
+            fontWeight: 'var(--font-weight-bold)',
+            color: 'var(--text-primary)',
+            marginBlockEnd: 'var(--spacing-xs)'
+          }}>
+            {t('app.name')}
+          </h1>
+          <p style={{ 
+            color: 'var(--text-secondary)',
+            fontSize: 'var(--font-size-sm)'
+          }}>
+            {t('pages.login.title')}
+          </p>
+        </div>
         
+        {/* Error Message */}
         {error && (
-          <div className="error-message" style={{ marginBottom: '1.5rem' }}>
-            {error}
+          <div className="error-message" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
+            <AlertIcon size={18} />
+            <span>{error}</span>
           </div>
         )}
 
         {setupRequired ? (
           <>
-            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+            <p style={{ 
+              textAlign: 'center', 
+              color: 'var(--text-secondary)', 
+              marginBlockEnd: 'var(--spacing-xl)',
+              fontSize: 'var(--font-size-sm)',
+              lineHeight: 'var(--line-height-relaxed)'
+            }}>
               {t('pages.login.setupRequired')}
             </p>
             <button
               onClick={handleSetup}
-              className="btn-primary"
+              className="btn-primary btn-large"
               style={{ width: '100%' }}
             >
-              {t('pages.login.setupButton')}
+              <SettingsIcon size={20} />
+              <span>{t('pages.login.setupButton')}</span>
             </button>
           </>
         ) : (
           <form onSubmit={handleSubmit}>
-            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+            <p style={{ 
+              textAlign: 'center', 
+              color: 'var(--text-secondary)', 
+              marginBlockEnd: 'var(--spacing-lg)',
+              fontSize: 'var(--font-size-sm)'
+            }}>
               {t('pages.login.visitorPasswordHint')}
             </p>
             <div className="form-group">
-              <label htmlFor="password">{t('pages.login.visitorPassword')}</label>
+              <label htmlFor="password">
+                <KeyIcon size={16} />
+                <span>{t('pages.login.visitorPassword')}</span>
+              </label>
               <input
                 id="password"
                 type="password"
@@ -132,16 +183,27 @@ function Login() {
                 disabled={loading}
                 autoFocus
                 placeholder={t('pages.login.visitorPasswordPlaceholder')}
+                style={{ marginBlockStart: 'var(--spacing-sm)' }}
               />
             </div>
             
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary"
-              style={{ width: '100%' }}
+              className="btn-primary btn-large"
+              style={{ width: '100%', marginBlockStart: 'var(--spacing-md)' }}
             >
-              {loading ? t('pages.login.verifying') : t('pages.login.loginButton')}
+              {loading ? (
+                <>
+                  <span className="loading-spinner-icon" style={{ width: 20, height: 20, borderWidth: 2 }} />
+                  <span>{t('pages.login.verifying')}</span>
+                </>
+              ) : (
+                <>
+                  <LoginIcon size={20} />
+                  <span>{t('pages.login.loginButton')}</span>
+                </>
+              )}
             </button>
           </form>
         )}

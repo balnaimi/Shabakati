@@ -4,6 +4,25 @@ import { API_URL } from '../constants'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
+import LoadingSpinner from '../components/LoadingSpinner'
+import EmptyState from '../components/EmptyState'
+import { 
+  PlusIcon, 
+  FolderIcon, 
+  EditIcon, 
+  DeleteIcon, 
+  ExternalLinkIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  CloseIcon,
+  NetworkIcon,
+  DeviceIcon,
+  OnlineIcon,
+  OfflineIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  AlertIcon
+} from '../components/Icons'
 
 function Favorites() {
   const navigate = useNavigate()
@@ -29,7 +48,7 @@ function Favorites() {
   
   // Form states
   const [addFormData, setAddFormData] = useState({ hostId: '', url: '', groupId: '' })
-  const [groupFormData, setGroupFormData] = useState({ name: '', color: '#4a9eff' })
+  const [groupFormData, setGroupFormData] = useState({ name: '', color: '#3b82f6' })
   const [editFormData, setEditFormData] = useState({ url: '', groupId: '', customName: '', description: '' })
 
   useEffect(() => {
@@ -142,7 +161,7 @@ function Favorites() {
       })
       setShowGroupModal(false)
       setEditingGroup(null)
-      setGroupFormData({ name: '', color: '#4a9eff' })
+      setGroupFormData({ name: '', color: '#3b82f6' })
       await fetchData()
     } catch (err) {
       setError(err.message)
@@ -159,7 +178,7 @@ function Favorites() {
         color: groupFormData.color
       })
       setEditingGroup(null)
-      setGroupFormData({ name: '', color: '#4a9eff' })
+      setGroupFormData({ name: '', color: '#3b82f6' })
       await fetchData()
     } catch (err) {
       setError(err.message)
@@ -206,12 +225,9 @@ function Favorites() {
     
     try {
       setError(null)
-      
-      // Find current group
       const currentGroup = groups.find(g => g.id === groupId)
       if (!currentGroup) return
 
-      // Use the same logic as sortedGroupsList to get the correct order
       const sortedGroups = [...groups].sort((a, b) => {
         const orderA = a.display_order !== undefined ? a.display_order : (a.displayOrder !== undefined ? a.displayOrder : 0)
         const orderB = b.display_order !== undefined ? b.display_order : (b.displayOrder !== undefined ? b.displayOrder : 0)
@@ -223,33 +239,21 @@ function Favorites() {
         return dateA - dateB
       })
 
-      // Filter to only groups that have favorites (same as sortedGroupsList)
       const groupsWithFavorites = sortedGroups.filter(group => favoritesByGroup[group.id.toString()])
-      
-      // Find current index in the filtered list
       const currentIndex = groupsWithFavorites.findIndex(g => g.id === groupId)
-      if (currentIndex <= 0) {
-        return // Already at top
-      }
+      if (currentIndex <= 0) return
 
       const previousGroup = groupsWithFavorites[currentIndex - 1]
+      if (!previousGroup) return
       
-      if (!previousGroup) {
-        return
-      }
-      
-      // Instead of swapping, assign new display_order values based on position
-      // This ensures different values even if both groups had the same order
-      const newCurrentOrder = currentIndex - 1  // Move up = lower index = lower order
-      const newPreviousOrder = currentIndex     // Previous becomes current position
+      const newCurrentOrder = currentIndex - 1
+      const newPreviousOrder = currentIndex
 
-      // Update both groups with new positions
       await Promise.all([
         apiPut(`/groups/${groupId}`, { displayOrder: newCurrentOrder }),
         apiPut(`/groups/${previousGroup.id}`, { displayOrder: newPreviousOrder })
       ])
 
-      // Refresh data
       await fetchData()
     } catch (err) {
       setError(err.message)
@@ -261,12 +265,9 @@ function Favorites() {
     
     try {
       setError(null)
-      
-      // Find current group
       const currentGroup = groups.find(g => g.id === groupId)
       if (!currentGroup) return
 
-      // Use the same logic as sortedGroupsList to get the correct order
       const sortedGroups = [...groups].sort((a, b) => {
         const orderA = a.display_order !== undefined ? a.display_order : (a.displayOrder !== undefined ? a.displayOrder : 0)
         const orderB = b.display_order !== undefined ? b.display_order : (b.displayOrder !== undefined ? b.displayOrder : 0)
@@ -278,60 +279,44 @@ function Favorites() {
         return dateA - dateB
       })
 
-      // Filter to only groups that have favorites (same as sortedGroupsList)
       const groupsWithFavorites = sortedGroups.filter(group => favoritesByGroup[group.id.toString()])
-      
-      // Find current index in the filtered list
       const currentIndex = groupsWithFavorites.findIndex(g => g.id === groupId)
-      if (currentIndex < 0 || currentIndex >= groupsWithFavorites.length - 1) {
-        return // Already at bottom
-      }
+      if (currentIndex < 0 || currentIndex >= groupsWithFavorites.length - 1) return
 
       const nextGroup = groupsWithFavorites[currentIndex + 1]
+      if (!nextGroup) return
       
-      if (!nextGroup) {
-        return
-      }
-      
-      // Instead of swapping, assign new display_order values based on position
-      // This ensures different values even if both groups had the same order
-      const newCurrentOrder = currentIndex + 1  // Move down = higher index = higher order
-      const newNextOrder = currentIndex         // Next becomes current position
+      const newCurrentOrder = currentIndex + 1
+      const newNextOrder = currentIndex
 
-      // Update both groups with new positions
       await Promise.all([
         apiPut(`/groups/${groupId}`, { displayOrder: newCurrentOrder }),
         apiPut(`/groups/${nextGroup.id}`, { displayOrder: newNextOrder })
       ])
 
-      // Refresh data
       await fetchData()
     } catch (err) {
       setError(err.message)
     }
   }
 
-  // Get sorted groups list (by display_order) including ungrouped
+  // Get sorted groups list
   const sortedGroupsList = (() => {
-    // Sort groups by display_order (groups are already sorted from API, but ensure it)
     const sortedGroups = [...groups].sort((a, b) => {
       const orderA = a.display_order !== undefined ? a.display_order : (a.displayOrder !== undefined ? a.displayOrder : 0)
       const orderB = b.display_order !== undefined ? b.display_order : (b.displayOrder !== undefined ? b.displayOrder : 0)
       if (orderA !== orderB) {
         return orderA - orderB
       }
-      // If display_order is same, sort by created_at
       const dateA = new Date(a.created_at || 0)
       const dateB = new Date(b.created_at || 0)
       return dateA - dateB
     })
 
-    // Create list with group IDs and ungrouped at the end
     const list = sortedGroups
-      .filter(group => favoritesByGroup[group.id.toString()]) // Only include groups that have favorites
+      .filter(group => favoritesByGroup[group.id.toString()])
       .map(group => group.id.toString())
     
-    // Add ungrouped at the end if it has favorites
     if (favoritesByGroup['ungrouped']) {
       list.push('ungrouped')
     }
@@ -339,53 +324,42 @@ function Favorites() {
     return list
   })()
 
-  // Get group name
   const getGroupName = (groupId) => {
     if (!groupId) return t('common.withoutGroup')
     const group = groups.find(g => g.id === groupId)
     return group ? group.name : t('common.unknown')
   }
 
-  // Get group color
   const getGroupColor = (groupId) => {
-    if (!groupId) return '#6c757d'
+    if (!groupId) return '#64748b'
     const group = groups.find(g => g.id === groupId)
-    return group ? group.color : '#6c757d'
+    return group ? group.color : '#64748b'
   }
 
-  // Get group display_order
-  const getGroupDisplayOrder = (groupId) => {
-    if (!groupId) return 999999 // Ungrouped at the end
-    const group = groups.find(g => g.id === groupId)
-    if (!group) return 0
-    return group.display_order !== undefined ? group.display_order : (group.displayOrder !== undefined ? group.displayOrder : 0)
-  }
-
-  // Get available hosts (not in favorites)
   const availableHosts = allHosts.filter(host => 
     !favorites.some(fav => fav.hostId === host.id)
   )
 
   if (loading) {
-    return <div className="loading">{t('common.loading')}</div>
+    return <LoadingSpinner fullPage />
   }
 
   return (
     <div className="container">
       <div className="header">
         <h1>{t('pages.favorites.title')}</h1>
-        <div className="controls">
-          {isAdmin && (
-            <>
-              <button onClick={() => setShowAddModal(true)} className="btn-success">
-                {t('pages.favorites.addDevice')}
-              </button>
-              <button onClick={() => setShowGroupModal(true)} className="btn-primary">
-                {t('pages.favorites.manageGroups')}
-              </button>
-            </>
-          )}
-        </div>
+        {isAdmin && (
+          <div className="controls">
+            <button onClick={() => setShowAddModal(true)} className="btn-success">
+              <PlusIcon size={18} />
+              <span>{t('pages.favorites.addDevice')}</span>
+            </button>
+            <button onClick={() => setShowGroupModal(true)} className="btn-primary">
+              <FolderIcon size={18} />
+              <span>{t('pages.favorites.manageGroups')}</span>
+            </button>
+          </div>
+        )}
         
         <div className="stats">
           <div className="stat-item">
@@ -398,33 +372,32 @@ function Favorites() {
           </div>
           <div className="stat-item">
             <p>{t('pages.favorites.onlineHosts')}</p>
-            <p>{stats.onlineHosts}</p>
+            <p style={{ color: 'var(--success)' }}>{stats.onlineHosts}</p>
           </div>
           <div className="stat-item">
             <p>{t('pages.favorites.offlineHosts')}</p>
-            <p>{stats.offlineHosts}</p>
+            <p style={{ color: 'var(--danger)' }}>{stats.offlineHosts}</p>
           </div>
         </div>
       </div>
 
       {error && (
         <div className="error-message">
-          {error}
+          <AlertIcon size={18} />
+          <span>{error}</span>
         </div>
       )}
 
       {favorites.length === 0 ? (
-        <div className="empty-state" style={{ marginTop: '40px' }}>
-          <p>{t('pages.favorites.noFavorites')}</p>
-          {isAdmin ? (
-            <p>{t('pages.favorites.noFavoritesAdmin')}</p>
-          ) : (
-            <p>{t('pages.favorites.noFavoritesVisitor')}</p>
-          )}
-        </div>
+        <EmptyState
+          icon="favorite"
+          title={t('pages.favorites.noFavorites')}
+          description={isAdmin ? t('pages.favorites.noFavoritesAdmin') : t('pages.favorites.noFavoritesVisitor')}
+          action={isAdmin ? () => setShowAddModal(true) : null}
+          actionLabel={t('pages.favorites.addDevice')}
+        />
       ) : (
-        <div style={{ marginTop: '20px' }}>
-          {/* Display favorites by group */}
+        <div style={{ marginBlockStart: 'var(--spacing-lg)' }}>
           {sortedGroupsList.map((groupId, index) => {
             const groupFavorites = favoritesByGroup[groupId] || []
             const groupIdNum = groupId === 'ungrouped' ? null : parseInt(groupId)
@@ -437,16 +410,10 @@ function Favorites() {
             const canMoveDown = !isUngrouped && index < sortedGroupsList.length - 1 && nextGroupId !== 'ungrouped'
 
             return (
-              <div key={groupId} style={{ marginBottom: '30px' }}>
+              <div key={groupId} style={{ marginBlockEnd: 'var(--spacing-xl)' }}>
                 <div
                   className="group-header"
-                  style={{
-                    backgroundColor: groupColor,
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px'
-                  }}
+                  style={{ backgroundColor: groupColor }}
                 >
                   {isAdmin && !isUngrouped && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -456,19 +423,15 @@ function Favorites() {
                           handleMoveGroupUp(groupIdNum)
                         }}
                         disabled={!canMoveUp}
+                        className="btn-ghost btn-icon-small"
                         style={{
-                          background: 'rgba(255, 255, 255, 0.2)',
-                          border: 'none',
-                          color: 'white',
-                          cursor: canMoveUp ? 'pointer' : 'not-allowed',
-                          padding: '2px 6px',
-                          fontSize: '12px',
-                          borderRadius: '3px',
-                          opacity: canMoveUp ? 1 : 0.5
+                          color: 'inherit',
+                          opacity: canMoveUp ? 1 : 0.4,
+                          padding: '2px'
                         }}
                         title={t('pages.favorites.moveUp')}
                       >
-                        ↑
+                        <ArrowUpIcon size={14} />
                       </button>
                       <button
                         onClick={(e) => {
@@ -476,33 +439,40 @@ function Favorites() {
                           handleMoveGroupDown(groupIdNum)
                         }}
                         disabled={!canMoveDown}
+                        className="btn-ghost btn-icon-small"
                         style={{
-                          background: 'rgba(255, 255, 255, 0.2)',
-                          border: 'none',
-                          color: 'white',
-                          cursor: canMoveDown ? 'pointer' : 'not-allowed',
-                          padding: '2px 6px',
-                          fontSize: '12px',
-                          borderRadius: '3px',
-                          opacity: canMoveDown ? 1 : 0.5
+                          color: 'inherit',
+                          opacity: canMoveDown ? 1 : 0.4,
+                          padding: '2px'
                         }}
                         title={t('pages.favorites.moveDown')}
                       >
-                        ↓
+                        <ArrowDownIcon size={14} />
                       </button>
                     </div>
                   )}
                   <span
                     onClick={() => toggleGroup(groupId)}
-                    style={{ fontSize: '18px', fontWeight: 'bold', flex: 1, cursor: 'pointer' }}
+                    style={{ 
+                      fontSize: 'var(--font-size-lg)', 
+                      fontWeight: 'var(--font-weight-semibold)', 
+                      flex: 1, 
+                      cursor: 'pointer' 
+                    }}
                   >
                     {groupName}
                   </span>
                   <span
                     onClick={() => toggleGroup(groupId)}
-                    style={{ cursor: 'pointer' }}
+                    style={{ 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--spacing-xs)'
+                    }}
                   >
-                    {isCollapsed ? '▼' : '▲'} ({groupFavorites.length})
+                    <span>({groupFavorites.length})</span>
+                    {isCollapsed ? <ChevronDownIcon size={18} /> : <ChevronUpIcon size={18} />}
                   </span>
                 </div>
 
@@ -514,30 +484,66 @@ function Favorites() {
                         className="favorite-card"
                         onClick={() => handleOpenUrl(favorite)}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
-                          <div>
-                            <h3 style={{ margin: 0, marginBottom: '5px', color: 'var(--text-primary)' }}>{favorite.customName || favorite.host.name}</h3>
-                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>{favorite.host.ip}</p>
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'flex-start', 
+                          marginBlockEnd: 'var(--spacing-sm)' 
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ 
+                              margin: 0, 
+                              marginBlockEnd: 'var(--spacing-xs)', 
+                              color: 'var(--text-primary)',
+                              fontSize: 'var(--font-size-lg)',
+                              fontWeight: 'var(--font-weight-semibold)'
+                            }}>
+                              {favorite.customName || favorite.host.name}
+                            </h3>
+                            <p style={{ 
+                              margin: 0, 
+                              color: 'var(--text-secondary)', 
+                              fontSize: 'var(--font-size-sm)' 
+                            }}>
+                              {favorite.host.ip}
+                            </p>
                           </div>
                           <span className={`status-badge ${favorite.host.status === 'online' ? 'status-online' : 'status-offline'}`}>
-                            {favorite.host.status === 'online' ? t('common.online') : t('common.offline')}
+                            {favorite.host.status === 'online' ? (
+                              <><OnlineIcon size={12} /> {t('common.online')}</>
+                            ) : (
+                              <><OfflineIcon size={12} /> {t('common.offline')}</>
+                            )}
                           </span>
                         </div>
 
                         {favorite.description && (
-                          <p style={{ margin: '5px 0', fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                          <p style={{ 
+                            margin: 'var(--spacing-xs) 0', 
+                            fontSize: 'var(--font-size-sm)', 
+                            color: 'var(--text-secondary)', 
+                            fontStyle: 'italic' 
+                          }}>
                             {favorite.description}
                           </p>
                         )}
 
                         {favorite.url && (
-                          <p style={{ margin: '5px 0', fontSize: '12px', color: 'var(--primary)' }}>
-                            🔗 {favorite.url}
+                          <p style={{ 
+                            margin: 'var(--spacing-xs) 0', 
+                            fontSize: 'var(--font-size-xs)', 
+                            color: 'var(--primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 'var(--spacing-xs)'
+                          }}>
+                            <ExternalLinkIcon size={12} />
+                            {favorite.url}
                           </p>
                         )}
 
                         {favorite.host.tags && favorite.host.tags.length > 0 && (
-                          <div className="tags-inline" style={{ marginTop: '10px' }}>
+                          <div className="tags-inline" style={{ marginBlockStart: 'var(--spacing-sm)' }}>
                             {favorite.host.tags.map(tag => (
                               <span
                                 key={typeof tag === 'object' ? tag.id : tag}
@@ -552,7 +558,11 @@ function Favorites() {
                           </div>
                         )}
 
-                        <div style={{ display: 'flex', gap: '5px', marginTop: '10px' }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          gap: 'var(--spacing-xs)', 
+                          marginBlockStart: 'var(--spacing-md)' 
+                        }}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -561,7 +571,8 @@ function Favorites() {
                             className="btn-primary btn-small"
                             style={{ flex: 1 }}
                           >
-                            {t('common.open')}
+                            <ExternalLinkIcon size={14} />
+                            <span>{t('common.open')}</span>
                           </button>
                           {isAdmin && (
                             <>
@@ -570,18 +581,20 @@ function Favorites() {
                                   e.stopPropagation()
                                   handleEditFavorite(favorite)
                                 }}
-                                className="btn-warning btn-small"
+                                className="btn-warning btn-small btn-icon"
+                                title={t('common.edit')}
                               >
-                                {t('common.edit')}
+                                <EditIcon size={14} />
                               </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleDeleteFavorite(favorite.id)
                                 }}
-                                className="btn-danger btn-small"
+                                className="btn-danger btn-small btn-icon"
+                                title={t('common.delete')}
                               >
-                                {t('common.delete')}
+                                <DeleteIcon size={14} />
                               </button>
                             </>
                           )}
@@ -598,22 +611,21 @@ function Favorites() {
 
       {/* Add Favorite Modal */}
       {showAddModal && (
-        <div
-          className="modal-overlay"
-          onClick={() => setShowAddModal(false)}
-        >
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('pages.favorites.addFavoriteModal.title')}</h2>
-              <button onClick={() => setShowAddModal(false)}>{t('common.close')}</button>
+              <button onClick={() => setShowAddModal(false)} className="btn-ghost btn-icon">
+                <CloseIcon size={20} />
+              </button>
             </div>
 
             <form onSubmit={handleAddFavorite}>
               <div className="form-group">
-                <label>{t('common.device')}:</label>
+                <label>
+                  <DeviceIcon size={14} />
+                  <span>{t('common.device')}:</span>
+                </label>
                 <select
                   value={addFormData.hostId}
                   onChange={(e) => setAddFormData({ ...addFormData, hostId: e.target.value })}
@@ -627,14 +639,17 @@ function Favorites() {
                   ))}
                 </select>
                 {availableHosts.length === 0 && (
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '5px' }}>
+                  <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-xs)', marginBlockStart: 'var(--spacing-xs)' }}>
                     {t('pages.favorites.addFavoriteModal.allDevicesInFavorites')}
                   </p>
                 )}
               </div>
 
               <div className="form-group">
-                <label>{t('common.url')} ({t('common.optional')}):</label>
+                <label>
+                  <ExternalLinkIcon size={14} />
+                  <span>{t('common.url')} ({t('common.optional')}):</span>
+                </label>
                 <input
                   type="text"
                   value={addFormData.url}
@@ -644,7 +659,10 @@ function Favorites() {
               </div>
 
               <div className="form-group">
-                <label>{t('common.group')} ({t('common.optional')}):</label>
+                <label>
+                  <FolderIcon size={14} />
+                  <span>{t('common.group')} ({t('common.optional')}):</span>
+                </label>
                 <select
                   value={addFormData.groupId}
                   onChange={(e) => setAddFormData({ ...addFormData, groupId: e.target.value })}
@@ -659,11 +677,12 @@ function Favorites() {
               </div>
 
               <div className="modal-footer">
-                <button type="button" onClick={() => setShowAddModal(false)}>
+                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary">
                   {t('common.cancel')}
                 </button>
                 <button type="submit" disabled={availableHosts.length === 0} className="btn-primary">
-                  {t('common.add')}
+                  <PlusIcon size={16} />
+                  <span>{t('common.add')}</span>
                 </button>
               </div>
             </form>
@@ -673,27 +692,24 @@ function Favorites() {
 
       {/* Edit Favorite Modal */}
       {showEditModal && editingFavorite && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            setShowEditModal(false)
-            setEditingFavorite(null)
-          }}
-        >
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="modal-overlay" onClick={() => { setShowEditModal(false); setEditingFavorite(null) }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('pages.favorites.editFavoriteModal.title')}</h2>
-              <button onClick={() => {
-                setShowEditModal(false)
-                setEditingFavorite(null)
-              }}>{t('common.close')}</button>
+              <button onClick={() => { setShowEditModal(false); setEditingFavorite(null) }} className="btn-ghost btn-icon">
+                <CloseIcon size={20} />
+              </button>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <p><strong>{t('pages.favorites.editFavoriteModal.device')}:</strong> {editingFavorite.host.name} ({editingFavorite.host.ip})</p>
+            <div style={{ 
+              marginBlockEnd: 'var(--spacing-lg)',
+              padding: 'var(--spacing-md)',
+              backgroundColor: 'var(--bg-secondary)',
+              borderRadius: 'var(--radius-md)'
+            }}>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                <strong>{t('pages.favorites.editFavoriteModal.device')}:</strong> {editingFavorite.host.name} ({editingFavorite.host.ip})
+              </p>
             </div>
 
             <form onSubmit={handleUpdateFavorite}>
@@ -705,7 +721,9 @@ function Favorites() {
                   onChange={(e) => setEditFormData({ ...editFormData, customName: e.target.value })}
                   placeholder={editingFavorite.host.name}
                 />
-                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{t('pages.favorites.editFavoriteModal.customNameHint')}</small>
+                <small style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-xs)' }}>
+                  {t('pages.favorites.editFavoriteModal.customNameHint')}
+                </small>
               </div>
 
               <div className="form-group">
@@ -744,10 +762,7 @@ function Favorites() {
               </div>
 
               <div className="modal-footer">
-                <button type="button" onClick={() => {
-                  setShowEditModal(false)
-                  setEditingFavorite(null)
-                }}>
+                <button type="button" onClick={() => { setShowEditModal(false); setEditingFavorite(null) }} className="btn-secondary">
                   {t('common.cancel')}
                 </button>
                 <button type="submit" className="btn-primary">
@@ -761,29 +776,27 @@ function Favorites() {
 
       {/* Groups Management Modal */}
       {showGroupModal && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            setShowGroupModal(false)
-            setEditingGroup(null)
-            setGroupFormData({ name: '', color: '#4a9eff' })
-          }}
-        >
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="modal-overlay" onClick={() => { setShowGroupModal(false); setEditingGroup(null); setGroupFormData({ name: '', color: '#3b82f6' }) }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{t('pages.favorites.groupsModal.title')}</h2>
-              <button onClick={() => {
-                setShowGroupModal(false)
-                setEditingGroup(null)
-                setGroupFormData({ name: '', color: '#4a9eff' })
-              }}>{t('common.close')}</button>
+              <button onClick={() => { setShowGroupModal(false); setEditingGroup(null); setGroupFormData({ name: '', color: '#3b82f6' }) }} className="btn-ghost btn-icon">
+                <CloseIcon size={20} />
+              </button>
             </div>
 
-            <form onSubmit={editingGroup ? handleUpdateGroup : handleCreateGroup} className="card" style={{ marginBottom: '30px' }}>
-              <h3 style={{ marginTop: 0 }}>{editingGroup ? t('pages.favorites.groupsModal.editGroup') : t('pages.favorites.groupsModal.createGroup')}</h3>
+            <form 
+              onSubmit={editingGroup ? handleUpdateGroup : handleCreateGroup} 
+              style={{ 
+                marginBlockEnd: 'var(--spacing-xl)',
+                padding: 'var(--spacing-lg)',
+                backgroundColor: 'var(--bg-secondary)',
+                borderRadius: 'var(--radius-lg)'
+              }}
+            >
+              <h3 style={{ marginBlockStart: 0, marginBlockEnd: 'var(--spacing-md)', fontSize: 'var(--font-size-base)' }}>
+                {editingGroup ? t('pages.favorites.groupsModal.editGroup') : t('pages.favorites.groupsModal.createGroup')}
+              </h3>
               <div className="form-group">
                 <label>{t('pages.favorites.groupsModal.groupName')}:</label>
                 <input
@@ -794,7 +807,7 @@ function Favorites() {
                 />
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ marginBlockEnd: 'var(--spacing-md)' }}>
                 <label>{t('common.color')}:</label>
                 <input
                   type="color"
@@ -803,7 +816,7 @@ function Favorites() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
                 <button type="submit" className={editingGroup ? 'btn-primary' : 'btn-success'}>
                   {editingGroup ? t('pages.favorites.groupsModal.saveChanges') : t('pages.favorites.groupsModal.createButton')}
                 </button>
@@ -812,7 +825,7 @@ function Favorites() {
                     type="button" 
                     onClick={() => {
                       setEditingGroup(null)
-                      setGroupFormData({ name: '', color: '#4a9eff' })
+                      setGroupFormData({ name: '', color: '#3b82f6' })
                     }}
                     className="btn-secondary"
                   >
@@ -823,45 +836,36 @@ function Favorites() {
             </form>
 
             <div>
-              <h3>{t('common.groups')}</h3>
+              <h3 style={{ marginBlockEnd: 'var(--spacing-md)', fontSize: 'var(--font-size-base)' }}>{t('common.groups')}</h3>
               {groups.length === 0 ? (
                 <p style={{ color: 'var(--text-secondary)' }}>{t('pages.favorites.groupsModal.noGroups')}</p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
                   {groups.map(group => {
                     const groupFavorites = favorites.filter(fav => fav.groupId === group.id)
                     return (
-                      <div
-                        key={group.id}
-                        className="tag-item"
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div key={group.id} className="tag-item">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                           <div
                             style={{
                               width: '20px',
                               height: '20px',
                               backgroundColor: group.color,
-                              borderRadius: '4px'
+                              borderRadius: 'var(--radius-sm)'
                             }}
                           />
-                          <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{group.name}</span>
-                          <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                          <span style={{ fontWeight: 'var(--font-weight-medium)', color: 'var(--text-primary)' }}>{group.name}</span>
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-sm)' }}>
                             ({groupFavorites.length === 1 ? t('pages.favorites.groupsModal.deviceCountOne') : t('pages.favorites.groupsModal.deviceCount', { count: groupFavorites.length })})
                           </span>
                         </div>
                         {isAdmin && (
-                          <div style={{ display: 'flex', gap: '5px' }}>
-                            <button
-                              onClick={() => startEditGroup(group)}
-                              className="btn-warning btn-small"
-                            >
-                              {t('common.edit')}
+                          <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
+                            <button onClick={() => startEditGroup(group)} className="btn-warning btn-small btn-icon" title={t('common.edit')}>
+                              <EditIcon size={14} />
                             </button>
-                            <button
-                              onClick={() => handleDeleteGroup(group.id)}
-                              className="btn-danger btn-small"
-                            >
-                              {t('common.delete')}
+                            <button onClick={() => handleDeleteGroup(group.id)} className="btn-danger btn-small btn-icon" title={t('common.delete')}>
+                              <DeleteIcon size={14} />
                             </button>
                           </div>
                         )}
@@ -879,4 +883,3 @@ function Favorites() {
 }
 
 export default Favorites
-

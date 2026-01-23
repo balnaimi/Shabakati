@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { API_URL } from '../constants'
 import { apiGet, apiPost, apiDelete, apiPut } from '../utils/api'
 import { calculateIPRange, getLastOctet } from '../utils/networkUtils'
 import { getDescription } from '../utils/descriptionUtils'
@@ -8,6 +7,23 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTags } from '../hooks/useTags'
 import { useTranslation } from '../hooks/useTranslation'
 import { useLanguage } from '../contexts/LanguageContext'
+import LoadingSpinner from '../components/LoadingSpinner'
+import EmptyState from '../components/EmptyState'
+import {
+  ScanIcon,
+  RefreshIcon,
+  DeleteIcon,
+  EditIcon,
+  StarIcon,
+  CheckIcon,
+  CloseIcon,
+  DeviceIcon,
+  OnlineIcon,
+  OfflineIcon,
+  AlertIcon,
+  InfoIcon,
+  ChevronLeftIcon
+} from '../components/Icons'
 
 function NetworkView() {
   const navigate = useNavigate()
@@ -29,7 +45,7 @@ function NetworkView() {
   const { language } = useLanguage()
   const [editingHostId, setEditingHostId] = useState(null)
   const [editFormData, setEditFormData] = useState({ tagIds: [] })
-  const [activeTab, setActiveTab] = useState('devices') // 'devices' or 'ips'
+  const [activeTab, setActiveTab] = useState('devices')
   const [favorites, setFavorites] = useState([])
   const [newHosts, setNewHosts] = useState([])
   const [hiddenNewHosts, setHiddenNewHosts] = useState(new Set())
@@ -98,7 +114,6 @@ function NetworkView() {
   }
 
   const visibleNewHosts = newHosts.filter(host => !hiddenNewHosts.has(host.id))
-
 
   const fetchNetwork = async () => {
     try {
@@ -278,7 +293,6 @@ function NetworkView() {
 
   const filteredHosts = useMemo(() => {
     let filtered = hosts.filter(host => {
-      // Search filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase()
         const matchesName = host.name?.toLowerCase().includes(query)
@@ -288,12 +302,10 @@ function NetworkView() {
         }
       }
       
-      // Status filter
       if (statusFilter !== 'all' && host.status !== statusFilter) {
         return false
       }
       
-      // Tag filter
       if (tagFilter) {
         const hostTagIds = host.tags?.map(t => typeof t === 'object' ? t.id : t) || []
         if (!hostTagIds.includes(parseInt(tagFilter))) {
@@ -304,7 +316,6 @@ function NetworkView() {
       return true
     })
     
-    // Sorting
     const collator = new Intl.Collator('ar', { numeric: true, sensitivity: 'base' })
     return filtered.sort((a, b) => {
       let aValue, bValue
@@ -365,21 +376,17 @@ function NetworkView() {
     for (let thirdOctet = startThirdOctet; thirdOctet <= endThirdOctet; thirdOctet++) {
       const groupIPs = []
       
-      // Determine the range of the fourth octet
       let startFourth = 0
       let endFourth = 255
       
       if (thirdOctet === startThirdOctet) {
-        // First list: starts from .1 (because .0 is network address)
         startFourth = 1
       }
       
       if (thirdOctet === endThirdOctet) {
-        // Last list: ends at .254 (because .255 is broadcast)
         endFourth = broadcastParts[3] - 1
       }
       
-      // Create addresses in this group
       for (let fourthOctet = startFourth; fourthOctet <= endFourth; fourthOctet++) {
         const ip = `${networkParts2[0]}.${networkParts2[1]}.${thirdOctet}.${fourthOctet}`
         groupIPs.push(ip)
@@ -394,16 +401,18 @@ function NetworkView() {
   }
 
   if (loading) {
-    return <div className="loading">{t('common.loading')}</div>
+    return <LoadingSpinner fullPage />
   }
 
   if (!network) {
     return (
       <div className="container">
-        <div className="empty-state">
-          <h2>{t('pages.networkView.title')}</h2>
-          <button onClick={() => navigate('/networks')}>{t('common.back')}</button>
-        </div>
+        <EmptyState
+          icon="network"
+          title={t('pages.networkView.title')}
+          action={() => navigate('/networks')}
+          actionLabel={t('common.back')}
+        />
       </div>
     )
   }
@@ -417,260 +426,166 @@ function NetworkView() {
         <h1>{network.name}</h1>
       </div>
 
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <p><strong>{t('forms.networkId')}:</strong> {network.network_id}</p>
-        <p><strong>{t('forms.subnet')}:</strong> /{network.subnet}</p>
-        <p><strong>{t('pages.networkView.range') || 'Range'}:</strong> {range.start} - {range.end} ({range.count} {t('pages.networkView.addresses') || 'addresses'})</p>
-        {network.last_scanned && (
-          <p><strong>{t('pages.networksList.lastScanned')}:</strong> {new Date(network.last_scanned).toLocaleString()}</p>
-        )}
+      {/* Network Info Card */}
+      <div className="card" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
+        <div style={{ display: 'grid', gap: 'var(--spacing-sm)' }}>
+          <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+            <strong>{t('forms.networkId')}:</strong> 
+            <code style={{ 
+              fontFamily: 'monospace', 
+              backgroundColor: 'var(--bg-tertiary)', 
+              padding: '2px 8px', 
+              borderRadius: 'var(--radius-sm)' 
+            }}>
+              {network.network_id}
+            </code>
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>{t('forms.subnet')}:</strong> /{network.subnet}
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>{t('pages.networkView.range')}:</strong> {range.start} - {range.end} ({range.count} {t('pages.networkView.addresses')})
+          </p>
+          {network.last_scanned && (
+            <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+              <strong>{t('pages.networksList.lastScanned')}:</strong> {new Date(network.last_scanned).toLocaleString()}
+            </p>
+          )}
+        </div>
       </div>
 
       {error && (
         <div className="error-message">
-          {error}
+          <AlertIcon size={18} />
+          <span>{error}</span>
         </div>
       )}
 
-      <div className="controls">
-        {isAdmin && (
-          <>
-            <button onClick={handleScan} disabled={scanning}>
-              {scanning ? t('pages.networkView.scanning') : t('pages.networkView.scan')}
-            </button>
-            
-            {/* Auto scan button */}
-            <div style={{ 
+      {/* Controls */}
+      {isAdmin && (
+        <div className="controls">
+          <button onClick={handleScan} disabled={scanning} className="btn-primary">
+            {scanning ? (
+              <>
+                <RefreshIcon size={18} className="spinner" />
+                <span>{t('pages.networkView.scanning')}</span>
+              </>
+            ) : (
+              <>
+                <ScanIcon size={18} />
+                <span>{t('pages.networkView.scan')}</span>
+              </>
+            )}
+          </button>
+          
+          {/* Auto scan toggle */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 'var(--spacing-sm)',
+            padding: 'var(--spacing-sm) var(--spacing-md)',
+            backgroundColor: 'var(--bg-secondary)',
+            borderRadius: 'var(--radius-md)',
+            border: `2px solid ${autoScanEnabled ? 'var(--success)' : 'var(--border-color)'}`
+          }}>
+            <label style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '10px',
-              padding: '10px',
-              backgroundColor: 'var(--bg-secondary)',
-              borderRadius: 'var(--radius-md)',
-              border: `2px solid ${autoScanEnabled ? 'var(--success)' : 'var(--border-color)'}`
+              gap: 'var(--spacing-sm)',
+              cursor: 'pointer',
+              fontWeight: 'var(--font-weight-medium)',
+              fontSize: 'var(--font-size-sm)'
             }}>
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={autoScanEnabled}
-                  onChange={handleToggleAutoScan}
-                  disabled={loadingAutoScan}
-                  style={{ 
-                    width: '20px', 
-                    height: '20px',
-                    cursor: 'pointer'
-                  }}
-                />
-                <span>{t('pages.networkView.autoScan')}</span>
-              </label>
-              {autoScanEnabled && (
-                <span style={{ 
-                  fontSize: '12px', 
-                  color: 'var(--text-secondary)' 
-                }}>
-                  ({Math.round(autoScanInterval / 60000)} min)
-                </span>
-              )}
-            </div>
-            
-            <button onClick={handleClearNetworkHosts} className="btn-danger">
-              {t('pages.networkView.clearAllHosts')}
-            </button>
-          </>
-        )}
-      </div>
+              <input
+                type="checkbox"
+                checked={autoScanEnabled}
+                onChange={handleToggleAutoScan}
+                disabled={loadingAutoScan}
+              />
+              <span>{t('pages.networkView.autoScan')}</span>
+            </label>
+            {autoScanEnabled && (
+              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+                ({Math.round(autoScanInterval / 60000)} min)
+              </span>
+            )}
+          </div>
+          
+          <button onClick={handleClearNetworkHosts} className="btn-danger">
+            <DeleteIcon size={18} />
+            <span>{t('pages.networkView.clearAllHosts')}</span>
+          </button>
+        </div>
+      )}
 
-      {/* Tabs Navigation */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '10px', 
-        marginTop: '20px', 
-        marginBottom: '20px',
-        borderBottom: `2px solid var(--border-color)`
-      }}>
+      {/* Tabs */}
+      <div className="tabs" style={{ marginBlockStart: 'var(--spacing-lg)' }}>
         <button
           onClick={() => setActiveTab('devices')}
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            backgroundColor: activeTab === 'devices' ? 'var(--primary)' : 'transparent',
-            color: activeTab === 'devices' ? 'white' : 'var(--text-primary)',
-            cursor: 'pointer',
-            borderTopLeftRadius: 'var(--radius-md)',
-            borderTopRightRadius: 'var(--radius-md)',
-            fontWeight: activeTab === 'devices' ? 'bold' : 'normal',
-            transition: 'var(--transition)'
-          }}
+          className={`tab ${activeTab === 'devices' ? 'active' : ''}`}
         >
-          {t('pages.networkView.devices')}
+          <DeviceIcon size={16} />
+          <span>{t('pages.networkView.devices')}</span>
         </button>
         <button
           onClick={() => setActiveTab('ips')}
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            backgroundColor: activeTab === 'ips' ? 'var(--primary)' : 'transparent',
-            color: activeTab === 'ips' ? 'white' : 'var(--text-primary)',
-            cursor: 'pointer',
-            borderTopLeftRadius: 'var(--radius-md)',
-            borderTopRightRadius: 'var(--radius-md)',
-            fontWeight: activeTab === 'ips' ? 'bold' : 'normal',
-            transition: 'var(--transition)'
-          }}
+          className={`tab ${activeTab === 'ips' ? 'active' : ''}`}
         >
-          {t('pages.networkView.ipAddresses')}
+          <span>{t('pages.networkView.ipAddresses')}</span>
         </button>
       </div>
 
-      {/* Tab Content */}
+      {/* Devices Tab */}
       {activeTab === 'devices' && (
         <>
-          {/* Newly discovered devices section */}
+          {/* New Hosts Section */}
           {visibleNewHosts.length > 0 && (
             <div style={{ 
-              marginTop: '20px', 
-              marginBottom: '30px',
-              padding: '20px',
+              marginBlockEnd: 'var(--spacing-xl)',
+              padding: 'var(--spacing-lg)',
               backgroundColor: 'var(--success-light)',
               border: '2px solid var(--success)',
-              borderRadius: 'var(--radius-md)'
+              borderRadius: 'var(--radius-lg)'
             }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                marginBottom: '15px'
-              }}>
-                <h2 style={{ 
-                  margin: 0, 
-                  color: 'var(--success)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px'
-                }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBlockEnd: 'var(--spacing-md)' }}>
+                <h2 style={{ margin: 0, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-lg)' }}>
+                  <OnlineIcon size={20} />
                   {t('pages.networkView.newDevices')} ({visibleNewHosts.length})
                 </h2>
-                <button
-                  onClick={handleHideAllNewHosts}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: 'var(--success)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                >
-                  {t('pages.networkView.hideAll')}
+                <button onClick={handleHideAllNewHosts} className="btn-success btn-small">
+                  <CheckIcon size={14} />
+                  <span>{t('pages.networkView.hideAll')}</span>
                 </button>
               </div>
               
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-                gap: '15px' 
-              }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
                 {visibleNewHosts.map(host => (
-                  <div
-                    key={host.id}
-                    style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      padding: '15px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-color)',
-                      boxShadow: 'var(--shadow-sm)'
-                    }}
-                  >
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'start',
-                      marginBottom: '10px'
-                    }}>
+                  <div key={host.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
                       <div style={{ flex: 1 }}>
-                        <h3 style={{ 
-                          margin: 0, 
-                          marginBottom: '5px', 
-                          color: 'var(--text-primary)',
-                          fontSize: '16px'
-                        }}>
-                          {host.name}
-                        </h3>
-                        <p style={{ 
-                          margin: 0, 
-                          color: 'var(--text-secondary)', 
-                          fontSize: '14px' 
-                        }}>
-                          {host.ip}
-                        </p>
+                        <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)', fontSize: 'var(--font-size-base)' }}>{host.name}</h3>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{host.ip}</p>
                       </div>
-                      <span style={{
-                        padding: '4px 8px',
-                        backgroundColor: host.status === 'online' ? 'var(--success)' : 'var(--danger)',
-                        color: 'white',
-                        borderRadius: 'var(--radius-sm)',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
+                      <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
                         {host.status === 'online' ? t('common.online') : t('common.offline')}
                       </span>
                     </div>
                     
                     {getDescription(host.description, language) && (
-                      <p style={{ 
-                        margin: '5px 0', 
-                        fontSize: '13px', 
-                        color: 'var(--text-secondary)',
-                        fontStyle: 'italic'
-                      }}>
+                      <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
                         {getDescription(host.description, language)}
                       </p>
                     )}
                     
-                    <div style={{ 
-                      display: 'flex', 
-                      gap: '8px', 
-                      marginTop: '10px',
-                      flexWrap: 'wrap'
-                    }}>
+                    <div style={{ display: 'flex', gap: 'var(--spacing-xs)', marginBlockStart: 'var(--spacing-sm)' }}>
                       {isAdmin && (
                         <>
-                          <button
-                            onClick={() => handleEditHost(host)}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: 'var(--primary)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: 'var(--radius-sm)',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              flex: 1
-                            }}
-                          >
-                            {t('common.edit')}
+                          <button onClick={() => handleEditHost(host)} className="btn-primary btn-small" style={{ flex: 1 }}>
+                            <EditIcon size={14} />
+                            <span>{t('common.edit')}</span>
                           </button>
-                          <button
-                            onClick={() => handleHideNewHost(host.id)}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: 'var(--text-secondary)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: 'var(--radius-sm)',
-                              cursor: 'pointer',
-                              fontSize: '12px'
-                            }}
-                            title={t('pages.networkView.viewed') || 'Viewed'}
-                          >
-                            ✓
+                          <button onClick={() => handleHideNewHost(host.id)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.viewed')}>
+                            <CheckIcon size={14} />
                           </button>
                         </>
                       )}
@@ -684,26 +599,15 @@ function NetworkView() {
           {/* Auto-discovered devices section */}
           {autoScanResults.newDevices.length > 0 && (
             <div style={{ 
-              marginTop: '20px', 
-              marginBottom: '30px',
-              padding: '20px',
+              marginBlockEnd: 'var(--spacing-xl)',
+              padding: 'var(--spacing-lg)',
               backgroundColor: 'var(--success-light)',
               border: '2px solid var(--success)',
-              borderRadius: 'var(--radius-md)'
+              borderRadius: 'var(--radius-lg)'
             }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                marginBottom: '15px'
-              }}>
-                <h2 style={{ 
-                  margin: 0, 
-                  color: 'var(--success)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px'
-                }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBlockEnd: 'var(--spacing-md)' }}>
+                <h2 style={{ margin: 0, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-lg)' }}>
+                  <OnlineIcon size={20} />
                   {t('pages.networkView.newDevices')} ({autoScanResults.newDevices.length})
                 </h2>
                 {isAdmin && (
@@ -716,62 +620,25 @@ function NetworkView() {
                         alert(`${t('common.error')}: ${err.message}`)
                       }
                     }}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: 'var(--success)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 'var(--radius-sm)',
-                      cursor: 'pointer',
-                      fontSize: '14px'
-                    }}
+                    className="btn-success btn-small"
                   >
-                    مسح القائمة
+                    {t('pages.networkView.clearList')}
                   </button>
                 )}
               </div>
               
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-                gap: '15px' 
-              }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
                 {autoScanResults.newDevices.map(result => (
-                  <div
-                    key={result.id}
-                    style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      padding: '15px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-color)',
-                      boxShadow: 'var(--shadow-sm)'
-                    }}
-                  >
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'start',
-                      marginBottom: '10px'
-                    }}>
+                  <div key={result.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
                       <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, marginBottom: '5px', color: 'var(--text-primary)' }}>
-                          {result.host?.name || 'غير معروف'}
-                        </h3>
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-                          {result.host?.ip || 'غير معروف'}
-                        </p>
-                        <p style={{ margin: '5px 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          تم الاكتشاف: {new Date(result.discovered_at).toLocaleString('ar-SA')}
+                        <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host?.name || t('common.unknown')}</h3>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{result.host?.ip || t('common.unknown')}</p>
+                        <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+                          {new Date(result.discovered_at).toLocaleString()}
                         </p>
                       </div>
-                      <span style={{
-                        padding: '4px 8px',
-                        backgroundColor: result.host?.status === 'online' ? 'var(--success)' : 'var(--danger)',
-                        color: 'white',
-                        borderRadius: 'var(--radius-sm)',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
+                      <span className={`status-badge ${result.host?.status === 'online' ? 'status-online' : 'status-offline'}`}>
                         {result.host?.status === 'online' ? t('common.online') : t('common.offline')}
                       </span>
                     </div>
@@ -784,26 +651,15 @@ function NetworkView() {
           {/* Disconnected devices section */}
           {autoScanResults.disconnected.length > 0 && (
             <div style={{ 
-              marginTop: '20px', 
-              marginBottom: '30px',
-              padding: '20px',
+              marginBlockEnd: 'var(--spacing-xl)',
+              padding: 'var(--spacing-lg)',
               backgroundColor: 'var(--danger-light)',
               border: '2px solid var(--danger)',
-              borderRadius: 'var(--radius-md)'
+              borderRadius: 'var(--radius-lg)'
             }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                marginBottom: '15px'
-              }}>
-                <h2 style={{ 
-                  margin: 0, 
-                  color: 'var(--danger)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px'
-                }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBlockEnd: 'var(--spacing-md)' }}>
+                <h2 style={{ margin: 0, color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-lg)' }}>
+                  <OfflineIcon size={20} />
                   {t('pages.networkView.disconnected')} ({autoScanResults.disconnected.length})
                 </h2>
                 {isAdmin && (
@@ -816,64 +672,25 @@ function NetworkView() {
                         alert(`${t('common.error')}: ${err.message}`)
                       }
                     }}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: 'var(--danger)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 'var(--radius-sm)',
-                      cursor: 'pointer',
-                      fontSize: '14px'
-                    }}
+                    className="btn-danger btn-small"
                   >
-                    مسح القائمة
+                    {t('pages.networkView.clearList')}
                   </button>
                 )}
               </div>
               
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-                gap: '15px' 
-              }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
                 {autoScanResults.disconnected.map(result => (
-                  <div
-                    key={result.id}
-                    style={{
-                      backgroundColor: 'var(--bg-primary)',
-                      padding: '15px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-color)',
-                      boxShadow: 'var(--shadow-sm)'
-                    }}
-                  >
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'start',
-                      marginBottom: '10px'
-                    }}>
+                  <div key={result.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
                       <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, marginBottom: '5px', color: 'var(--text-primary)' }}>
-                          {result.host?.name || 'غير معروف'}
-                        </h3>
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-                          {result.host?.ip || 'غير معروف'}
-                        </p>
-                        <p style={{ margin: '5px 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          تم الانقطاع: {new Date(result.discovered_at).toLocaleString('ar-SA')}
+                        <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host?.name || t('common.unknown')}</h3>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{result.host?.ip || t('common.unknown')}</p>
+                        <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+                          {new Date(result.discovered_at).toLocaleString()}
                         </p>
                       </div>
-                      <span style={{
-                        padding: '4px 8px',
-                        backgroundColor: 'var(--danger)',
-                        color: 'white',
-                        borderRadius: 'var(--radius-sm)',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
-                        {t('common.offline')}
-                      </span>
+                      <span className="status-badge status-offline">{t('common.offline')}</span>
                     </div>
                   </div>
                 ))}
@@ -881,217 +698,158 @@ function NetworkView() {
             </div>
           )}
 
+          {/* Hosts Table */}
           {hosts.length > 0 && (
-        <div style={{ marginTop: '40px' }}>
-          <h2>{t('pages.networkView.devices')} ({filteredHosts.length} / {hosts.length})</h2>
-          
-          <div className="filters" style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'nowrap', alignItems: 'center' }}>
-            <input
-              type="text"
-              placeholder={t('pages.networkView.search')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ padding: '8px', flex: '1 1 auto', minWidth: '200px', maxWidth: '400px' }}
-            />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ padding: '8px', width: '180px', flexShrink: 0 }}
-            >
-              <option value="all">{t('common.all')}</option>
-              <option value="online">{t('common.online')}</option>
-              <option value="offline">{t('common.offline')}</option>
-            </select>
-            <select
-              value={tagFilter || 'all'}
-              onChange={(e) => setTagFilter(e.target.value === 'all' ? null : e.target.value)}
-              style={{ padding: '8px', width: '180px', flexShrink: 0 }}
-            >
-              <option value="all">{t('common.all')}</option>
-              {availableTags.map(tag => (
-                <option key={tag.id} value={tag.id}>{tag.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th 
-                    onClick={() => {
-                      if (sortBy === 'name') {
-                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-                      } else {
-                        setSortBy('name')
-                        setSortOrder('asc')
-                      }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {t('common.name')} {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th 
-                    onClick={() => {
-                      if (sortBy === 'ip') {
-                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-                      } else {
-                        setSortBy('ip')
-                        setSortOrder('asc')
-                      }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {t('common.ip')} {sortBy === 'ip' && (sortOrder === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th 
-                    onClick={() => {
-                      if (sortBy === 'status') {
-                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-                      } else {
-                        setSortBy('status')
-                        setSortOrder('asc')
-                      }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {t('common.status')} {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th>{t('common.description')}</th>
-                  <th>{t('common.tags')}</th>
-                  <th 
-                    onClick={() => {
-                      if (sortBy === 'lastChecked') {
-                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-                      } else {
-                        setSortBy('lastChecked')
-                        setSortOrder('asc')
-                      }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {t('pages.networksList.lastScanned')} {sortBy === 'lastChecked' && (sortOrder === 'asc' ? '↑' : '↓')}
-                  </th>
-                  {userType !== 'visitor' && <th>{t('common.actions') || 'Actions'}</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredHosts.map(host => (
-                  <tr key={host.id}>
-                    <td><strong>{host.name}</strong></td>
-                    <td>{host.ip}</td>
-                    <td>
-                      <span style={{ 
-                        color: host.status === 'online' ? 'var(--success)' : 'var(--danger)',
-                        fontWeight: 'bold'
-                      }}>
-                        {host.status === 'online' ? t('common.online') : t('common.offline')}
-                      </span>
-                    </td>
-                    <td>
-                      {(() => {
-                        const desc = getDescription(host.description, language);
-                        return desc ? (
-                          <span title={desc}>
-                            {desc.length > 50 ? `${desc.substring(0, 50)}...` : desc}
+            <div style={{ marginBlockStart: 'var(--spacing-xl)' }}>
+              <h2 style={{ marginBlockEnd: 'var(--spacing-md)', fontSize: 'var(--font-size-lg)' }}>
+                {t('pages.networkView.devices')} ({filteredHosts.length} / {hosts.length})
+              </h2>
+              
+              {/* Filters */}
+              <div className="filters">
+                <input
+                  type="text"
+                  placeholder={t('pages.networkView.search')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ flex: '1 1 auto', minWidth: '200px', maxWidth: '400px' }}
+                />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={{ width: '180px', flexShrink: 0 }}
+                >
+                  <option value="all">{t('common.all')}</option>
+                  <option value="online">{t('common.online')}</option>
+                  <option value="offline">{t('common.offline')}</option>
+                </select>
+                <select
+                  value={tagFilter || 'all'}
+                  onChange={(e) => setTagFilter(e.target.value === 'all' ? null : e.target.value)}
+                  style={{ width: '180px', flexShrink: 0 }}
+                >
+                  <option value="all">{t('common.all')}</option>
+                  {availableTags.map(tag => (
+                    <option key={tag.id} value={tag.id}>{tag.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th onClick={() => { if (sortBy === 'name') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('name'); setSortOrder('asc') } }}>
+                        {t('common.name')} {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th onClick={() => { if (sortBy === 'ip') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('ip'); setSortOrder('asc') } }}>
+                        {t('common.ip')} {sortBy === 'ip' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th onClick={() => { if (sortBy === 'status') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('status'); setSortOrder('asc') } }}>
+                        {t('common.status')} {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th>{t('common.description')}</th>
+                      <th>{t('common.tags')}</th>
+                      <th onClick={() => { if (sortBy === 'lastChecked') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('lastChecked'); setSortOrder('asc') } }}>
+                        {t('pages.networksList.lastScanned')} {sortBy === 'lastChecked' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </th>
+                      {userType !== 'visitor' && <th>{t('common.actions')}</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHosts.map(host => (
+                      <tr key={host.id}>
+                        <td><strong>{host.name}</strong></td>
+                        <td style={{ fontFamily: 'monospace' }}>{host.ip}</td>
+                        <td>
+                          <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
+                            {host.status === 'online' ? (
+                              <><OnlineIcon size={12} /> {t('common.online')}</>
+                            ) : (
+                              <><OfflineIcon size={12} /> {t('common.offline')}</>
+                            )}
                           </span>
-                        ) : (
-                          <span>-</span>
-                        );
-                      })()}
-                    </td>
-                    <td>
-                      {host.tags && Array.isArray(host.tags) && host.tags.length > 0 ? (
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                          {host.tags.map(tag => (
-                            <span 
-                              key={typeof tag === 'object' ? tag.id : tag}
-                              style={{
-                                padding: '2px 6px',
-                                backgroundColor: typeof tag === 'object' ? (tag.color || '#4a9eff') : '#4a9eff',
-                                color: 'white',
-                                borderRadius: '4px',
-                                fontSize: '12px'
-                              }}
-                            >
-                              {typeof tag === 'object' ? tag.name : tag}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </td>
-                    <td>
-                      {host.lastChecked || host.last_checked ? (
-                        new Date(host.lastChecked || host.last_checked).toLocaleString('ar-SA')
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </td>
-                    {userType !== 'visitor' && (
-                      <td>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          {isHostFavorite(host.id) ? (
-                            <button 
-                              onClick={() => handleRemoveFromFavorites(host.id)} 
-                              style={{ backgroundColor: 'var(--warning)', color: 'var(--text-primary)', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '12px' }}
-                              title={t('pages.networkView.removeFromFavorites')}
-                            >
-                              ⭐
-                            </button>
-                          ) : (
-                            <button 
-                              onClick={() => handleAddToFavorites(host.id)} 
-                              style={{ backgroundColor: 'var(--text-secondary)', color: 'var(--bg-primary)', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '12px' }}
-                              title={t('pages.networkView.addToFavorites')}
-                            >
-                              ⭐
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <>
-                              <button 
-                                onClick={() => handleEditHost(host)} 
-                                style={{ padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
-                              >
-                                {t('common.edit')}
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteHost(host.id)} 
-                                style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '5px 10px', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
-                              >
-                                {t('common.delete')}
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                        </td>
+                        <td>
+                          {(() => {
+                            const desc = getDescription(host.description, language);
+                            return desc ? (
+                              <span title={desc}>{desc.length > 50 ? `${desc.substring(0, 50)}...` : desc}</span>
+                            ) : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>);
+                          })()}
+                        </td>
+                        <td>
+                          {host.tags && Array.isArray(host.tags) && host.tags.length > 0 ? (
+                            <div className="tags-inline">
+                              {host.tags.map(tag => (
+                                <span 
+                                  key={typeof tag === 'object' ? tag.id : tag}
+                                  className="tag-badge"
+                                  style={{ backgroundColor: typeof tag === 'object' ? (tag.color || 'var(--primary)') : 'var(--primary)' }}
+                                >
+                                  {typeof tag === 'object' ? tag.name : tag}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)}
+                        </td>
+                        <td style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+                          {host.lastChecked || host.last_checked ? new Date(host.lastChecked || host.last_checked).toLocaleString() : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)}
+                        </td>
+                        {userType !== 'visitor' && (
+                          <td>
+                            <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
+                              {isHostFavorite(host.id) ? (
+                                <button onClick={() => handleRemoveFromFavorites(host.id)} className="btn-warning btn-small btn-icon" title={t('pages.networkView.removeFromFavorites')}>
+                                  <StarIcon size={14} filled />
+                                </button>
+                              ) : (
+                                <button onClick={() => handleAddToFavorites(host.id)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.addToFavorites')}>
+                                  <StarIcon size={14} />
+                                </button>
+                              )}
+                              {isAdmin && (
+                                <>
+                                  <button onClick={() => handleEditHost(host)} className="btn-secondary btn-small btn-icon" title={t('common.edit')}>
+                                    <EditIcon size={14} />
+                                  </button>
+                                  <button onClick={() => handleDeleteHost(host.id)} className="btn-danger btn-small btn-icon" title={t('common.delete')}>
+                                    <DeleteIcon size={14} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
 
           {hosts.length === 0 && (
-            <div className="empty-state" style={{ marginTop: '40px' }}>
-              <p>{t('pages.networkView.noHosts')}</p>
-              <p>{t('pages.networkView.scanToAdd') || 'Scan the network to add discovered devices.'}</p>
-            </div>
+            <EmptyState
+              icon="device"
+              title={t('pages.networkView.noHosts')}
+              description={t('pages.networkView.scanToAdd')}
+              action={isAdmin ? handleScan : null}
+              actionLabel={t('pages.networkView.scan')}
+            />
           )}
         </>
       )}
 
+      {/* IPs Tab */}
       {activeTab === 'ips' && (
         <>
           {network.subnet < 22 ? (
-            <div className="empty-state">
-              <p>{t('pages.networkView.rangeTooLarge', { count: range.count })}</p>
-              <p>{t('pages.networkView.discoveredDevices') || 'Discovered Devices'}: {hosts.length}</p>
-            </div>
+            <EmptyState
+              icon="network"
+              title={t('pages.networkView.rangeTooLarge', { count: range.count })}
+              description={`${t('pages.networkView.discoveredDevices')}: ${hosts.length}`}
+            />
           ) : (
             <>
               {(() => {
@@ -1099,27 +857,17 @@ function NetworkView() {
                 const sortedOctets = Object.keys(ipGroups).map(Number).sort((a, b) => a - b)
                 
                 return (
-                  <div style={{ marginTop: '20px' }}>
+                  <div style={{ marginBlockStart: 'var(--spacing-lg)' }}>
                     {sortedOctets.map((thirdOctet) => {
                       const groupIPs = ipGroups[thirdOctet]
                       const networkParts = network.network_id.split('.').map(Number)
                       
                       return (
-                        <div key={thirdOctet} style={{ marginBottom: '30px' }}>
-                          <h3 style={{ 
-                            marginBottom: '15px', 
-                            fontWeight: 'bold',
-                            fontSize: '18px',
-                            color: 'var(--text-primary)'
-                          }}>
+                        <div key={thirdOctet} style={{ marginBlockEnd: 'var(--spacing-xl)' }}>
+                          <h3 style={{ marginBlockEnd: 'var(--spacing-md)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'monospace' }}>
                             {networkParts[0]}.{networkParts[1]}.{thirdOctet}.x
                           </h3>
-                          <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', 
-                            gap: '5px',
-                            marginBottom: '20px'
-                          }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', gap: 'var(--spacing-xs)' }}>
                             {groupIPs.map((ip) => {
                               const status = getIPStatus(ip)
                               const lastOctet = getLastOctet(ip)
@@ -1152,11 +900,11 @@ function NetworkView() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold',
+                                    fontSize: 'var(--font-size-xs)',
+                                    fontWeight: 'var(--font-weight-semibold)',
                                     color: color,
                                     cursor: 'pointer',
-                                    transition: 'var(--transition)'
+                                    transition: 'transform var(--transition-fast), box-shadow var(--transition-fast)'
                                   }}
                                   onMouseEnter={(e) => {
                                     e.currentTarget.style.transform = 'scale(1.1)'
@@ -1186,67 +934,53 @@ function NetworkView() {
                 )
               })()}
               
-              <div style={{ marginTop: '20px', padding: '15px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
-                <p><strong>{t('pages.networkView.statistics') || 'Statistics'}:</strong></p>
-                <p>{t('pages.networkView.onlineDevices') || 'Online Devices'}: {hosts.filter(h => h.status === 'online').length}</p>
-                <p>{t('pages.networkView.offlineDevices') || 'Offline Devices'}: {hosts.filter(h => h.status === 'offline').length}</p>
-                <p>{t('pages.networkView.totalDevices') || 'Total Devices'}: {hosts.length}</p>
-                <p>{t('pages.networkView.availableIPs') || 'Available IPs'}: {displayRange.length - hosts.length}</p>
+              {/* Statistics */}
+              <div className="card" style={{ marginBlockStart: 'var(--spacing-xl)' }}>
+                <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-md)' }}>
+                  <InfoIcon size={18} style={{ marginInlineEnd: 'var(--spacing-sm)' }} />
+                  {t('pages.networkView.statistics')}
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--spacing-md)' }}>
+                  <p style={{ margin: 0 }}><OnlineIcon size={16} style={{ color: 'var(--success)' }} /> {t('pages.networkView.onlineDevices')}: <strong>{hosts.filter(h => h.status === 'online').length}</strong></p>
+                  <p style={{ margin: 0 }}><OfflineIcon size={16} style={{ color: 'var(--danger)' }} /> {t('pages.networkView.offlineDevices')}: <strong>{hosts.filter(h => h.status === 'offline').length}</strong></p>
+                  <p style={{ margin: 0 }}><DeviceIcon size={16} /> {t('pages.networkView.totalDevices')}: <strong>{hosts.length}</strong></p>
+                  <p style={{ margin: 0 }}>{t('pages.networkView.availableIPs')}: <strong>{displayRange.length - hosts.length}</strong></p>
+                </div>
               </div>
             </>
           )}
         </>
       )}
 
+      {/* Edit Host Modal */}
       {editingHostId && (
-        <div 
-          className="modal-overlay" 
-          onClick={handleCancelEdit}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
-        >
-          <div 
-            className="modal-content" 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'var(--bg-primary)',
-              padding: '20px',
-              borderRadius: 'var(--radius-lg)',
-              maxWidth: '500px',
-              width: '90%',
-              maxHeight: '90vh',
-              overflow: 'auto',
-              color: 'var(--text-primary)'
-            }}
-          >
-            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2>{t('pages.networkView.editHostTags') || 'Edit Host Tags'}</h2>
-              <button onClick={handleCancelEdit}>{t('common.close')}</button>
+        <div className="modal-overlay" onClick={handleCancelEdit}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('pages.networkView.editHostTags')}</h2>
+              <button onClick={handleCancelEdit} className="btn-ghost btn-icon">
+                <CloseIcon size={20} />
+              </button>
             </div>
             
             {hosts.find(h => h.id === editingHostId) && (
-              <div style={{ marginBottom: '20px' }}>
-                <p><strong>{t('common.name')}:</strong> {hosts.find(h => h.id === editingHostId).name}</p>
-                <p><strong>{t('common.ip')}:</strong> {hosts.find(h => h.id === editingHostId).ip}</p>
+              <div style={{ 
+                marginBlockEnd: 'var(--spacing-lg)', 
+                padding: 'var(--spacing-md)',
+                backgroundColor: 'var(--bg-secondary)',
+                borderRadius: 'var(--radius-md)'
+              }}>
+                <p style={{ margin: 0 }}><strong>{t('common.name')}:</strong> {hosts.find(h => h.id === editingHostId).name}</p>
+                <p style={{ margin: 0 }}><strong>{t('common.ip')}:</strong> {hosts.find(h => h.id === editingHostId).ip}</p>
               </div>
             )}
             
             <form onSubmit={handleUpdateHost}>
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>{t('common.tags')}:</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
+                <label style={{ display: 'block', marginBlockEnd: 'var(--spacing-sm)', fontWeight: 'var(--font-weight-semibold)' }}>{t('common.tags')}:</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
                   {availableTags.map(tag => (
-                    <label key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <label key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
                         checked={editFormData.tagIds.includes(tag.id)}
@@ -1258,20 +992,20 @@ function NetworkView() {
                           }
                         }}
                       />
-                      <span>{tag.name}</span>
+                      <span className="tag-badge" style={{ backgroundColor: tag.color || 'var(--primary)' }}>{tag.name}</span>
                     </label>
                   ))}
                   {availableTags.length === 0 && (
-                    <p style={{ color: 'var(--text-secondary)' }}>{t('pages.networkView.noTagsAvailable') || 'No tags available. Go to Tags Management to add new tags.'}</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>{t('pages.networkView.noTagsAvailable')}</p>
                   )}
                 </div>
               </div>
               
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={handleCancelEdit}>
+              <div className="modal-footer">
+                <button type="button" onClick={handleCancelEdit} className="btn-secondary">
                   {t('common.cancel')}
                 </button>
-                <button type="submit">
+                <button type="submit" className="btn-primary">
                   {t('common.save')}
                 </button>
               </div>
@@ -1284,4 +1018,3 @@ function NetworkView() {
 }
 
 export default NetworkView
-

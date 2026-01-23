@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { API_URL } from '../constants'
 import { apiGet, apiDelete, apiPost, apiPut } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
+import LoadingSpinner from '../components/LoadingSpinner'
+import EmptyState from '../components/EmptyState'
+import { 
+  PlusIcon, 
+  EditIcon, 
+  DeleteIcon, 
+  EyeIcon,
+  NetworkIcon,
+  CloseIcon,
+  AlertIcon
+} from '../components/Icons'
 
 function NetworksList() {
   const navigate = useNavigate()
@@ -55,7 +65,7 @@ function NetworksList() {
   }
 
   if (loading) {
-    return <div className="loading">{t('common.loading')}</div>
+    return <LoadingSpinner fullPage />
   }
 
   return (
@@ -66,21 +76,23 @@ function NetworksList() {
 
       {error && (
         <div className="error-message">
-          {error}
+          <AlertIcon size={18} />
+          <span>{error}</span>
         </div>
       )}
 
-      <div className="controls">
-        {isAdmin && (
+      {isAdmin && (
+        <div className="controls">
           <button onClick={() => {
             setShowAddForm(true)
             setEditingNetworkId(null)
             setFormData({ name: '', networkId: '', subnet: '' })
-          }}>
-            {t('pages.networksList.addNetwork')}
+          }} className="btn-success">
+            <PlusIcon size={18} />
+            <span>{t('pages.networksList.addNetwork')}</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {showAddForm && (
         <AddNetworkForm
@@ -104,28 +116,61 @@ function NetworksList() {
       )}
 
       {networks.length === 0 ? (
-        <div className="empty-state">
-          <p>{t('pages.networksList.noNetworks')}</p>
-        </div>
+        <EmptyState
+          icon="network"
+          title={t('pages.networksList.noNetworks')}
+          action={isAdmin ? () => setShowAddForm(true) : null}
+          actionLabel={t('pages.networksList.addNetwork')}
+        />
       ) : (
         <div className="tags-list">
           {networks.map(network => (
             <div key={network.id} className="tag-item">
-              <div>
-                <h3>{network.name}</h3>
-                <p>{network.network_id}/{network.subnet}</p>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ 
+                  margin: 0,
+                  marginBlockEnd: 'var(--spacing-xs)',
+                  fontSize: 'var(--font-size-lg)',
+                  fontWeight: 'var(--font-weight-semibold)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--spacing-sm)'
+                }}>
+                  <NetworkIcon size={20} />
+                  {network.name}
+                </h3>
+                <p style={{ 
+                  margin: 0,
+                  color: 'var(--text-secondary)',
+                  fontSize: 'var(--font-size-sm)',
+                  fontFamily: 'monospace'
+                }}>
+                  {network.network_id}/{network.subnet}
+                </p>
                 {network.last_scanned && (
-                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  <p style={{ 
+                    margin: 0,
+                    marginBlockStart: 'var(--spacing-sm)',
+                    fontSize: 'var(--font-size-xs)', 
+                    color: 'var(--text-tertiary)' 
+                  }}>
                     {t('pages.networksList.lastScanned')}: {new Date(network.last_scanned).toLocaleString()}
                   </p>
                 )}
               </div>
               <div className="tag-actions">
-                <button onClick={() => navigate(`/networks/${network.id}`)} className="btn-primary">{t('pages.networksList.view')}</button>
+                <button onClick={() => navigate(`/networks/${network.id}`)} className="btn-primary">
+                  <EyeIcon size={16} />
+                  <span>{t('pages.networksList.view')}</span>
+                </button>
                 {isAdmin && (
                   <>
-                    <button onClick={() => handleStartEdit(network)} className="btn-warning">{t('common.edit')}</button>
-                    <button onClick={() => handleDeleteNetwork(network.id)} className="btn-danger">{t('common.delete')}</button>
+                    <button onClick={() => handleStartEdit(network)} className="btn-warning btn-icon" title={t('common.edit')}>
+                      <EditIcon size={16} />
+                    </button>
+                    <button onClick={() => handleDeleteNetwork(network.id)} className="btn-danger btn-icon" title={t('common.delete')}>
+                      <DeleteIcon size={16} />
+                    </button>
                   </>
                 )}
               </div>
@@ -185,59 +230,82 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
   }
 
   return (
-    <form className="form" onSubmit={handleSubmit}>
-      <div className="form-group">
-        <label>{t('forms.networkName')} *</label>
-        <input
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-          placeholder={t('forms.networkName')}
-        />
+    <div style={{
+      marginBlockEnd: 'var(--spacing-xl)',
+      padding: 'var(--spacing-lg)',
+      backgroundColor: 'var(--bg-secondary)',
+      borderRadius: 'var(--radius-lg)',
+      border: '1px solid var(--border-color)'
+    }}>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        marginBlockEnd: 'var(--spacing-lg)'
+      }}>
+        <h3 style={{ margin: 0, fontSize: 'var(--font-size-lg)' }}>
+          {networkId ? t('common.edit') : t('pages.networksList.addNetwork')}
+        </h3>
+        <button onClick={onClose} className="btn-ghost btn-icon">
+          <CloseIcon size={20} />
+        </button>
       </div>
 
-      <div className="form-group">
-        <label>{t('forms.networkId')} *</label>
-        <input
-          type="text"
-          value={formData.networkId}
-          onChange={(e) => setFormData({ ...formData, networkId: e.target.value })}
-          required
-          placeholder={t('forms.networkId')}
-        />
-      </div>
-
-      <div className="form-group">
-        <label>{t('forms.subnet')} *</label>
-        <input
-          type="number"
-          min="0"
-          max="32"
-          value={formData.subnet}
-          onChange={(e) => setFormData({ ...formData, subnet: e.target.value })}
-          required
-          placeholder={t('forms.subnet')}
-        />
-      </div>
-
-      {error && (
-        <div className="error-message">
-          {error}
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label>{t('forms.networkName')} *</label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+            placeholder={t('forms.networkName')}
+          />
         </div>
-      )}
 
-      <div className="form-actions">
-        <button type="submit" disabled={submitting} className="btn-primary">
-          {submitting ? t('common.loading') : (networkId ? t('pages.tagsManagement.saveChanges') : t('common.add'))}
-        </button>
-        <button type="button" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
-      </div>
-    </form>
+        <div className="form-group">
+          <label>{t('forms.networkId')} *</label>
+          <input
+            type="text"
+            value={formData.networkId}
+            onChange={(e) => setFormData({ ...formData, networkId: e.target.value })}
+            required
+            placeholder="192.168.1.0"
+            style={{ fontFamily: 'monospace' }}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>{t('forms.subnet')} *</label>
+          <input
+            type="number"
+            min="0"
+            max="32"
+            value={formData.subnet}
+            onChange={(e) => setFormData({ ...formData, subnet: e.target.value })}
+            required
+            placeholder="24"
+          />
+        </div>
+
+        {error && (
+          <div className="error-message" style={{ marginBlockEnd: 'var(--spacing-md)' }}>
+            <AlertIcon size={16} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="form-actions">
+          <button type="button" onClick={onClose} className="btn-secondary">
+            {t('common.cancel')}
+          </button>
+          <button type="submit" disabled={submitting} className="btn-primary">
+            {submitting ? t('common.loading') : (networkId ? t('pages.tagsManagement.saveChanges') : t('common.add'))}
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }
 
 export default NetworksList
-

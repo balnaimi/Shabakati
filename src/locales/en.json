@@ -1,4 +1,12 @@
 {
+  "app": {
+    "name": "My Network",
+    "description": "Local Network Management"
+  },
+  "theme": {
+    "light": "Light Mode",
+    "dark": "Dark Mode"
+  },
   "common": {
     "loading": "Loading...",
     "error": "Error",

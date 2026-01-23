@@ -1,24 +1,22 @@
 import { useTheme } from '../contexts/ThemeContext'
+import { useTranslation } from '../hooks/useTranslation'
+import { SunIcon, MoonIcon } from './Icons'
 
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme()
+  const { t } = useTranslation()
+
+  const isDark = theme === 'dark'
+  const label = isDark ? t('theme.light') : t('theme.dark')
 
   return (
     <button
       onClick={toggleTheme}
       className="theme-toggle"
-      aria-label={theme === 'dark' ? 'تبديل إلى الوضع الفاتح' : 'تبديل إلى الوضع الداكن'}
-      title={theme === 'dark' ? 'تبديل إلى الوضع الفاتح' : 'تبديل إلى الوضع الداكن'}
-      style={{
-        fontSize: '20px',
-        lineHeight: '1',
-        padding: '8px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
+      aria-label={label}
+      title={label}
     >
-      {theme === 'dark' ? '☀️' : '🌙'}
+      {isDark ? <SunIcon size={20} /> : <MoonIcon size={20} />}
     </button>
   )
 }

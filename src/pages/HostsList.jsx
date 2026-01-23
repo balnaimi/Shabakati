@@ -1,9 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { API_URL } from '../constants'
 import { apiGet, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
+import LoadingSpinner from '../components/LoadingSpinner'
+import EmptyState from '../components/EmptyState'
+import { 
+  NetworkIcon, 
+  SettingsIcon, 
+  TagIcon, 
+  DeleteIcon, 
+  EyeIcon,
+  OnlineIcon,
+  OfflineIcon,
+  DeviceIcon,
+  AlertIcon
+} from '../components/Icons'
 
 function HostsList() {
   const navigate = useNavigate()
@@ -54,7 +66,7 @@ function HostsList() {
   }
 
   if (loading) {
-    return <div className="loading">{t('common.loading')}</div>
+    return <LoadingSpinner fullPage />
   }
 
   return (
@@ -64,67 +76,114 @@ function HostsList() {
           <h1>{t('pages.hostsList.title')}</h1>
           <p>{t('pages.hostsList.subtitle')}</p>
         </div>
-        <div className="controls">
-          {isAdmin && (
-            <>
-              <button 
-                onClick={() => navigate('/networks')} 
-                className="btn-primary"
-              >
-                {t('pages.hostsList.manageNetworks')}
-              </button>
-              <button 
-                onClick={() => navigate('/tags')} 
-                className="btn-primary"
-              >
-                {t('pages.hostsList.manageTags')}
-              </button>
-              <button 
-                onClick={handleClearAllData} 
-                className="btn-danger"
-              >
-                {t('pages.hostsList.clearAllData')}
-              </button>
-            </>
-          )}
-        </div>
+        {isAdmin && (
+          <div className="controls">
+            <button onClick={() => navigate('/networks')} className="btn-primary">
+              <SettingsIcon size={18} />
+              <span>{t('pages.hostsList.manageNetworks')}</span>
+            </button>
+            <button onClick={() => navigate('/tags')} className="btn-primary">
+              <TagIcon size={18} />
+              <span>{t('pages.hostsList.manageTags')}</span>
+            </button>
+            <button onClick={handleClearAllData} className="btn-danger">
+              <DeleteIcon size={18} />
+              <span>{t('pages.hostsList.clearAllData')}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
         <div className="error-message">
-          {error}
+          <AlertIcon size={18} />
+          <span>{error}</span>
         </div>
       )}
 
       <div>
-        <h2>{t('pages.hostsList.networks')} ({stats.networksWithStats.length})</h2>
+        <h2 style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 'var(--spacing-sm)',
+          marginBlockEnd: 'var(--spacing-lg)',
+          fontSize: 'var(--font-size-xl)',
+          fontWeight: 'var(--font-weight-semibold)'
+        }}>
+          <NetworkIcon size={24} />
+          {t('pages.hostsList.networks')} ({stats.networksWithStats.length})
+        </h2>
         
         {stats.networksWithStats.length === 0 ? (
-          <div className="empty-state">
-            {isAdmin ? (
-              <>
-                <p>{t('pages.hostsList.noNetworks')}</p>
-                <button onClick={() => navigate('/networks')}>{t('pages.hostsList.manageNetworks')}</button>
-              </>
-            ) : (
-              <p>{t('pages.hostsList.noNetworksVisitor')}</p>
-            )}
-          </div>
+          <EmptyState
+            icon="network"
+            title={isAdmin ? t('pages.hostsList.noNetworks') : t('pages.hostsList.noNetworksVisitor')}
+            action={isAdmin ? () => navigate('/networks') : null}
+            actionLabel={t('pages.hostsList.manageNetworks')}
+          />
         ) : (
           <div className="tags-list">
             {stats.networksWithStats.map(network => (
               <div key={network.networkId} className="tag-item">
-                <div>
-                  <h3>{network.networkName}</h3>
-                  <p>{network.networkCIDR}</p>
-                  <div style={{ marginTop: '10px', display: 'flex', gap: '15px', fontSize: '14px', flexWrap: 'wrap' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>{t('pages.hostsList.hosts')}: {network.totalHosts}</span>
-                    <span style={{ color: 'var(--success)' }}>{t('pages.hostsList.online')}: {network.onlineHosts}</span>
-                    <span style={{ color: 'var(--danger)' }}>{t('pages.hostsList.offline')}: {network.offlineHosts}</span>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ 
+                    margin: 0, 
+                    marginBlockEnd: 'var(--spacing-xs)',
+                    fontSize: 'var(--font-size-lg)',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    color: 'var(--text-primary)'
+                  }}>
+                    {network.networkName}
+                  </h3>
+                  <p style={{ 
+                    margin: 0, 
+                    color: 'var(--text-secondary)',
+                    fontSize: 'var(--font-size-sm)',
+                    fontFamily: 'monospace'
+                  }}>
+                    {network.networkCIDR}
+                  </p>
+                  <div style={{ 
+                    marginBlockStart: 'var(--spacing-md)', 
+                    display: 'flex', 
+                    gap: 'var(--spacing-lg)', 
+                    fontSize: 'var(--font-size-sm)', 
+                    flexWrap: 'wrap' 
+                  }}>
+                    <span style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 'var(--spacing-xs)',
+                      color: 'var(--text-secondary)' 
+                    }}>
+                      <DeviceIcon size={16} />
+                      {t('pages.hostsList.hosts')}: <strong>{network.totalHosts}</strong>
+                    </span>
+                    <span style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 'var(--spacing-xs)',
+                      color: 'var(--success)' 
+                    }}>
+                      <OnlineIcon size={16} />
+                      {t('pages.hostsList.online')}: <strong>{network.onlineHosts}</strong>
+                    </span>
+                    <span style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 'var(--spacing-xs)',
+                      color: 'var(--danger)' 
+                    }}>
+                      <OfflineIcon size={16} />
+                      {t('pages.hostsList.offline')}: <strong>{network.offlineHosts}</strong>
+                    </span>
                   </div>
                 </div>
                 <div className="tag-actions">
-                  <button onClick={() => navigate(`/networks/${network.networkId}`)} className="btn-primary">{t('pages.hostsList.view')}</button>
+                  <button onClick={() => navigate(`/networks/${network.networkId}`)} className="btn-primary">
+                    <EyeIcon size={16} />
+                    <span>{t('pages.hostsList.view')}</span>
+                  </button>
                 </div>
               </div>
             ))}

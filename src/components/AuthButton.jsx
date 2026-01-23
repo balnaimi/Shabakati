@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../constants';
 import { useTranslation } from '../hooks/useTranslation';
 import AdminLoginModal from './AdminLoginModal';
+import { AdminIcon, UserIcon, KeyIcon, LogoutIcon, SettingsIcon } from './Icons';
 
 function AuthButton() {
   const { isAuthenticated, username, userType, isAdmin, logout } = useAuth();
@@ -49,13 +50,10 @@ function AuthButton() {
 
   const handleClick = () => {
     if (setupRequired) {
-      // Navigate to setup page if no admin exists
       navigate('/setup');
     } else if (isAuthenticated) {
-      // Show menu if authenticated
       setShowMenu(!showMenu);
     } else {
-      // Navigate to login with current path as return URL
       const currentPath = window.location.pathname;
       navigate(`/login?from=${encodeURIComponent(currentPath)}`);
     }
@@ -63,10 +61,8 @@ function AuthButton() {
 
   const handleAdminLoginClick = () => {
     if (isAdmin) {
-      // Already admin, show menu
       setShowMenu(!showMenu);
     } else {
-      // Show admin login modal
       setShowAdminModal(true);
       setShowMenu(false);
     }
@@ -74,7 +70,6 @@ function AuthButton() {
 
   const handleAdminLoginSuccess = () => {
     // Auth state will be updated automatically via Context
-    // No need to reload the page
   };
 
   const handleLogout = () => {
@@ -114,110 +109,68 @@ function AuthButton() {
     return 'btn-primary';
   };
 
+  const getButtonIcon = () => {
+    if (isAdmin) {
+      return <AdminIcon size={18} />;
+    }
+    return <UserIcon size={18} />;
+  };
+
   if (checkingSetup) {
-    return null; // Don't show button while checking
+    return null;
   }
 
   return (
     <>
-      <div ref={menuRef} style={{ position: 'relative', display: 'flex', gap: '10px' }}>
-        {isAuthenticated && !isAdmin && (
-          <button
-            onClick={handleAdminLoginClick}
-            className="btn-success"
-            aria-label={t('auth.adminAccess')}
+      <div ref={menuRef} className="dropdown">
+        <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+          {isAuthenticated && !isAdmin && (
+            <button
+              onClick={handleAdminLoginClick}
+              className="btn-success"
+              aria-label={t('auth.adminAccess')}
+            >
+              <AdminIcon size={18} />
+              <span>{t('auth.adminAccess')}</span>
+            </button>
+          )}
+          <button 
+            onClick={handleClick}
+            className={getButtonClassName()}
+            aria-label={getButtonText()}
           >
-            {t('auth.adminAccess')}
+            {getButtonIcon()}
+            <span>{getButtonText()}</span>
           </button>
-        )}
-        <button 
-          onClick={handleClick}
-          className={getButtonClassName()}
-          aria-label={getButtonText()}
-        >
-          {getButtonText()}
-        </button>
+        </div>
         
         {isAuthenticated && showMenu && (
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
-            marginTop: '8px',
-            backgroundColor: 'var(--bg-primary)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-md)',
-            boxShadow: 'var(--shadow-lg)',
-            minWidth: '200px',
-            zIndex: 1000
-          }}>
+          <div className="dropdown-menu">
             {isAdmin && (
               <>
                 <button
                   onClick={handleChangePassword}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    textAlign: 'right',
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = 'var(--bg-hover)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'transparent';
-                  }}
+                  className="dropdown-item"
                 >
-                  {t('auth.changeAdminPassword')}
+                  <KeyIcon size={18} />
+                  <span>{t('auth.changeAdminPassword')}</span>
                 </button>
                 <button
                   onClick={handleChangeVisitorPassword}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    textAlign: 'right',
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid var(--border-color)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = 'var(--bg-hover)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'transparent';
-                  }}
+                  className="dropdown-item"
                 >
-                  {t('auth.changeVisitorPassword')}
+                  <SettingsIcon size={18} />
+                  <span>{t('auth.changeVisitorPassword')}</span>
                 </button>
+                <div className="dropdown-divider" />
               </>
             )}
             <button
               onClick={handleLogout}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                textAlign: 'right',
-                border: 'none',
-                background: 'transparent',
-                color: 'var(--danger)',
-                cursor: 'pointer',
-                borderRadius: '0 0 var(--radius-sm) var(--radius-sm)'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'var(--bg-hover)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-              }}
+              className="dropdown-item danger"
             >
-              {isAdmin ? t('auth.revokeAdmin') : t('auth.logout')}
+              <LogoutIcon size={18} />
+              <span>{isAdmin ? t('auth.revokeAdmin') : t('auth.logout')}</span>
             </button>
           </div>
         )}
@@ -233,4 +186,3 @@ function AuthButton() {
 }
 
 export default AuthButton;
-

@@ -1,10 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { API_URL } from '../constants'
 import { apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useTags } from '../hooks/useTags'
 import { useTranslation } from '../hooks/useTranslation'
+import LoadingSpinner from '../components/LoadingSpinner'
+import EmptyState from '../components/EmptyState'
+import {
+  PlusIcon,
+  EditIcon,
+  DeleteIcon,
+  TagIcon,
+  CloseIcon,
+  AlertIcon
+} from '../components/Icons'
 
 function TagsManagement() {
   const navigate = useNavigate()
@@ -14,7 +23,7 @@ function TagsManagement() {
   const [error, setError] = useState(null)
   const [editingTag, setEditingTag] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [formData, setFormData] = useState({ name: '', color: '#4a9eff' })
+  const [formData, setFormData] = useState({ name: '', color: '#3b82f6' })
 
   const handleAddTag = async (e) => {
     e.preventDefault()
@@ -26,7 +35,7 @@ function TagsManagement() {
     try {
       setError(null)
       await apiPost('/tags', formData)
-      setFormData({ name: '', color: '#4a9eff' })
+      setFormData({ name: '', color: '#3b82f6' })
       setShowAddForm(false)
       await fetchTags()
     } catch (err) {
@@ -45,7 +54,7 @@ function TagsManagement() {
       setError(null)
       await apiPut(`/tags/${editingTag.id}`, formData)
       setEditingTag(null)
-      setFormData({ name: '', color: '#4a9eff' })
+      setFormData({ name: '', color: '#3b82f6' })
       await fetchTags()
     } catch (err) {
       setError(err.message)
@@ -70,7 +79,7 @@ function TagsManagement() {
   }
 
   if (loading) {
-    return <div className="loading">{t('common.loading')}</div>
+    return <LoadingSpinner fullPage />
   }
 
   return (
@@ -81,23 +90,60 @@ function TagsManagement() {
 
       {(error || tagsError) && (
         <div className="error-message">
-          {error || tagsError}
+          <AlertIcon size={18} />
+          <span>{error || tagsError}</span>
         </div>
       )}
 
-      <div>
+      {isAdmin && (
         <div className="controls">
-          {isAdmin && (
-            <button onClick={() => { setShowAddForm(true); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
-              {t('pages.tagsManagement.addTag')}
-            </button>
-          )}
+          <button onClick={() => { 
+            setShowAddForm(true); 
+            setEditingTag(null); 
+            setFormData({ name: '', color: '#3b82f6' }) 
+          }} className="btn-success">
+            <PlusIcon size={18} />
+            <span>{t('pages.tagsManagement.addTag')}</span>
+          </button>
         </div>
-        <h2>{t('pages.tagsManagement.tags')} ({tags.length})</h2>
+      )}
 
-        {(showAddForm || editingTag) && (
-          <form className="form" onSubmit={editingTag ? handleUpdateTag : handleAddTag}>
+      {/* Add/Edit Form */}
+      {(showAddForm || editingTag) && (
+        <div style={{
+          marginBlockEnd: 'var(--spacing-xl)',
+          padding: 'var(--spacing-lg)',
+          backgroundColor: 'var(--bg-secondary)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border-color)'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBlockEnd: 'var(--spacing-lg)'
+          }}>
+            <h3 style={{ margin: 0, fontSize: 'var(--font-size-lg)' }}>
+              {editingTag ? t('common.edit') : t('pages.tagsManagement.addTag')}
+            </h3>
+            <button 
+              onClick={() => { 
+                setShowAddForm(false); 
+                setEditingTag(null); 
+                setFormData({ name: '', color: '#3b82f6' }) 
+              }} 
+              className="btn-ghost btn-icon"
+            >
+              <CloseIcon size={20} />
+            </button>
+          </div>
+
+          <form onSubmit={editingTag ? handleUpdateTag : handleAddTag}>
             <div className="form-group">
+              <label>
+                <TagIcon size={14} />
+                <span>{t('pages.tagsManagement.tagName')}</span>
+              </label>
               <input
                 type="text"
                 placeholder={t('pages.tagsManagement.tagName')}
@@ -106,46 +152,106 @@ function TagsManagement() {
                 required
               />
             </div>
-            <div className="form-group">
+            
+            <div className="form-group" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
               <label>{t('common.color')}:</label>
-              <input
-                type="color"
-                value={formData.color}
-                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+                <input
+                  type="color"
+                  value={formData.color}
+                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                />
+                <span 
+                  className="tag-badge" 
+                  style={{ backgroundColor: formData.color }}
+                >
+                  {formData.name || t('pages.tagsManagement.tagName')}
+                </span>
+              </div>
             </div>
+            
             <div className="form-actions">
+              <button 
+                type="button" 
+                onClick={() => { 
+                  setShowAddForm(false); 
+                  setEditingTag(null); 
+                  setFormData({ name: '', color: '#3b82f6' }) 
+                }}
+                className="btn-secondary"
+              >
+                {t('common.cancel')}
+              </button>
               <button type="submit" className="btn-primary">
                 {editingTag ? t('pages.tagsManagement.saveChanges') : t('common.add')}
               </button>
-              <button type="button" onClick={() => { setShowAddForm(false); setEditingTag(null); setFormData({ name: '', color: '#4a9eff' }) }}>
-                {t('common.cancel')}
-              </button>
             </div>
           </form>
-        )}
+        </div>
+      )}
 
-        <div className="tags-list">
-          {tags.map(tag => (
-            <div key={tag.id} className="tag-item">
-              <div>
-                <h3>{tag.name}</h3>
-              </div>
-              <div className="tag-actions">
+      {/* Tags List */}
+      <div>
+        <h2 style={{ 
+          marginBlockEnd: 'var(--spacing-lg)', 
+          fontSize: 'var(--font-size-xl)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--spacing-sm)'
+        }}>
+          <TagIcon size={24} />
+          {t('pages.tagsManagement.tags')} ({tags.length})
+        </h2>
+
+        {tags.length === 0 && !showAddForm ? (
+          <EmptyState
+            icon="tag"
+            title={t('pages.tagsManagement.noTags')}
+            action={isAdmin ? () => setShowAddForm(true) : null}
+            actionLabel={t('pages.tagsManagement.addTag')}
+          />
+        ) : (
+          <div className="tags-list">
+            {tags.map(tag => (
+              <div key={tag.id} className="tag-item">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+                  <div
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      backgroundColor: tag.color,
+                      borderRadius: 'var(--radius-sm)',
+                      flexShrink: 0
+                    }}
+                  />
+                  <h3 style={{ 
+                    margin: 0,
+                    fontSize: 'var(--font-size-lg)',
+                    fontWeight: 'var(--font-weight-medium)'
+                  }}>
+                    {tag.name}
+                  </h3>
+                </div>
                 {isAdmin && (
-                  <>
-                    <button onClick={() => startEdit(tag)} className="btn-warning">{t('common.edit')}</button>
-                    <button onClick={() => handleDeleteTag(tag.id)} className="btn-danger">{t('common.delete')}</button>
-                  </>
+                  <div className="tag-actions">
+                    <button 
+                      onClick={() => startEdit(tag)} 
+                      className="btn-warning btn-icon"
+                      title={t('common.edit')}
+                    >
+                      <EditIcon size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteTag(tag.id)} 
+                      className="btn-danger btn-icon"
+                      title={t('common.delete')}
+                    >
+                      <DeleteIcon size={16} />
+                    </button>
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
-        </div>
-
-        {tags.length === 0 && !showAddForm && (
-          <div className="empty-state">
-            <p>{t('pages.tagsManagement.noTags')}</p>
+            ))}
           </div>
         )}
       </div>
