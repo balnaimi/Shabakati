@@ -1,150 +1,108 @@
-import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useTranslation } from '../hooks/useTranslation';
+import { useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import { useTranslation } from '../hooks/useTranslation'
+import Modal from './Modal'
+import { KeyIcon, AlertIcon } from './Icons'
 
 function AdminLoginModal({ isOpen, onClose, onSuccess }) {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { adminLogin } = useAuth();
-  const { t } = useTranslation();
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const { adminLogin } = useAuth()
+  const { t } = useTranslation()
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+    e.preventDefault()
+    setError('')
+    setLoading(true)
 
     try {
-      const result = await adminLogin(password);
+      const result = await adminLogin(password)
       
       if (result.success) {
-        setPassword('');
+        setPassword('')
         if (onSuccess) {
-          onSuccess();
+          onSuccess()
         }
-        onClose();
+        onClose()
       } else {
-        setError(result.error || t('auth.adminLoginFailed'));
+        setError(result.error || t('auth.adminLoginFailed'))
       }
     } catch (err) {
-      setError(err.message || t('auth.adminLoginError'));
+      setError(err.message || t('auth.adminLoginError'))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleClose = () => {
-    setPassword('');
-    setError('');
-    onClose();
-  };
-
-  if (!isOpen) return null;
+    setPassword('')
+    setError('')
+    onClose()
+  }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 10000
-      }}
-      onClick={handleClose}
-    >
-      <div
-        className="card"
-        style={{
-          width: '100%',
-          maxWidth: '400px',
-          margin: '20px',
-          position: 'relative'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0 }}>{t('auth.adminAccessTitle')}</h2>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={t('auth.adminAccessTitle')}
+      size="small"
+      footer={
+        <>
           <button
+            type="button"
             onClick={handleClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              fontSize: '1.5rem',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              padding: '0',
-              width: '30px',
-              height: '30px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            aria-label={t('common.close')}
+            disabled={loading}
+            className="btn-secondary"
           >
-            ×
+            {t('common.cancel')}
           </button>
+          <button
+            type="submit"
+            form="admin-login-form"
+            disabled={loading}
+            className="btn-primary"
+          >
+            {loading ? t('pages.login.verifying') : t('auth.adminLoginButton')}
+          </button>
+        </>
+      }
+    >
+      <p style={{ 
+        color: 'var(--text-secondary)', 
+        marginBlockEnd: 'var(--spacing-lg)', 
+        fontSize: 'var(--font-size-sm)' 
+      }}>
+        {t('auth.adminAccessDescription')}
+      </p>
+
+      {error && (
+        <div className="error-message" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
+          <AlertIcon size={16} />
+          <span>{error}</span>
         </div>
+      )}
 
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          {t('auth.adminAccessDescription')}
-        </p>
-
-        {error && (
-          <div className="error-message" style={{ marginBottom: '1.5rem' }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="adminPassword">{t('auth.adminPassword')}</label>
-            <input
-              id="adminPassword"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-              autoFocus
-              placeholder={t('auth.adminPasswordPlaceholder')}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: '0.75rem',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-md)',
-                background: 'transparent',
-                color: 'var(--text-primary)',
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary"
-              style={{ flex: 1 }}
-            >
-              {loading ? t('pages.login.verifying') : t('auth.adminLoginButton')}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+      <form id="admin-login-form" onSubmit={handleSubmit}>
+        <div className="form-group" style={{ marginBlockEnd: 0 }}>
+          <label htmlFor="adminPassword">
+            <KeyIcon size={14} />
+            <span>{t('auth.adminPassword')}</span>
+          </label>
+          <input
+            id="adminPassword"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+            autoFocus
+            placeholder={t('auth.adminPasswordPlaceholder')}
+          />
+        </div>
+      </form>
+    </Modal>
+  )
 }
 
-export default AdminLoginModal;
+export default AdminLoginModal

@@ -2,10 +2,11 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import SetupGuard from './components/SetupGuard'
+import LoadingSpinner from './components/LoadingSpinner'
+import { ToastProvider } from './components/Toast'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { LanguageProvider } from './contexts/LanguageContext'
-import { useTranslation } from './hooks/useTranslation'
 import Layout from './components/Layout'
 
 const Favorites = lazy(() => import('./pages/Favorites'))
@@ -17,16 +18,6 @@ const Login = lazy(() => import('./pages/Login'))
 const Setup = lazy(() => import('./pages/Setup'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 const ChangeVisitorPassword = lazy(() => import('./pages/ChangeVisitorPassword'))
-
-// Loading component
-function LoadingSpinner() {
-  const { t } = useTranslation()
-  return (
-    <div className="loading">
-      {t('common.loading')}
-    </div>
-  )
-}
 
 // Protected Route component - requires visitor authentication
 function ProtectedRoute({ children }) {
@@ -109,11 +100,13 @@ function App() {
     <ErrorBoundary>
       <LanguageProvider>
         <ThemeProvider>
-          <AuthProvider>
-            <Router>
-              <AppRoutes />
-            </Router>
-          </AuthProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <Router>
+                <AppRoutes />
+              </Router>
+            </AuthProvider>
+          </ToastProvider>
         </ThemeProvider>
       </LanguageProvider>
     </ErrorBoundary>
@@ -121,4 +114,3 @@ function App() {
 }
 
 export default App
-
