@@ -372,6 +372,19 @@ body {
   color: var(--primary);
 }
 
+.stat-item-clickable {
+  cursor: pointer;
+  width: 100%;
+  border: 1px solid var(--border-color);
+  font: inherit;
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+}
+
+.stat-item-clickable:focus {
+  outline: 2px solid var(--border-color-focus);
+  outline-offset: 2px;
+}
+
 /* ============================================
    Buttons
    ============================================ */

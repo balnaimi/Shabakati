@@ -362,10 +362,14 @@ function Favorites() {
         )}
         
         <div className="stats">
-          <div className="stat-item">
+          <button
+            type="button"
+            className="stat-item stat-item-clickable"
+            onClick={() => navigate('/networks')}
+          >
             <p>{t('pages.favorites.totalNetworks')}</p>
             <p>{stats.totalNetworks}</p>
-          </div>
+          </button>
           <div className="stat-item">
             <p>{t('pages.favorites.totalHosts')}</p>
             <p>{stats.totalHosts}</p>
