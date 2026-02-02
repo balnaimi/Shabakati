@@ -1120,11 +1120,22 @@ table tbody tr:last-child td {
   color: var(--text-inverse);
 }
 
+.navbar-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .navbar-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   margin: 0;
+}
+
+.navbar-version {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
 }
 
 .navbar-menu {

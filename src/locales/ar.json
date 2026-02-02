@@ -1,7 +1,8 @@
 {
   "app": {
     "name": "شبكتي",
-    "description": "إدارة الشبكات المحلية"
+    "description": "إدارة الشبكات المحلية",
+    "version": "الإصدار {{version}}"
   },
   "theme": {
     "light": "الوضع الفاتح",

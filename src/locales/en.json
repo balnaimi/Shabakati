@@ -1,7 +1,8 @@
 {
   "app": {
     "name": "My Network",
-    "description": "Local Network Management"
+    "description": "Local Network Management",
+    "version": "Version {{version}}"
   },
   "theme": {
     "light": "Light Mode",

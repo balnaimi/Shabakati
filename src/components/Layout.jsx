@@ -3,6 +3,7 @@ import AuthButton from './AuthButton'
 import ThemeToggle from './ThemeToggle'
 import LanguageToggle from './LanguageToggle'
 import { useTranslation } from '../hooks/useTranslation'
+import { APP_VERSION } from '../constants'
 import { HomeIcon, NetworkIcon, LogoIcon, LinkIcon } from './Icons'
 
 function Layout({ children }) {
@@ -35,7 +36,10 @@ function Layout({ children }) {
             <div className="navbar-logo">
               <LogoIcon size={20} />
             </div>
-            <h1 className="navbar-title">{t('app.name')}</h1>
+            <div className="navbar-brand-text">
+              <h1 className="navbar-title">{t('app.name')}</h1>
+              <span className="navbar-version">{t('app.version', { version: APP_VERSION })}</span>
+            </div>
           </div>
           
           <div className="navbar-menu">
