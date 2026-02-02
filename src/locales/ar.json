@@ -54,6 +54,7 @@
   "navigation": {
     "home": "الصفحة الرئيسية",
     "viewNetworks": "عرض الشبكات",
+    "getAvailableIP": "الحصول على IP متاح",
     "manageNetworks": "إدارة الشبكات",
     "manageTags": "إدارة الوسوم",
     "manageGroups": "إدارة المجموعات"
@@ -121,6 +122,18 @@
       "noNetworks": "لا توجد شبكات. أضف شبكة جديدة للبدء.",
       "view": "عرض",
       "lastScanned": "آخر فحص"
+    },
+    "availableIPs": {
+      "title": "الحصول على IP متاح",
+      "noNetworks": "لا توجد شبكات",
+      "noNetworksDescription": "أضف شبكة من صفحة إدارة الشبكات لعرض العناوين المتاحة.",
+      "selectNetwork": "اختر الشبكة",
+      "chooseNetwork": "اختر شبكة...",
+      "rangeOnly": "هذه الشبكة تحتوي على {{count}} عنواناً (من {{start}} إلى {{end}}). لعرض القائمة استخدم صفحة عرض الشبكات.",
+      "noAvailableInRange": "لا توجد عناوين قابلة للاستخدام في نطاق هذه الشبكة.",
+      "noAvailableIPs": "لا توجد عناوين متاحة",
+      "noAvailableIPsDescription": "جميع العناوين في نطاق هذه الشبكة مستخدمة.",
+      "availableCount": "{{count}} عنوان متاح"
     },
     "networkView": {
       "title": "عرض الشبكة",

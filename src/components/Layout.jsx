@@ -3,7 +3,7 @@ import AuthButton from './AuthButton'
 import ThemeToggle from './ThemeToggle'
 import LanguageToggle from './LanguageToggle'
 import { useTranslation } from '../hooks/useTranslation'
-import { HomeIcon, NetworkIcon, LogoIcon } from './Icons'
+import { HomeIcon, NetworkIcon, LogoIcon, LinkIcon } from './Icons'
 
 function Layout({ children }) {
   const navigate = useNavigate()
@@ -19,7 +19,8 @@ function Layout({ children }) {
 
   const navLinks = [
     { path: '/', label: t('navigation.home'), icon: HomeIcon },
-    { path: '/hosts', label: t('navigation.viewNetworks'), icon: NetworkIcon }
+    { path: '/hosts', label: t('navigation.viewNetworks'), icon: NetworkIcon },
+    { path: '/available-ips', label: t('navigation.getAvailableIP'), icon: LinkIcon }
   ]
 
   if (location.pathname === '/login') {

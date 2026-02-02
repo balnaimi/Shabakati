@@ -54,6 +54,7 @@
   "navigation": {
     "home": "Home",
     "viewNetworks": "View Networks",
+    "getAvailableIP": "Get Available IP",
     "manageNetworks": "Manage Networks",
     "manageTags": "Manage Tags",
     "manageGroups": "Manage Groups"
@@ -121,6 +122,18 @@
       "noNetworks": "No networks. Add a new network to get started.",
       "view": "View",
       "lastScanned": "Last Scanned"
+    },
+    "availableIPs": {
+      "title": "Get Available IP",
+      "noNetworks": "No networks",
+      "noNetworksDescription": "Add a network from Manage Networks to see available addresses.",
+      "selectNetwork": "Select network",
+      "chooseNetwork": "Choose network...",
+      "rangeOnly": "This network has {{count}} addresses (from {{start}} to {{end}}). Use the View Networks page to see the full list.",
+      "noAvailableInRange": "No usable addresses in this network range.",
+      "noAvailableIPs": "No available addresses",
+      "noAvailableIPsDescription": "All addresses in this network range are in use.",
+      "availableCount": "{{count}} available"
     },
     "networkView": {
       "title": "View Network",

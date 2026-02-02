@@ -18,6 +18,7 @@ const Login = lazy(() => import('./pages/Login'))
 const Setup = lazy(() => import('./pages/Setup'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 const ChangeVisitorPassword = lazy(() => import('./pages/ChangeVisitorPassword'))
+const AvailableIPs = lazy(() => import('./pages/AvailableIPs'))
 
 // Protected Route component - requires visitor authentication
 function ProtectedRoute({ children }) {
@@ -78,6 +79,13 @@ function AppRoutes() {
             <ProtectedRoute>
               <Layout>
                 <NetworksList />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/available-ips" element={
+            <ProtectedRoute>
+              <Layout>
+                <AvailableIPs />
               </Layout>
             </ProtectedRoute>
           } />
