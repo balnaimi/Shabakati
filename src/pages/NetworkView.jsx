@@ -484,9 +484,9 @@ function NetworkView() {
             alignItems: 'center', 
             gap: 'var(--spacing-sm)',
             padding: 'var(--spacing-sm) var(--spacing-md)',
-            backgroundColor: 'var(--bg-secondary)',
+            backgroundColor: 'var(--bg-primary)',
             borderRadius: 'var(--radius-md)',
-            border: `2px solid ${autoScanEnabled ? 'var(--success)' : 'var(--border-color)'}`
+            border: `1px solid ${autoScanEnabled ? 'var(--success)' : 'var(--border-color)'}`
           }}>
             <label style={{ 
               display: 'flex', 
@@ -544,7 +544,7 @@ function NetworkView() {
               marginBlockEnd: 'var(--spacing-xl)',
               padding: 'var(--spacing-lg)',
               backgroundColor: 'var(--success-light)',
-              border: '2px solid var(--success)',
+              border: '1px solid var(--success)',
               borderRadius: 'var(--radius-lg)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBlockEnd: 'var(--spacing-md)' }}>
@@ -602,7 +602,7 @@ function NetworkView() {
               marginBlockEnd: 'var(--spacing-xl)',
               padding: 'var(--spacing-lg)',
               backgroundColor: 'var(--success-light)',
-              border: '2px solid var(--success)',
+              border: '1px solid var(--success)',
               borderRadius: 'var(--radius-lg)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBlockEnd: 'var(--spacing-md)' }}>
@@ -654,7 +654,7 @@ function NetworkView() {
               marginBlockEnd: 'var(--spacing-xl)',
               padding: 'var(--spacing-lg)',
               backgroundColor: 'var(--danger-light)',
-              border: '2px solid var(--danger)',
+              border: '1px solid var(--danger)',
               borderRadius: 'var(--radius-lg)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBlockEnd: 'var(--spacing-md)' }}>
@@ -967,7 +967,7 @@ function NetworkView() {
               <div style={{ 
                 marginBlockEnd: 'var(--spacing-lg)', 
                 padding: 'var(--spacing-md)',
-                backgroundColor: 'var(--bg-secondary)',
+                backgroundColor: 'var(--bg-tertiary)',
                 borderRadius: 'var(--radius-md)'
               }}>
                 <p style={{ margin: 0 }}><strong>{t('common.name')}:</strong> {hosts.find(h => h.id === editingHostId).name}</p>

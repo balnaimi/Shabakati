@@ -108,10 +108,10 @@ function Login() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))',
-            borderRadius: 'var(--radius-xl)',
+            backgroundColor: 'var(--primary)',
+            borderRadius: 'var(--radius-lg)',
             color: 'var(--text-inverse)',
-            boxShadow: 'var(--shadow-md)'
+            boxShadow: 'var(--shadow-sm)'
           }}>
             <LogoIcon size={32} />
           </div>

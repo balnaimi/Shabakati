@@ -708,7 +708,7 @@ function Favorites() {
             <div style={{ 
               marginBlockEnd: 'var(--spacing-lg)',
               padding: 'var(--spacing-md)',
-              backgroundColor: 'var(--bg-secondary)',
+              backgroundColor: 'var(--bg-tertiary)',
               borderRadius: 'var(--radius-md)'
             }}>
               <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}>
@@ -794,7 +794,7 @@ function Favorites() {
               style={{ 
                 marginBlockEnd: 'var(--spacing-xl)',
                 padding: 'var(--spacing-lg)',
-                backgroundColor: 'var(--bg-secondary)',
+                backgroundColor: 'var(--bg-tertiary)',
                 borderRadius: 'var(--radius-lg)'
               }}
             >

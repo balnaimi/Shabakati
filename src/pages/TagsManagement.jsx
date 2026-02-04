@@ -113,7 +113,7 @@ function TagsManagement() {
         <div style={{
           marginBlockEnd: 'var(--spacing-xl)',
           padding: 'var(--spacing-lg)',
-          backgroundColor: 'var(--bg-secondary)',
+          backgroundColor: 'var(--bg-tertiary)',
           borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--border-color)'
         }}>

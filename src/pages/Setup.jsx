@@ -112,10 +112,10 @@ function Setup() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))',
-            borderRadius: 'var(--radius-xl)',
+            backgroundColor: 'var(--primary)',
+            borderRadius: 'var(--radius-lg)',
             color: 'var(--text-inverse)',
-            boxShadow: 'var(--shadow-md)'
+            boxShadow: 'var(--shadow-sm)'
           }}>
             <LogoIcon size={32} />
           </div>
@@ -151,7 +151,7 @@ function Setup() {
           <div style={{ 
             marginBlockEnd: 'var(--spacing-lg)', 
             padding: 'var(--spacing-lg)', 
-            backgroundColor: 'var(--bg-secondary)', 
+            backgroundColor: 'var(--bg-tertiary)', 
             borderRadius: 'var(--radius-lg)',
             border: '1px solid var(--border-color)'
           }}>
@@ -222,7 +222,7 @@ function Setup() {
           <div style={{ 
             marginBlockEnd: 'var(--spacing-xl)', 
             padding: 'var(--spacing-lg)', 
-            backgroundColor: 'var(--bg-secondary)', 
+            backgroundColor: 'var(--bg-tertiary)', 
             borderRadius: 'var(--radius-lg)',
             border: '1px solid var(--border-color)'
           }}>
