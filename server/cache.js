@@ -47,6 +47,18 @@ class SimpleCache {
   }
 
   /**
+   * Delete all keys that start with the given prefix (e.g. invalidate all auth_status:* entries)
+   * @param {string} prefix
+   */
+  deleteByPrefix(prefix) {
+    for (const key of this.cache.keys()) {
+      if (key.startsWith(prefix)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  /**
    * Clear all cache
    */
   clear() {

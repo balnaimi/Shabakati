@@ -8,11 +8,11 @@ import { existsSync } from 'fs';
 import { dbFunctions } from './database.js';
 import db from './database.js';
 import { checkHost } from './hostChecker.js';
-import { scanNetwork } from './networkScanner.js';
+import { scanNetwork, summarizeDetectionMethods } from './networkScanner.js';
 import { getNetworkCIDR, isIPInNetwork, calculateIPRange } from './networkUtils.js';
 import { initializeAutoScans, startAutoScan, stopAutoScan } from './autoScanService.js';
-import { hashPassword, comparePassword, generateToken, verifyToken } from './auth.js';
-import { requireAdmin, requireVisitor } from './middleware.js';
+import { requireAdmin } from './middleware.js';
+import authRouter from './routes/auth.js';
 import logger from './logger.js';
 import { errorHandler, notFoundHandler, asyncHandler, ApiError } from './errorHandler.js';
 import cache from './cache.js';
@@ -38,6 +38,10 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
 
 // Configure CORS
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -97,231 +101,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// ========== Authentication Routes ==========
-
-// Login endpoint (for visitors)
-app.post('/api/auth/login', asyncHandler(async (req, res) => {
-  const { password } = req.body;
-  
-  if (!password) {
-    throw new ApiError(400, 'كلمة المرور مطلوبة');
-  }
-  
-  // Verify password against visitors only
-  const visitor = dbFunctions.verifyVisitorPasswordOnly(password, comparePassword);
-  if (!visitor) {
-    logger.warn('Failed visitor login attempt', { ip: req.ip });
-    throw new ApiError(401, 'كلمة مرور الزوار غير صحيحة');
-  }
-  
-  // Generate visitor token
-  const token = generateToken(visitor.username, 'visitor');
-  logger.info('Visitor logged in', { username: visitor.username, ip: req.ip });
-  
-  res.json({
-    token,
-    username: visitor.username,
-    userType: 'visitor',
-    message: 'تم تسجيل الدخول كزائر بنجاح'
-  });
-}));
-
-// Admin login endpoint (for upgrading from visitor to admin)
-app.post('/api/auth/admin-login', requireVisitor, asyncHandler(async (req, res) => {
-  const { password } = req.body;
-  
-  if (!password) {
-    throw new ApiError(400, 'كلمة مرور المسؤول مطلوبة');
-  }
-  
-  // Verify password against admins only
-  const admin = dbFunctions.verifyAdminPasswordOnlyForAdmin(password, comparePassword);
-  if (!admin) {
-    logger.warn('Failed admin login attempt', { ip: req.ip, username: req.user.username });
-    throw new ApiError(401, 'كلمة مرور المسؤول غير صحيحة');
-  }
-  
-  // Generate admin token
-  const token = generateToken(admin.username, 'admin');
-  logger.info('Admin logged in', { username: admin.username, ip: req.ip });
-  
-  res.json({
-    token,
-    username: admin.username,
-    userType: 'admin',
-    message: 'تم تسجيل الدخول كمسؤول بنجاح'
-  });
-}));
-
-// Check auth status (with caching, no rate limiting)
-app.get('/api/auth/status', (req, res) => {
-  try {
-    const cacheKey = 'auth_status';
-    const cached = cache.get(cacheKey);
-    
-    // Check cache first (cache for 10 seconds)
-    if (cached) {
-      return res.json(cached);
-    }
-    
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const result = { authenticated: false, userType: null };
-      cache.set(cacheKey, result, 10000); // Cache for 10 seconds
-      return res.json(result);
-    }
-    
-    const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    
-    if (!decoded) {
-      const result = { authenticated: false, userType: null };
-      cache.set(cacheKey, result, 10000); // Cache for 10 seconds
-      return res.json(result);
-    }
-    
-    const result = {
-      authenticated: true,
-      username: decoded.username,
-      userType: decoded.type || 'visitor',
-      isAdmin: decoded.type === 'admin'
-    };
-    cache.set(cacheKey, result, 10000); // Cache for 10 seconds
-    res.json(result);
-  } catch (error) {
-    const result = { authenticated: false, userType: null };
-    cache.set('auth_status', result, 10000);
-    res.json(result);
-  }
-});
-
-// Check if setup is needed (with caching, no rate limiting)
-app.get('/api/auth/check-setup', (req, res) => {
-  try {
-    const cacheKey = 'check_setup';
-    const cached = cache.get(cacheKey);
-    
-    // Check cache first (cache for 30 seconds)
-    if (cached) {
-      return res.json(cached);
-    }
-    
-    const setupRequired = dbFunctions.isSetupRequired();
-    const result = { setupRequired };
-    cache.set(cacheKey, result, 30000); // Cache for 30 seconds
-    res.json(result);
-  } catch (error) {
-    logger.error('Error checking setup status:', { error: error.message });
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Setup (create first visitor and admin)
-app.post('/api/auth/setup', asyncHandler(async (req, res) => {
-  const { visitorPassword, adminPassword } = req.body;
-  
-  // Check if setup is already done
-  if (!dbFunctions.isSetupRequired()) {
-    throw new ApiError(400, 'الإعداد مكتمل بالفعل');
-  }
-  
-  if (!visitorPassword || visitorPassword.length < 3) {
-    throw new ApiError(400, 'كلمة مرور الزوار يجب أن تكون 3 أحرف على الأقل');
-  }
-  
-  if (!adminPassword || adminPassword.length < 3) {
-    throw new ApiError(400, 'كلمة مرور المسؤول يجب أن تكون 3 أحرف على الأقل');
-  }
-  
-  // Create visitor account
-  const visitorPasswordHash = hashPassword(visitorPassword);
-  const visitor = dbFunctions.createAdmin('visitor', visitorPasswordHash, 'visitor');
-  
-  // Create admin account
-  const adminPasswordHash = hashPassword(adminPassword);
-  const admin = dbFunctions.createAdmin('admin', adminPasswordHash, 'admin');
-  
-  // Invalidate check-setup cache since setup was completed
-  cache.delete('check_setup');
-  
-  logger.info('Setup completed', { visitorCreated: true, adminCreated: true });
-  
-  // Generate visitor token and return (user starts as visitor)
-  const token = generateToken(visitor.username, 'visitor');
-  res.json({
-    token,
-    username: visitor.username,
-    userType: 'visitor',
-    message: 'تم إنشاء كلمتي المرور بنجاح'
-  });
-}));
-
-// Change password (requires admin authentication)
-app.post('/api/auth/change-password', requireAdmin, asyncHandler(async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  
-  if (!currentPassword || !newPassword) {
-    throw new ApiError(400, 'كلمة المرور الحالية والجديدة مطلوبة');
-  }
-  
-  if (newPassword.length < 3) {
-    throw new ApiError(400, 'كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل');
-  }
-  
-  // Verify current password (admin only)
-  const admin = dbFunctions.verifyAdminPasswordOnlyForAdmin(currentPassword, comparePassword);
-  if (!admin) {
-    throw new ApiError(401, 'كلمة المرور الحالية غير صحيحة');
-  }
-  
-  // Update password
-  const newPasswordHash = hashPassword(newPassword);
-  const updatedAdmin = dbFunctions.updateAdminPassword(admin.id, newPasswordHash);
-  
-  if (!updatedAdmin) {
-    throw new ApiError(500, 'فشل تحديث كلمة المرور');
-  }
-  
-  // Invalidate auth status cache since password changed
-  cache.delete('auth_status');
-  
-  logger.info('Admin password changed', { username: updatedAdmin.username });
-  res.json({ message: 'تم تغيير كلمة المرور بنجاح' });
-}));
-
-// Change visitor password (requires admin authentication)
-app.post('/api/auth/change-visitor-password', requireAdmin, asyncHandler(async (req, res) => {
-  const { newPassword } = req.body;
-  
-  if (!newPassword) {
-    throw new ApiError(400, 'كلمة المرور الجديدة مطلوبة');
-  }
-  
-  if (newPassword.length < 3) {
-    throw new ApiError(400, 'كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل');
-  }
-  
-  // Get visitor account
-  const visitor = dbFunctions.getAdminByType('visitor');
-  if (!visitor) {
-    throw new ApiError(404, 'حساب الزوار غير موجود');
-  }
-  
-  // Update visitor password
-  const newPasswordHash = hashPassword(newPassword);
-  const updatedVisitor = dbFunctions.updateAdminPassword(visitor.id, newPasswordHash);
-  
-  if (!updatedVisitor) {
-    throw new ApiError(500, 'فشل تحديث كلمة مرور الزوار');
-  }
-  
-  // Invalidate auth status cache since password changed
-  cache.delete('auth_status');
-  
-  logger.info('Visitor password changed', { username: updatedVisitor.username });
-  res.json({ message: 'تم تغيير كلمة مرور الزوار بنجاح' });
-}));
+app.use('/api/auth', authRouter);
 
 // Routes
 
@@ -808,13 +588,23 @@ app.post('/api/network/scan', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'نطاق الشبكة مطلوب (مثال: 192.168.30.0/24 أو 192.168.30.1-254)' });
     }
 
+    const usePing = req.body.usePing !== false;
+    const useTcpPorts = req.body.useTcpPorts !== false;
+    if (!usePing && !useTcpPorts) {
+      return res.status(400).json({ error: 'يجب تفعيل Ping أو فحص المنافذ (أو كليهما)' });
+    }
+
     const scanTimeout = timeout || 2;
-    const activeHosts = await scanNetwork(networkRange, scanTimeout);
+    const scanOptions = { usePing, useTcpPorts };
+    const activeHosts = await scanNetwork(networkRange, scanTimeout, scanOptions);
+    const detectionSummary = summarizeDetectionMethods(activeHosts);
     
     res.json({
       success: true,
       count: activeHosts.length,
-      hosts: activeHosts
+      hosts: activeHosts,
+      scanOptionsUsed: scanOptions,
+      detectionSummary
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -908,14 +698,19 @@ app.put('/api/networks/:id', requireAdmin, (req, res) => {
       return res.status(400).json({ error: 'Subnet يجب أن يكون بين 0 و 32' });
     }
 
+    const { scan_use_ping, scan_use_tcp } = req.body;
+
     const network = {
       name: name !== undefined ? name.trim() : existingNetwork.name,
       networkId: networkId !== undefined ? networkId.trim() : existingNetwork.network_id,
       subnet: subnet !== undefined ? parseInt(subnet) : existingNetwork.subnet,
-      lastScanned: lastScanned !== undefined ? lastScanned : existingNetwork.last_scanned
+      lastScanned: lastScanned !== undefined ? lastScanned : existingNetwork.last_scanned,
+      scan_use_ping: scan_use_ping !== undefined ? (scan_use_ping ? 1 : 0) : undefined,
+      scan_use_tcp: scan_use_tcp !== undefined ? (scan_use_tcp ? 1 : 0) : undefined
     };
 
     const updatedNetwork = dbFunctions.updateNetwork(id, network);
+    cache.delete('networks');
     res.json(updatedNetwork);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1024,12 +819,31 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
     const scanTimeout = timeout || 2;
     const shouldAddHosts = addHosts === true;
 
+    let usePing = true;
+    let useTcpPorts = true;
+    if (req.body.usePing !== undefined) {
+      usePing = !!req.body.usePing;
+    } else {
+      usePing = (network.scan_use_ping ?? 1) === 1;
+    }
+    if (req.body.useTcpPorts !== undefined) {
+      useTcpPorts = !!req.body.useTcpPorts;
+    } else {
+      useTcpPorts = (network.scan_use_tcp ?? 1) === 1;
+    }
+    if (!usePing && !useTcpPorts) {
+      return res.status(400).json({ error: 'يجب تفعيل Ping أو فحص المنافذ (أو كليهما)' });
+    }
+
+    const scanOptions = { usePing, useTcpPorts };
+
     // Calculate CIDR notation
     const cidr = getNetworkCIDR(network.network_id, network.subnet);
-    logger.info(`[Scan] Starting scan for network ${id}: ${cidr}, timeout: ${scanTimeout}s, addHosts: ${shouldAddHosts}`);
+    logger.info(`[Scan] Starting scan for network ${id}: ${cidr}, timeout: ${scanTimeout}s, addHosts: ${shouldAddHosts}, scanOptions: ${JSON.stringify(scanOptions)}`);
     
     // Scan network
-    const activeHosts = await scanNetwork(cidr, scanTimeout);
+    const activeHosts = await scanNetwork(cidr, scanTimeout, scanOptions);
+    const detectionSummary = summarizeDetectionMethods(activeHosts);
     logger.info(`[Scan] Found ${activeHosts.length} active hosts`);
 
     // Update last_scanned
@@ -1065,7 +879,8 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
               createdAt: new Date().toISOString(),
               lastChecked: new Date().toISOString(),
               pingLatency: host.pingLatency || null,
-              packetLoss: null
+              packetLoss: null,
+              discoveryMethod: host.detectionMethod || null
             });
             addedCount++;
             existingIPs.add(host.ip); // Update list to avoid duplicates
@@ -1102,7 +917,10 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
           tagIds: tagIds,
           lastChecked: new Date().toISOString(),
           pingLatency: activeHost?.pingLatency || null,
-          packetLoss: null
+          packetLoss: null,
+          discoveryMethod: activeHost?.detectionMethod !== undefined && activeHost?.detectionMethod !== null
+            ? activeHost.detectionMethod
+            : undefined
         });
         updatedCount++;
       } catch (error) {
@@ -1117,7 +935,9 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
       hosts: activeHosts,
       addedCount: addedCount,
       updatedCount: updatedCount,
-      addedHosts: true
+      addedHosts: true,
+      scanOptionsUsed: scanOptions,
+      detectionSummary
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

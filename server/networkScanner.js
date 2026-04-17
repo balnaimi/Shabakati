@@ -9,12 +9,40 @@ const dnsLookup = promisify(lookup);
 const dnsReverse = promisify(reverse);
 
 /**
+ * @typedef {{ usePing?: boolean, useTcpPorts?: boolean }} ScanNetworkOptions
+ * Default: both true (same behavior as before).
+ */
+
+/**
+ * Count detection methods from scan results (for API summary).
+ */
+export function summarizeDetectionMethods(hosts) {
+  let ping = 0;
+  let port = 0;
+  let both = 0;
+  for (const h of hosts) {
+    if (h.detectionMethod === 'ping') ping++;
+    else if (h.detectionMethod === 'port') port++;
+    else if (h.detectionMethod === 'both') both++;
+  }
+  return { ping, port, both };
+}
+
+/**
  * Scan IP range to find active hosts
  * @param {string} networkRange - Network range (example: "192.168.30.0/24" or "192.168.30.1-254")
  * @param {number} timeout - Maximum wait time in seconds (default: 2)
+ * @param {ScanNetworkOptions} [options]
  * @returns {Promise<Array>} List of active IP addresses
  */
-export async function scanNetwork(networkRange, timeout = 2) {
+export async function scanNetwork(networkRange, timeout = 2, options = {}) {
+  const usePing = options.usePing !== false;
+  const useTcpPorts = options.useTcpPorts !== false;
+
+  if (!usePing && !useTcpPorts) {
+    throw new Error('يجب تفعيل Ping أو فحص المنافذ (أو كليهما)');
+  }
+
   const activeHosts = [];
   
   try {
@@ -77,41 +105,50 @@ export async function scanNetwork(networkRange, timeout = 2) {
       const batch = ipRange.slice(i, i + batchSize);
       logger.debug(`Scanning batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(ipRange.length / batchSize)} (${batch.length} addresses)`);
       
-      // Optimization: check ping and all ports in parallel
       const promises = batch.map(async (ip) => {
-        // Start ping and check all ports in parallel
-        const pingCheck = checkHostPing(ip, pingTimeout);
-        const portChecks = commonPorts.map(port => 
-          checkHostPort(ip, port, portTimeout).then(isAlive => ({ port, isAlive }))
-        );
-        
-        // Use Promise.allSettled to check all results (more reliable)
-        // This ensures we get all results even if some fail
-        const allChecks = [pingCheck, ...portChecks];
-        const results = await Promise.allSettled(allChecks);
-        
-        // Extract ping results
-        const pingResult = results[0].status === 'fulfilled' ? results[0].value : { alive: false };
-        
-        // Extract port results
-        const portResults = results.slice(1).map((result, index) => {
-          if (result.status === 'fulfilled') {
-            return result.value;
-          }
-          return { port: commonPorts[index], isAlive: false };
-        });
-        
+        let pingResult = { alive: false, latency: null };
+        let portResults = [];
+
+        if (usePing && useTcpPorts) {
+          const pingCheck = checkHostPing(ip, pingTimeout);
+          const portChecks = commonPorts.map(port =>
+            checkHostPort(ip, port, portTimeout).then(isAlive => ({ port, isAlive }))
+          );
+          const allChecks = [pingCheck, ...portChecks];
+          const results = await Promise.allSettled(allChecks);
+          pingResult = results[0].status === 'fulfilled' ? results[0].value : { alive: false };
+          portResults = results.slice(1).map((result, index) => {
+            if (result.status === 'fulfilled') {
+              return result.value;
+            }
+            return { port: commonPorts[index], isAlive: false };
+          });
+        } else if (usePing) {
+          const results = await Promise.allSettled([checkHostPing(ip, pingTimeout)]);
+          pingResult = results[0].status === 'fulfilled' ? results[0].value : { alive: false };
+        } else {
+          const portChecks = commonPorts.map(port =>
+            checkHostPort(ip, port, portTimeout).then(isAlive => ({ port, isAlive }))
+          );
+          const results = await Promise.allSettled(portChecks);
+          portResults = results.map((result, index) => {
+            if (result.status === 'fulfilled') {
+              return result.value;
+            }
+            return { port: commonPorts[index], isAlive: false };
+          });
+        }
+
         const successfulPort = portResults.find(r => r.isAlive);
-        const detectionMethod = pingResult.alive && successfulPort ? 'both' 
-                              : pingResult.alive ? 'ping' 
-                              : successfulPort ? 'port' 
-                              : null;
-        
-        // If ping or any port succeeds, host is active
+        const detectionMethod = pingResult.alive && successfulPort ? 'both'
+          : pingResult.alive ? 'ping'
+          : successfulPort ? 'port'
+          : null;
+
         if (pingResult.alive || successfulPort) {
           return {
             ip: ip,
-            hostname: null, // Will be filled later
+            hostname: null,
             time: null,
             port: successfulPort ? successfulPort.port : null,
             pingLatency: pingResult.alive ? pingResult.latency : null,

@@ -64,9 +64,17 @@ async function performAutoScan(networkId) {
     
     // Calculate CIDR notation
     const cidr = getNetworkCIDR(network.network_id, network.subnet);
+
+    let usePing = (network.scan_use_ping ?? 1) === 1;
+    let useTcpPorts = (network.scan_use_tcp ?? 1) === 1;
+    if (!usePing && !useTcpPorts) {
+      usePing = true;
+      useTcpPorts = true;
+    }
+    const scanOptions = { usePing, useTcpPorts };
     
     // Scan network
-    const activeHosts = await scanNetwork(cidr, 2);
+    const activeHosts = await scanNetwork(cidr, 2, scanOptions);
     
     // Get all existing hosts for this network
     const allHosts = dbFunctions.getAllHosts();
@@ -97,7 +105,8 @@ async function performAutoScan(networkId) {
             createdAt: new Date().toISOString(),
             lastChecked: new Date().toISOString(),
             pingLatency: host.pingLatency || null,
-            packetLoss: null
+            packetLoss: null,
+            discoveryMethod: host.detectionMethod || null
           });
           
           // Track as new device
@@ -140,7 +149,10 @@ async function performAutoScan(networkId) {
             tagIds: tagIds,
             lastChecked: new Date().toISOString(),
             pingLatency: activeHost?.pingLatency || null,
-            packetLoss: null
+            packetLoss: null,
+            discoveryMethod: activeHost?.detectionMethod !== undefined && activeHost?.detectionMethod !== null
+              ? activeHost.detectionMethod
+              : undefined
           });
         } catch (error) {
           logger.error(`[AutoScan] Error updating host ${host.ip}:`, { error: error.message });

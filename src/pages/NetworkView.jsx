@@ -53,6 +53,9 @@ function NetworkView() {
   const [autoScanInterval, setAutoScanInterval] = useState(300000)
   const [autoScanResults, setAutoScanResults] = useState({ newDevices: [], disconnected: [] })
   const [loadingAutoScan, setLoadingAutoScan] = useState(false)
+  const [scanUsePing, setScanUsePing] = useState(true)
+  const [scanUseTcp, setScanUseTcp] = useState(true)
+  const [savingScanPrefs, setSavingScanPrefs] = useState(false)
 
   useEffect(() => {
     fetchNetwork()
@@ -64,6 +67,8 @@ function NetworkView() {
     if (network) {
       setAutoScanEnabled(network.auto_scan_enabled === 1)
       setAutoScanInterval(network.auto_scan_interval || 300000)
+      setScanUsePing((network.scan_use_ping ?? 1) === 1)
+      setScanUseTcp((network.scan_use_tcp ?? 1) === 1)
       fetchAutoScanResults()
     }
   }, [network])
@@ -173,7 +178,43 @@ function NetworkView() {
     }
   }
 
+  const handleSaveScanPreferences = async () => {
+    if (!network || !isAdmin) return
+    if (!scanUsePing && !scanUseTcp) {
+      alert(t('pages.networkView.scanNeedOneMethod'))
+      return
+    }
+    try {
+      setSavingScanPrefs(true)
+      await apiPut(`/networks/${id}`, {
+        name: network.name,
+        networkId: network.network_id,
+        subnet: network.subnet,
+        scan_use_ping: scanUsePing,
+        scan_use_tcp: scanUseTcp
+      })
+      await fetchNetwork()
+      alert(t('pages.networkView.scanPreferencesSaved'))
+    } catch (err) {
+      alert(`${t('common.error')}: ${err.message}`)
+    } finally {
+      setSavingScanPrefs(false)
+    }
+  }
+
+  const formatDiscoveryCell = (method) => {
+    if (!method) return <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+    if (method === 'ping') return t('pages.networkView.discoveryPing')
+    if (method === 'port') return t('pages.networkView.discoveryPort')
+    if (method === 'both') return t('pages.networkView.discoveryBoth')
+    return method
+  }
+
   const handleScan = async () => {
+    if (!scanUsePing && !scanUseTcp) {
+      alert(t('pages.networkView.scanNeedOneMethod'))
+      return
+    }
     try {
       setError(null)
       setScanning(true)
@@ -184,7 +225,9 @@ function NetworkView() {
       const result = await apiPost(`/networks/${id}/scan`, {
         timeout: 2,
         addHosts: true,
-        language: language
+        language: language,
+        usePing: scanUsePing,
+        useTcpPorts: scanUseTcp
       })
       
       await new Promise(resolve => setTimeout(resolve, 500))
@@ -205,8 +248,18 @@ function NetworkView() {
       }
       
       if (result.hosts && result.hosts.length > 0) {
-        const addedCount = result.addedCount || result.hosts.length
-        alert(t('pages.networkView.scanResult', { total: result.hosts.length, added: addedCount }))
+        const addedCount = result.addedCount ?? result.hosts.length
+        const ds = result.detectionSummary
+        const summaryExtra = ds
+          ? '\n' + t('pages.networkView.detectionSummaryLine', {
+              ping: ds.ping,
+              port: ds.port,
+              both: ds.both
+            })
+          : ''
+        alert(
+          t('pages.networkView.scanResult', { total: result.hosts.length, added: addedCount }) + summaryExtra
+        )
       } else {
         alert(t('pages.networkView.scanResultNoDevices'))
       }
@@ -454,6 +507,62 @@ function NetworkView() {
         </div>
       </div>
 
+      {isAdmin && (
+        <div className="card" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
+          <h3 style={{ margin: '0 0 var(--spacing-sm) 0', fontSize: 'var(--font-size-base)' }}>
+            {t('pages.networkView.scanMethodTitle')}
+          </h3>
+          <p style={{ margin: '0 0 var(--spacing-md) 0', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+            {t('pages.networkView.scanMethodIntro')}
+          </p>
+          <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={scanUsePing}
+                onChange={(e) => setScanUsePing(e.target.checked)}
+                style={{ marginTop: '4px' }}
+              />
+              <span>
+                <strong>{t('pages.networkView.scanMethodPingLabel')}</strong>
+                <span style={{ display: 'block', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', fontWeight: 'normal', marginTop: '4px' }}>
+                  {t('pages.networkView.scanMethodPingHelp')}
+                </span>
+              </span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={scanUseTcp}
+                onChange={(e) => setScanUseTcp(e.target.checked)}
+                style={{ marginTop: '4px' }}
+              />
+              <span>
+                <strong>{t('pages.networkView.scanMethodTcpLabel')}</strong>
+                <span style={{ display: 'block', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', fontWeight: 'normal', marginTop: '4px' }}>
+                  {t('pages.networkView.scanMethodTcpHelp')}
+                </span>
+              </span>
+            </label>
+          </div>
+          {!scanUsePing && !scanUseTcp && (
+            <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--font-size-sm)', color: 'var(--warning)' }}>
+              {t('pages.networkView.scanNeedOneMethod')}
+            </p>
+          )}
+          <div style={{ marginTop: 'var(--spacing-md)' }}>
+            <button
+              type="button"
+              onClick={handleSaveScanPreferences}
+              disabled={savingScanPrefs || (!scanUsePing && !scanUseTcp)}
+              className="btn-secondary btn-small"
+            >
+              {savingScanPrefs ? t('common.loading') : t('pages.networkView.scanSavePreferences')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="error-message">
           <AlertIcon size={18} />
@@ -464,7 +573,7 @@ function NetworkView() {
       {/* Controls */}
       {isAdmin && (
         <div className="controls">
-          <button onClick={handleScan} disabled={scanning} className="btn-primary">
+          <button onClick={handleScan} disabled={scanning || (!scanUsePing && !scanUseTcp)} className="btn-primary">
             {scanning ? (
               <>
                 <RefreshIcon size={18} className="spinner" />
@@ -748,6 +857,7 @@ function NetworkView() {
                       <th onClick={() => { if (sortBy === 'status') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('status'); setSortOrder('asc') } }}>
                         {t('common.status')} {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                       </th>
+                      <th>{t('pages.networkView.discoveryMethod')}</th>
                       <th>{t('common.description')}</th>
                       <th>{t('common.tags')}</th>
                       <th onClick={() => { if (sortBy === 'lastChecked') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('lastChecked'); setSortOrder('asc') } }}>
@@ -769,6 +879,9 @@ function NetworkView() {
                               <><OfflineIcon size={12} /> {t('common.offline')}</>
                             )}
                           </span>
+                        </td>
+                        <td style={{ fontSize: 'var(--font-size-sm)', whiteSpace: 'nowrap' }}>
+                          {formatDiscoveryCell(host.discovery_method)}
                         </td>
                         <td>
                           {(() => {

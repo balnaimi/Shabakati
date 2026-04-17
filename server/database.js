@@ -86,6 +86,16 @@ try {
 try {
   db.exec('ALTER TABLE networks ADD COLUMN auto_scan_interval INTEGER DEFAULT 300000');
 } catch (e) {}
+try {
+  db.exec('ALTER TABLE networks ADD COLUMN scan_use_ping INTEGER DEFAULT 1');
+} catch (e) {}
+try {
+  db.exec('ALTER TABLE networks ADD COLUMN scan_use_tcp INTEGER DEFAULT 1');
+} catch (e) {}
+
+try {
+  db.exec('ALTER TABLE hosts ADD COLUMN discovery_method TEXT');
+} catch (e) {}
 
 // Create auto_scan_results table
 db.exec(`
@@ -298,7 +308,7 @@ export const dbFunctions = {
     }
     
     return hosts.map(host => {
-      const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, ...rest } = host;
+      const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, discovery_method, ...rest } = host;
       return { 
         ...rest, 
         tags: allHostTags[host.id] || [], 
@@ -306,7 +316,8 @@ export const dbFunctions = {
         lastChecked: last_checked,
         pingLatency: ping_latency,
         packetLoss: packet_loss,
-        uptimePercentage: uptime_percentage || 100.0
+        uptimePercentage: uptime_percentage || 100.0,
+        discovery_method: discovery_method || null
       };
     });
   },
@@ -316,7 +327,7 @@ export const dbFunctions = {
     const stmt = db.prepare('SELECT * FROM hosts WHERE id = ?');
     const host = stmt.get(id);
     if (!host) return null;
-    const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, ...rest } = host;
+    const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, discovery_method, ...rest } = host;
     // Get tags from host_tags table
     const hostTags = this.getHostTags(id);
     return { 
@@ -326,15 +337,16 @@ export const dbFunctions = {
       lastChecked: last_checked,
       pingLatency: ping_latency,
       packetLoss: packet_loss,
-      uptimePercentage: uptime_percentage || 100.0
+      uptimePercentage: uptime_percentage || 100.0,
+      discovery_method: discovery_method || null
     };
   },
 
   // Add new host
   addHost(host) {
     const stmt = db.prepare(`
-      INSERT INTO hosts (name, ip, description, url, status, tags, created_at, last_checked, ping_latency, packet_loss)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO hosts (name, ip, description, url, status, tags, created_at, last_checked, ping_latency, packet_loss, discovery_method)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       host.name,
@@ -346,7 +358,8 @@ export const dbFunctions = {
       host.createdAt || new Date().toISOString(),
       host.lastChecked || null,
       host.pingLatency || null,
-      host.packetLoss || null
+      host.packetLoss || null,
+      host.discoveryMethod || host.discovery_method || null
     );
     const hostId = result.lastInsertRowid;
     
@@ -365,10 +378,19 @@ export const dbFunctions = {
 
   // Update host
   updateHost(id, host) {
+    const existing = this.getHostById(id);
+    if (!existing) {
+      return null;
+    }
+    const discoveryMethod =
+      host.discoveryMethod !== undefined || host.discovery_method !== undefined
+        ? (host.discoveryMethod !== undefined ? host.discoveryMethod : host.discovery_method)
+        : (existing?.discovery_method ?? null);
+
     const stmt = db.prepare(`
       UPDATE hosts 
       SET name = ?, ip = ?, description = ?, url = ?, status = ?, tags = ?,
-          last_checked = ?, ping_latency = ?, packet_loss = ?
+          last_checked = ?, ping_latency = ?, packet_loss = ?, discovery_method = ?
       WHERE id = ?
     `);
     stmt.run(
@@ -381,6 +403,7 @@ export const dbFunctions = {
       host.lastChecked || null,
       host.pingLatency || null,
       host.packetLoss || null,
+      discoveryMethod,
       id
     );
     
@@ -614,18 +637,24 @@ export const dbFunctions = {
 
   // Update network
   updateNetwork(id, network) {
+    const existing = this.getNetworkById(id);
+    if (!existing) return null;
+
+    const name = network.name !== undefined ? network.name : existing.name;
+    const networkId = network.networkId !== undefined ? network.networkId : existing.network_id;
+    const subnet = network.subnet !== undefined ? network.subnet : existing.subnet;
+    const lastScanned = network.lastScanned !== undefined ? network.lastScanned : existing.last_scanned;
+    const scanUsePing =
+      network.scan_use_ping !== undefined ? (network.scan_use_ping ? 1 : 0) : (existing.scan_use_ping ?? 1);
+    const scanUseTcp =
+      network.scan_use_tcp !== undefined ? (network.scan_use_tcp ? 1 : 0) : (existing.scan_use_tcp ?? 1);
+
     const stmt = db.prepare(`
       UPDATE networks 
-      SET name = ?, network_id = ?, subnet = ?, last_scanned = ?
+      SET name = ?, network_id = ?, subnet = ?, last_scanned = ?, scan_use_ping = ?, scan_use_tcp = ?
       WHERE id = ?
     `);
-    stmt.run(
-      network.name,
-      network.networkId,
-      network.subnet,
-      network.lastScanned || null,
-      id
-    );
+    stmt.run(name, networkId, subnet, lastScanned, scanUsePing, scanUseTcp, id);
     return this.getNetworkById(id);
   },
 
