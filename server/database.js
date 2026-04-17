@@ -425,6 +425,22 @@ export const dbFunctions = {
     return stmt.run(id);
   },
 
+  /**
+   * Delete multiple hosts in one transaction (caller validates ids).
+   */
+  deleteHostsBulkIds(ids) {
+    if (!ids.length) return 0;
+    const txn = db.transaction((idList) => {
+      const stmt = db.prepare('DELETE FROM hosts WHERE id = ?');
+      let n = 0;
+      for (const hid of idList) {
+        n += stmt.run(hid).changes;
+      }
+      return n;
+    });
+    return txn(ids);
+  },
+
   // Toggle host status
   toggleHostStatus(id) {
     const host = this.getHostById(id);

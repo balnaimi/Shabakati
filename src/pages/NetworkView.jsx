@@ -56,6 +56,9 @@ function NetworkView() {
   const [scanUsePing, setScanUsePing] = useState(true)
   const [scanUseTcp, setScanUseTcp] = useState(true)
   const [savingScanPrefs, setSavingScanPrefs] = useState(false)
+  const [selectedHostIds, setSelectedHostIds] = useState([])
+  const [bulkEditingIds, setBulkEditingIds] = useState(null)
+  const [bulkWorking, setBulkWorking] = useState(false)
 
   useEffect(() => {
     fetchNetwork()
@@ -72,6 +75,14 @@ function NetworkView() {
       fetchAutoScanResults()
     }
   }, [network])
+
+  useEffect(() => {
+    setSelectedHostIds([])
+  }, [searchQuery, statusFilter, tagFilter])
+
+  useEffect(() => {
+    setSelectedHostIds([])
+  }, [id])
 
   const fetchFavorites = async () => {
     try {
@@ -301,12 +312,14 @@ function NetworkView() {
       
       await fetchHosts()
       await fetchNetwork()
+      setSelectedHostIds((prev) => prev.filter((hid) => hid !== hostId))
     } catch (err) {
       setError(err.message)
     }
   }
 
   const handleEditHost = (host) => {
+    setBulkEditingIds(null)
     setEditingHostId(host.id)
     const tagIds = host.tags && Array.isArray(host.tags) 
       ? host.tags.map(tag => typeof tag === 'object' ? tag.id : tag)
@@ -316,15 +329,30 @@ function NetworkView() {
 
   const handleCancelEdit = () => {
     setEditingHostId(null)
+    setBulkEditingIds(null)
     setEditFormData({ tagIds: [] })
   }
 
   const handleUpdateHost = async (e) => {
     e.preventDefault()
-    if (!editingHostId) return
 
     try {
       setError(null)
+
+      if (bulkEditingIds && bulkEditingIds.length > 0) {
+        await apiPut('/hosts/bulk-tags', {
+          ids: bulkEditingIds,
+          tagIds: editFormData.tagIds
+        })
+        await fetchHosts()
+        handleCancelEdit()
+        setSelectedHostIds([])
+        alert(t('pages.networkView.bulkTagsSuccess', { count: bulkEditingIds.length }))
+        return
+      }
+
+      if (!editingHostId) return
+
       const host = hosts.find(h => h.id === editingHostId)
       if (!host) return
 
@@ -342,6 +370,68 @@ function NetworkView() {
     } catch (err) {
       setError(err.message)
     }
+  }
+
+  const toggleHostSelected = (hostId) => {
+    setSelectedHostIds((prev) =>
+      prev.includes(hostId) ? prev.filter((id) => id !== hostId) : [...prev, hostId]
+    )
+  }
+
+  const handleBulkDelete = async () => {
+    if (!isAdmin || selectedHostIds.length === 0) return
+    if (!window.confirm(t('pages.networkView.bulkDeleteConfirm', { count: selectedHostIds.length }))) {
+      return
+    }
+    try {
+      setBulkWorking(true)
+      setError(null)
+      await apiPost(`/networks/${id}/hosts/bulk-delete`, { ids: selectedHostIds })
+      await fetchHosts()
+      await fetchNetwork()
+      setSelectedHostIds([])
+      alert(t('pages.networkView.bulkDeleteSuccess'))
+    } catch (err) {
+      setError(err.message)
+      alert(`${t('common.error')}: ${err.message}`)
+    } finally {
+      setBulkWorking(false)
+    }
+  }
+
+  const handleBulkFavoritesAdd = async () => {
+    if (selectedHostIds.length === 0) return
+    try {
+      setBulkWorking(true)
+      const result = await apiPost('/favorites/bulk', { hostIds: selectedHostIds, action: 'add' })
+      await fetchFavorites()
+      alert(t('pages.networkView.bulkFavoritesAddResult', { affected: result.affected, skipped: result.skipped }))
+    } catch (err) {
+      alert(`${t('common.error')}: ${err.message}`)
+    } finally {
+      setBulkWorking(false)
+    }
+  }
+
+  const handleBulkFavoritesRemove = async () => {
+    if (selectedHostIds.length === 0) return
+    try {
+      setBulkWorking(true)
+      const result = await apiPost('/favorites/bulk', { hostIds: selectedHostIds, action: 'remove' })
+      await fetchFavorites()
+      alert(t('pages.networkView.bulkFavoritesRemoveResult', { affected: result.affected, skipped: result.skipped }))
+    } catch (err) {
+      alert(`${t('common.error')}: ${err.message}`)
+    } finally {
+      setBulkWorking(false)
+    }
+  }
+
+  const handleOpenBulkEditTags = () => {
+    if (!isAdmin || selectedHostIds.length === 0) return
+    setEditingHostId(null)
+    setBulkEditingIds([...selectedHostIds])
+    setEditFormData({ tagIds: [] })
   }
 
   const filteredHosts = useMemo(() => {
@@ -400,6 +490,20 @@ function NetworkView() {
       }
     })
   }, [hosts, searchQuery, statusFilter, tagFilter, sortBy, sortOrder])
+
+  const toggleSelectAllFiltered = () => {
+    const fids = filteredHosts.map((h) => h.id)
+    const allOn = fids.length > 0 && fids.every((id) => selectedHostIds.includes(id))
+    if (allOn) {
+      setSelectedHostIds((prev) => prev.filter((id) => !fids.includes(id)))
+    } else {
+      setSelectedHostIds((prev) => [...new Set([...prev, ...fids])])
+    }
+  }
+
+  const selectOfflineFiltered = () => {
+    setSelectedHostIds(filteredHosts.filter((h) => h.status === 'offline').map((h) => h.id))
+  }
 
   const getIPStatus = (ip) => {
     const host = hosts.find(h => h.ip === ip)
@@ -843,11 +947,95 @@ function NetworkView() {
                   ))}
                 </select>
               </div>
+
+              {userType !== 'visitor' && selectedHostIds.length > 0 && (
+                <div
+                  className="card"
+                  style={{
+                    marginBlockEnd: 'var(--spacing-md)',
+                    padding: 'var(--spacing-md)',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-sm)',
+                    border: '1px solid var(--primary)',
+                    backgroundColor: 'var(--bg-secondary)'
+                  }}
+                >
+                  <span style={{ fontWeight: 'var(--font-weight-semibold)', marginInlineEnd: 'var(--spacing-sm)' }}>
+                    {t('pages.networkView.bulkSelected', { count: selectedHostIds.length })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleBulkFavoritesAdd}
+                    disabled={bulkWorking}
+                    className="btn-secondary btn-small"
+                  >
+                    {t('pages.networkView.bulkAddFavorites')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkFavoritesRemove}
+                    disabled={bulkWorking}
+                    className="btn-secondary btn-small"
+                  >
+                    {t('pages.networkView.bulkRemoveFavorites')}
+                  </button>
+                  {isAdmin && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleOpenBulkEditTags}
+                        disabled={bulkWorking}
+                        className="btn-secondary btn-small"
+                      >
+                        {t('pages.networkView.bulkEditTags')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleBulkDelete}
+                        disabled={bulkWorking}
+                        className="btn-danger btn-small"
+                      >
+                        {t('pages.networkView.bulkDelete')}
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedHostIds([])}
+                    className="btn-ghost btn-small"
+                  >
+                    {t('pages.networkView.bulkClearSelection')}
+                  </button>
+                </div>
+              )}
+
+              {userType !== 'visitor' && filteredHosts.length > 0 && (
+                <div style={{ marginBlockEnd: 'var(--spacing-sm)', display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
+                  <button type="button" onClick={selectOfflineFiltered} className="btn-ghost btn-small">
+                    {t('pages.networkView.selectOfflineFiltered')}
+                  </button>
+                </div>
+              )}
               
               <div className="table-container">
                 <table>
                   <thead>
                     <tr>
+                      {userType !== 'visitor' && (
+                        <th style={{ width: '40px' }}>
+                          <input
+                            type="checkbox"
+                            checked={
+                              filteredHosts.length > 0 &&
+                              filteredHosts.every((h) => selectedHostIds.includes(h.id))
+                            }
+                            onChange={toggleSelectAllFiltered}
+                            title={t('pages.networkView.selectAllFiltered')}
+                          />
+                        </th>
+                      )}
                       <th onClick={() => { if (sortBy === 'name') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('name'); setSortOrder('asc') } }}>
                         {t('common.name')} {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
                       </th>
@@ -869,6 +1057,15 @@ function NetworkView() {
                   <tbody>
                     {filteredHosts.map(host => (
                       <tr key={host.id}>
+                        {userType !== 'visitor' && (
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={selectedHostIds.includes(host.id)}
+                              onChange={() => toggleHostSelected(host.id)}
+                            />
+                          </td>
+                        )}
                         <td><strong>{host.name}</strong></td>
                         <td style={{ fontFamily: 'monospace' }}>{host.ip}</td>
                         <td>
@@ -1065,18 +1262,26 @@ function NetworkView() {
         </>
       )}
 
-      {/* Edit Host Modal */}
-      {editingHostId && (
+      {/* Edit Host Modal (single or bulk tags) */}
+      {(editingHostId || (bulkEditingIds && bulkEditingIds.length > 0)) && (
         <div className="modal-overlay" onClick={handleCancelEdit}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{t('pages.networkView.editHostTags')}</h2>
+              <h2>
+                {bulkEditingIds && bulkEditingIds.length > 0
+                  ? t('pages.networkView.bulkEditTagsTitle', { count: bulkEditingIds.length })
+                  : t('pages.networkView.editHostTags')}
+              </h2>
               <button onClick={handleCancelEdit} className="btn-ghost btn-icon">
                 <CloseIcon size={20} />
               </button>
             </div>
             
-            {hosts.find(h => h.id === editingHostId) && (
+            {bulkEditingIds && bulkEditingIds.length > 0 ? (
+              <p style={{ marginBlockEnd: 'var(--spacing-md)', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                {t('pages.networkView.bulkEditTagsHint')}
+              </p>
+            ) : hosts.find(h => h.id === editingHostId) ? (
               <div style={{ 
                 marginBlockEnd: 'var(--spacing-lg)', 
                 padding: 'var(--spacing-md)',
@@ -1086,7 +1291,7 @@ function NetworkView() {
                 <p style={{ margin: 0 }}><strong>{t('common.name')}:</strong> {hosts.find(h => h.id === editingHostId).name}</p>
                 <p style={{ margin: 0 }}><strong>{t('common.ip')}:</strong> {hosts.find(h => h.id === editingHostId).ip}</p>
               </div>
-            )}
+            ) : null}
             
             <form onSubmit={handleUpdateHost}>
               <div style={{ marginBlockEnd: 'var(--spacing-lg)' }}>

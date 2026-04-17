@@ -264,6 +264,50 @@ app.post('/api/hosts', requireAdmin, asyncHandler(async (req, res) => {
   res.status(201).json(host);
 }));
 
+// Bulk update tags for multiple hosts (must be before /api/hosts/:id)
+app.put('/api/hosts/bulk-tags', requireAdmin, asyncHandler(async (req, res) => {
+  const { ids, tagIds } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new ApiError(400, 'قائمة معرفات الأجهزة مطلوبة');
+  }
+  if (ids.length > 500) {
+    throw new ApiError(400, 'الحد الأقصى 500 جهاز في العملية الواحدة');
+  }
+  const tagIdsArray = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds] : []);
+
+  let updated = 0;
+  const errors = [];
+  for (const rawId of ids) {
+    const hid = parseInt(rawId, 10);
+    if (Number.isNaN(hid)) continue;
+    const existingHost = dbFunctions.getHostById(hid);
+    if (!existingHost) {
+      errors.push({ id: hid, error: 'not_found' });
+      continue;
+    }
+    try {
+      dbFunctions.updateHost(hid, {
+        name: existingHost.name,
+        ip: existingHost.ip,
+        description: existingHost.description || '',
+        url: existingHost.url || '',
+        status: existingHost.status,
+        tagIds: tagIdsArray,
+        lastChecked: existingHost.lastChecked || null,
+        pingLatency: existingHost.pingLatency ?? null,
+        packetLoss: existingHost.packetLoss ?? null
+      });
+      updated++;
+    } catch (e) {
+      errors.push({ id: hid, error: e.message });
+    }
+  }
+
+  cache.delete('tags');
+  cache.delete('stats');
+  res.json({ updated, count: updated, errors: errors.length ? errors : undefined });
+}));
+
 // Update host
 app.put('/api/hosts/:id', requireAdmin, asyncHandler((req, res) => {
   const id = parseInt(req.params.id);
@@ -805,6 +849,45 @@ app.get('/api/networks/:id/hosts', (req, res) => {
   }
 });
 
+// Bulk delete hosts in this network (subset of IPs)
+app.post('/api/networks/:id/hosts/bulk-delete', requireAdmin, asyncHandler(async (req, res) => {
+  const networkId = parseInt(req.params.id, 10);
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new ApiError(400, 'قائمة معرفات الأجهزة مطلوبة');
+  }
+  if (ids.length > 500) {
+    throw new ApiError(400, 'الحد الأقصى 500 جهاز في العملية الواحدة');
+  }
+
+  const network = dbFunctions.getNetworkById(networkId);
+  if (!network) {
+    throw new ApiError(404, 'الشبكة غير موجودة');
+  }
+
+  const toDelete = [];
+  for (const rawId of ids) {
+    const hid = parseInt(rawId, 10);
+    if (Number.isNaN(hid)) continue;
+    const host = dbFunctions.getHostById(hid);
+    if (!host) continue;
+    if (!isIPInNetwork(host.ip, network.network_id, network.subnet)) continue;
+    toDelete.push(hid);
+  }
+
+  if (toDelete.length === 0) {
+    return res.json({ deletedCount: 0, message: 'لم يُحذف أي جهاز' });
+  }
+
+  const deletedCount = dbFunctions.deleteHostsBulkIds(toDelete);
+  cache.delete('stats');
+  cache.delete('tags');
+  cache.delete('favorites');
+  cache.delete('networks');
+  logger.info('Bulk delete hosts', { networkId, deletedCount, requested: ids.length });
+  res.json({ deletedCount, message: `تم حذف ${deletedCount} جهاز` });
+}));
+
 // Scan network
 app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
   try {
@@ -1120,6 +1203,51 @@ app.get('/api/favorites/:id', (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Bulk add/remove favorites (must be before /api/favorites/:id)
+app.post('/api/favorites/bulk', requireAdmin, asyncHandler(async (req, res) => {
+  const { hostIds, action } = req.body;
+  if (!Array.isArray(hostIds) || hostIds.length === 0) {
+    throw new ApiError(400, 'قائمة hostIds مطلوبة');
+  }
+  if (hostIds.length > 500) {
+    throw new ApiError(400, 'الحد الأقصى 500 جهاز');
+  }
+  if (action !== 'add' && action !== 'remove') {
+    throw new ApiError(400, 'action يجب أن يكون add أو remove');
+  }
+
+  const unique = [...new Set(hostIds.map((x) => parseInt(x, 10)).filter((n) => !Number.isNaN(n) && n > 0))];
+  let affected = 0;
+  let skipped = 0;
+
+  for (const hid of unique) {
+    const host = dbFunctions.getHostById(hid);
+    if (!host) {
+      skipped++;
+      continue;
+    }
+    if (action === 'add') {
+      if (dbFunctions.isHostFavorite(hid)) {
+        skipped++;
+        continue;
+      }
+      try {
+        dbFunctions.addFavorite({ hostId: hid });
+        affected++;
+      } catch {
+        skipped++;
+      }
+    } else {
+      const r = dbFunctions.deleteFavoriteByHostId(hid);
+      if (r.changes > 0) affected++;
+      else skipped++;
+    }
+  }
+
+  cache.delete('favorites');
+  res.json({ affected, skipped, action });
+}));
 
 // Add favorite
 app.post('/api/favorites', requireAdmin, (req, res) => {
