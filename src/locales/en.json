@@ -294,7 +294,8 @@
       "addedToFavorites": "Device added to favorites successfully",
       "removedFromFavorites": "Device removed from favorites",
       "dataCleared": "All data deleted successfully",
-      "hostsDeleted": "Hosts deleted successfully"
+      "hostsDeleted": "Hosts deleted successfully",
+      "networkDeleted": "Network and its devices were deleted successfully"
     },
     "error": {
       "unexpected": "An unexpected error occurred",

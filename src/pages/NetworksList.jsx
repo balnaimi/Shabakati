@@ -48,9 +48,12 @@ function NetworksList() {
     try {
       setError(null)
       await apiDelete(`/networks/${id}`)
-      fetchNetworks()
+      const data = await apiGet('/networks')
+      setNetworks(data)
+      alert(t('messages.success.networkDeleted'))
     } catch (err) {
       setError(err.message)
+      alert(`${t('common.error')}: ${err.message}`)
     }
   }
 

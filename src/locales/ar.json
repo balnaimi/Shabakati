@@ -294,7 +294,8 @@
       "addedToFavorites": "تم إضافة الجهاز للمفضلة بنجاح",
       "removedFromFavorites": "تم حذف الجهاز من المفضلة",
       "dataCleared": "تم حذف جميع البيانات بنجاح",
-      "hostsDeleted": "تم حذف الأجهزة بنجاح"
+      "hostsDeleted": "تم حذف الأجهزة بنجاح",
+      "networkDeleted": "تم حذف الشبكة والأجهزة المرتبطة بها بنجاح"
     },
     "error": {
       "unexpected": "حدث خطأ غير متوقع",
