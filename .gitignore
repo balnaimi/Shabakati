@@ -1,5 +1,8 @@
-# Cursor IDE
+# Cursor / IDE
 .cursor/
+.vscode/
+.idea/
+*.code-workspace
 
 # Dependencies
 node_modules/
@@ -7,30 +10,51 @@ node_modules/
 # Build output
 dist/
 build/
+*.tsbuildinfo
 
-# Environment variables
+# Environment and secrets (keep .env.example tracked)
 .env
 .env.local
 .env.*.local
+server/.env
+**/.env
+!.env.example
 
-# Logs
+# Logs (runtime)
+logs/
+server/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
-# OS files
+# SQLite databases and WAL files (local / Docker data)
+*.db
+*.db-shm
+*.db-wal
+
+# Local data directories (e.g. Docker bind mounts)
+data/
+
+# OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# IDE
-.vscode/
-.idea/
+# Editor swap / backup
 *.swp
 *.swo
 *~
 
-# Database files (handled in server/.gitignore)
-# *.db files are in server directory
+# Test / coverage
+coverage/
+.nyc_output/
 
+# Optional tooling caches
+.cache/
+.turbo/
+.parcel-cache/
+.eslintcache
+*.pem

@@ -1,9 +1,2 @@
-*.db
-*.db-shm
-*.db-wal
-node_modules/
-logs/
-*.log
-.env
-.env.local
-
+# Ignore rules for this repo live in the root `.gitignore`
+# (SQLite *.db, logs/, .env, node_modules/, etc.)
