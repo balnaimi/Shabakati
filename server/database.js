@@ -94,6 +94,28 @@ try {
 } catch (e) {}
 
 try {
+  db.exec('ALTER TABLE hosts ADD COLUMN offline_since TEXT');
+} catch (e) {}
+
+try {
+  db.exec('ALTER TABLE networks ADD COLUMN offline_release_after_ms INTEGER');
+} catch (e) {}
+
+try {
+  db.exec(`
+    UPDATE hosts
+    SET offline_since = COALESCE(last_checked, created_at)
+    WHERE status = 'offline'
+      AND (offline_since IS NULL OR offline_since = '')
+  `);
+} catch (e) {}
+
+try {
+  db.exec(`UPDATE networks SET auto_scan_interval = 300000 WHERE auto_scan_interval < 300000`);
+  db.exec(`UPDATE networks SET auto_scan_interval = 3600000 WHERE auto_scan_interval > 3600000`);
+} catch (e) {}
+
+try {
   db.exec('ALTER TABLE hosts ADD COLUMN discovery_method TEXT');
 } catch (e) {}
 
@@ -308,9 +330,10 @@ export const dbFunctions = {
     }
     
     return hosts.map(host => {
-      const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, discovery_method, ...rest } = host;
+      const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, discovery_method, offline_since, ...rest } = host;
       return { 
         ...rest, 
+        offline_since: offline_since || null,
         tags: allHostTags[host.id] || [], 
         createdAt: created_at,
         lastChecked: last_checked,
@@ -327,11 +350,12 @@ export const dbFunctions = {
     const stmt = db.prepare('SELECT * FROM hosts WHERE id = ?');
     const host = stmt.get(id);
     if (!host) return null;
-    const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, discovery_method, ...rest } = host;
+    const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, discovery_method, offline_since, ...rest } = host;
     // Get tags from host_tags table
     const hostTags = this.getHostTags(id);
     return { 
       ...rest, 
+      offline_since: offline_since || null,
       tags: hostTags, 
       createdAt: created_at,
       lastChecked: last_checked,
@@ -344,22 +368,29 @@ export const dbFunctions = {
 
   // Add new host
   addHost(host) {
+    const status = host.status || 'online';
+    const offlineSinceInit =
+      status === 'offline'
+        ? (host.offlineSince || host.offline_since || new Date().toISOString())
+        : null;
+
     const stmt = db.prepare(`
-      INSERT INTO hosts (name, ip, description, url, status, tags, created_at, last_checked, ping_latency, packet_loss, discovery_method)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO hosts (name, ip, description, url, status, tags, created_at, last_checked, ping_latency, packet_loss, discovery_method, offline_since)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       host.name,
       host.ip,
       host.description || null,
       host.url || null,
-      host.status || 'online',
+      status,
       '[]', // Leave tags empty in hosts, use host_tags
       host.createdAt || new Date().toISOString(),
       host.lastChecked || null,
       host.pingLatency || null,
       host.packetLoss || null,
-      host.discoveryMethod || host.discovery_method || null
+      host.discoveryMethod || host.discovery_method || null,
+      offlineSinceInit
     );
     const hostId = result.lastInsertRowid;
     
@@ -387,10 +418,19 @@ export const dbFunctions = {
         ? (host.discoveryMethod !== undefined ? host.discoveryMethod : host.discovery_method)
         : (existing?.discovery_method ?? null);
 
+    const prevStatus = existing.status;
+    const nextStatus = host.status;
+    let offlineSince = existing.offline_since ?? null;
+    if (prevStatus !== 'offline' && nextStatus === 'offline') {
+      offlineSince = new Date().toISOString();
+    } else if (nextStatus === 'online') {
+      offlineSince = null;
+    }
+
     const stmt = db.prepare(`
       UPDATE hosts 
       SET name = ?, ip = ?, description = ?, url = ?, status = ?, tags = ?,
-          last_checked = ?, ping_latency = ?, packet_loss = ?, discovery_method = ?
+          last_checked = ?, ping_latency = ?, packet_loss = ?, discovery_method = ?, offline_since = ?
       WHERE id = ?
     `);
     stmt.run(
@@ -404,6 +444,7 @@ export const dbFunctions = {
       host.pingLatency || null,
       host.packetLoss || null,
       discoveryMethod,
+      offlineSince,
       id
     );
     
@@ -665,12 +706,20 @@ export const dbFunctions = {
     const scanUseTcp =
       network.scan_use_tcp !== undefined ? (network.scan_use_tcp ? 1 : 0) : (existing.scan_use_tcp ?? 1);
 
+    let offlineReleaseAfterMs = existing.offline_release_after_ms ?? null;
+    if (network.offline_release_after_ms !== undefined) {
+      offlineReleaseAfterMs =
+        network.offline_release_after_ms === null || network.offline_release_after_ms === ''
+          ? null
+          : parseInt(network.offline_release_after_ms, 10);
+    }
+
     const stmt = db.prepare(`
       UPDATE networks 
-      SET name = ?, network_id = ?, subnet = ?, last_scanned = ?, scan_use_ping = ?, scan_use_tcp = ?
+      SET name = ?, network_id = ?, subnet = ?, last_scanned = ?, scan_use_ping = ?, scan_use_tcp = ?, offline_release_after_ms = ?
       WHERE id = ?
     `);
-    stmt.run(name, networkId, subnet, lastScanned, scanUsePing, scanUseTcp, id);
+    stmt.run(name, networkId, subnet, lastScanned, scanUsePing, scanUseTcp, offlineReleaseAfterMs, id);
     return this.getNetworkById(id);
   },
 
@@ -732,6 +781,33 @@ export const dbFunctions = {
       const stmt = db.prepare('DELETE FROM auto_scan_results WHERE network_id = ?');
       return stmt.run(networkId);
     }
+  },
+
+  /**
+   * Dashboard summary: networks that have pending auto-scan rows (new_device / disconnected).
+   */
+  getAutoScanOverview() {
+    const networks = this.getAllNetworks();
+    const overview = [];
+    for (const net of networks) {
+      const withHosts = (rows) =>
+        rows
+          .map((result) => ({
+            ...result,
+            host: this.getHostById(result.host_id)
+          }))
+          .filter((r) => r.host);
+      const newDevices = withHosts(this.getAutoScanResults(net.id, 'new_device'));
+      const disconnected = withHosts(this.getAutoScanResults(net.id, 'disconnected'));
+      if (newDevices.length === 0 && disconnected.length === 0) continue;
+      overview.push({
+        networkId: net.id,
+        networkName: net.name,
+        newDevices,
+        disconnected
+      });
+    }
+    return overview;
   },
 
   // ========== Groups functions ==========

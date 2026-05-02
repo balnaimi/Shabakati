@@ -11,7 +11,9 @@ import { checkHost } from './hostChecker.js';
 import { scanNetwork, summarizeDetectionMethods } from './networkScanner.js';
 import { getNetworkCIDR, isIPInNetwork, calculateIPRange } from './networkUtils.js';
 import { initializeAutoScans, startAutoScan, stopAutoScan } from './autoScanService.js';
-import { requireAdmin } from './middleware.js';
+import { ALLOWED_AUTO_SCAN_INTERVAL_SET, ALLOWED_OFFLINE_RELEASE_SET } from './networkPolicies.js';
+import { purgeStaleOfflineHostsForNetwork, startOfflineReleaseTicker } from './offlineReleaseService.js';
+import { requireAdmin, requireVisitor } from './middleware.js';
 import authRouter from './routes/auth.js';
 import logger from './logger.js';
 import { errorHandler, notFoundHandler, asyncHandler, ApiError } from './errorHandler.js';
@@ -756,13 +758,28 @@ app.put('/api/networks/:id', requireAdmin, (req, res) => {
 
     const { scan_use_ping, scan_use_tcp } = req.body;
 
+    let offline_release_patch = undefined;
+    if (req.body.offline_release_after_ms !== undefined) {
+      const v = req.body.offline_release_after_ms;
+      if (v === null || v === '') {
+        offline_release_patch = null;
+      } else {
+        const n = parseInt(v, 10);
+        if (!ALLOWED_OFFLINE_RELEASE_SET.has(n)) {
+          return res.status(400).json({ error: 'مدة تحرير عنوان الجهاز بعد الانقطاع غير مسموحة' });
+        }
+        offline_release_patch = n;
+      }
+    }
+
     const network = {
       name: name !== undefined ? name.trim() : existingNetwork.name,
       networkId: networkId !== undefined ? networkId.trim() : existingNetwork.network_id,
       subnet: subnet !== undefined ? parseInt(subnet) : existingNetwork.subnet,
       lastScanned: lastScanned !== undefined ? lastScanned : existingNetwork.last_scanned,
       scan_use_ping: scan_use_ping !== undefined ? (scan_use_ping ? 1 : 0) : undefined,
-      scan_use_tcp: scan_use_tcp !== undefined ? (scan_use_tcp ? 1 : 0) : undefined
+      scan_use_tcp: scan_use_tcp !== undefined ? (scan_use_tcp ? 1 : 0) : undefined,
+      offline_release_after_ms: offline_release_patch
     };
 
     const updatedNetwork = dbFunctions.updateNetwork(id, network);
@@ -1024,6 +1041,8 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
     }
     logger.info(`[Scan] Updated status for ${updatedCount} existing hosts`);
 
+    purgeStaleOfflineHostsForNetwork(id);
+
     res.json({
       success: true,
       count: activeHosts.length,
@@ -1049,10 +1068,14 @@ app.post('/api/networks/:id/auto-scan', requireAdmin, asyncHandler(async (req, r
     throw new ApiError(404, 'الشبكة غير موجودة');
   }
   
-  const scanInterval = interval || 300000; // Default 5 minutes
-  
-  if (scanInterval < 60000) { // Minimum 1 minute
-    throw new ApiError(400, 'فترة الفحص يجب أن تكون دقيقة واحدة على الأقل');
+  const requestedMs =
+    interval !== undefined && interval !== null ? parseInt(interval, 10) : parseInt(network.auto_scan_interval, 10);
+  const scanInterval = ALLOWED_AUTO_SCAN_INTERVAL_SET.has(requestedMs)
+    ? requestedMs
+    : parseInt(network.auto_scan_interval, 10);
+
+  if (!ALLOWED_AUTO_SCAN_INTERVAL_SET.has(scanInterval)) {
+    throw new ApiError(400, 'فترة الفحص التلقائي يجب أن تكون واحدة من: 5، 10، 15، 20، 30، 45، أو 60 دقيقة');
   }
   
   // Update database
@@ -1072,8 +1095,19 @@ app.post('/api/networks/:id/auto-scan', requireAdmin, asyncHandler(async (req, r
   res.json(updatedNetwork);
 }));
 
+// Auto-scan alerts across all networks (read-only; visitor + admin)
+app.get('/api/auto-scan-overview', requireVisitor, (req, res) => {
+  try {
+    const overview = dbFunctions.getAutoScanOverview();
+    res.json(overview);
+  } catch (error) {
+    logger.error('Error in GET /api/auto-scan-overview:', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get auto scan results for network
-app.get('/api/networks/:id/auto-scan-results', (req, res) => {
+app.get('/api/networks/:id/auto-scan-results', requireVisitor, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { type } = req.query; // 'new_device' or 'disconnected'
@@ -1504,6 +1538,7 @@ app.listen(PORT, '0.0.0.0', () => {
   
   // Initialize auto scans
   initializeAutoScans();
+  startOfflineReleaseTicker();
 }).on('error', (err) => {
   logger.error('Failed to start server:', err);
   process.exit(1);

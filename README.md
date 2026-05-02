@@ -36,6 +36,21 @@
 
 ---
 
+## 🚀 تجربة وتشغيل البرنامج (Docker Compose)
+
+الطريقة الموصى بها لتجربة البرنامج هي **Docker Compose**: يُبنى كل شيء داخل الصورة (الواجهة والخادم)، فكلما عدّلت الكود تحتاج إعادة بناء وتشغيل كما بالأسفل.
+
+| الغرض | الأمر |
+|--------|--------|
+| تشغيل مع إعادة بناء الصورة (المخرجات في الطرفية) | `docker compose up --build` |
+| نفس الشيء في الخلفية (daemon) | `docker compose up --build -d` |
+| إيقاف الحاويات بعد التعديل أو قبل إعادة البناء | `docker compose down` |
+| إيقاف **ومسح بيانات التطبيق** (volume قاعدة البيانات ثم إعادة تشغيل نظيفة) | `docker compose down -v` ثم `docker compose up --build` |
+
+**بعد كل تغيير على الكود:** نفّذ `docker compose down` ثم `docker compose up --build` (أضف `-d` إذا أردت التشغيل في الخلفية).
+
+---
+
 ## 🚀 التشغيل في Production (Docker)
 
 ```bash
@@ -54,7 +69,10 @@ cp .env.example .env
 
 # 4. حفظ الملف
 
-# 5. تشغيل البرنامج (Production - daemon mode)
+# 5. تشغيل البرنامج — أمامي مع البناء:
+docker compose up --build
+
+#    أو في الخلفية:
 docker compose up --build -d
 ```
 
@@ -68,8 +86,8 @@ docker compose up --build -d
 # 1. تثبيت Node.js 24 LTS (إذا لم يكن مثبتاً)
 
 # 2. تثبيت البكجات
-npm install
-cd server && npm install && cd ..
+(cd web && npm install)
+(cd server && npm install)
 
 # 3. الدخول إلى مجلد scripts وتشغيل السكريبت
 cd scripts

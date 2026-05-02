@@ -1,6 +1,6 @@
 {
   "name": "network-dashboard-server",
-  "version": "1.0.4",
+  "version": "1.0.13",
   "type": "module",
   "engines": {
     "node": ">=24.0.0"

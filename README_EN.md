@@ -36,6 +36,21 @@ A modern dashboard for managing and monitoring devices on your network with SQLi
 
 ---
 
+## 🚀 Trying and running the app (Docker Compose)
+
+The recommended way to **try the app** is **Docker Compose**: the image builds everything (frontend + server). Whenever you change code, rebuild and run again as below.
+
+| Goal | Command |
+|------|---------|
+| Run with a fresh image build (foreground logs) | `docker compose up --build` |
+| Same, detached (background) | `docker compose up --build -d` |
+| Stop containers after edits or before rebuilding | `docker compose down` |
+| Stop **and wipe app data** (DB volume), then clean restart | `docker compose down -v` then `docker compose up --build` |
+
+**After every code change:** run `docker compose down`, then `docker compose up --build` (add `-d` for background).
+
+---
+
 ## 🚀 Production Deployment (Docker)
 
 ```bash
@@ -54,7 +69,10 @@ cp .env.example .env
 
 # 4. Save the file
 
-# 5. Run the application (Production - daemon mode)
+# 5. Run — foreground with build:
+docker compose up --build
+
+#    Or in the background:
 docker compose up --build -d
 ```
 
@@ -68,8 +86,8 @@ The application will be available at: http://your-ip:3001 or http://your-domain:
 # 1. Install Node.js 24 LTS (if not already installed)
 
 # 2. Install dependencies
-npm install
-cd server && npm install && cd ..
+(cd web && npm install)
+(cd server && npm install)
 
 # 3. Navigate to scripts folder and run the script
 cd scripts

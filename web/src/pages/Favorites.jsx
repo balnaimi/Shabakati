@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_URL } from '../constants'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
@@ -21,7 +21,8 @@ import {
   OfflineIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  AlertIcon
+  AlertIcon,
+  ScanIcon
 } from '../components/Icons'
 
 function Favorites() {
@@ -45,6 +46,9 @@ function Favorites() {
   const [editingFavorite, setEditingFavorite] = useState(null)
   const [editingGroup, setEditingGroup] = useState(null)
   const [collapsedGroups, setCollapsedGroups] = useState({})
+  const [scanOverview, setScanOverview] = useState([])
+  const [monitoringExpanded, setMonitoringExpanded] = useState(false)
+  const [expandedMonitoringNetworkId, setExpandedMonitoringNetworkId] = useState(null)
   
   // Form states
   const [addFormData, setAddFormData] = useState({ hostId: '', url: '', groupId: '' })
@@ -74,6 +78,13 @@ function Favorites() {
         onlineHosts: statsData.onlineHosts,
         offlineHosts: statsData.offlineHosts
       })
+      try {
+        const overview = await apiGet('/auto-scan-overview')
+        setScanOverview(Array.isArray(overview) ? overview : [])
+      } catch (overviewErr) {
+        console.error('auto-scan-overview:', overviewErr)
+        setScanOverview([])
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -340,6 +351,16 @@ function Favorites() {
     !favorites.some(fav => fav.hostId === host.id)
   )
 
+  const monitoringTotals = useMemo(() => {
+    const newCount = scanOverview.reduce((s, n) => s + (n.newDevices?.length || 0), 0)
+    const discCount = scanOverview.reduce((s, n) => s + (n.disconnected?.length || 0), 0)
+    return {
+      newCount,
+      discCount,
+      networkCount: scanOverview.length
+    }
+  }, [scanOverview])
+
   if (loading) {
     return <LoadingSpinner fullPage />
   }
@@ -384,6 +405,189 @@ function Favorites() {
           </div>
         </div>
       </div>
+
+      <section
+        className="card"
+        style={{
+          marginBlockStart: 'var(--spacing-lg)',
+          padding: 'var(--spacing-lg)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border-color)'
+        }}
+        aria-label={t('pages.favorites.monitoringTitle')}
+      >
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => {
+            setMonitoringExpanded((v) => {
+              if (v) setExpandedMonitoringNetworkId(null)
+              return !v
+            })
+          }}
+          aria-expanded={monitoringExpanded}
+          style={{
+            width: '100%',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 'var(--spacing-md)',
+            justifyContent: 'space-between',
+            fontWeight: 'var(--font-weight-semibold)',
+            padding: 'var(--spacing-xs) 0'
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flex: '1 1 auto', textAlign: 'start' }}>
+            <ScanIcon size={22} />
+            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+              <span>{t('pages.favorites.monitoringTitle')}</span>
+              <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 'normal', color: 'var(--text-tertiary)' }}>
+                {t('pages.favorites.monitoringHint')}
+              </span>
+            </span>
+          </span>
+          <span
+            style={{
+              fontSize: 'var(--font-size-sm)',
+              fontWeight: 'normal',
+              color: monitoringTotals.networkCount > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+              flex: '1 1 200px',
+              textAlign: 'start'
+            }}
+          >
+            {monitoringTotals.networkCount === 0
+              ? t('pages.favorites.monitoringIdle')
+              : t('pages.favorites.monitoringSummary', {
+                  networkCount: monitoringTotals.networkCount,
+                  newCount: monitoringTotals.newCount,
+                  discCount: monitoringTotals.discCount
+                })}
+          </span>
+          {monitoringExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
+        </button>
+
+        {monitoringExpanded && monitoringTotals.networkCount === 0 && (
+          <p style={{ margin: 'var(--spacing-md) 0 0', fontSize: 'var(--font-size-sm)', color: 'var(--text-tertiary)' }}>
+            {t('pages.favorites.monitoringEmptyDetail')}
+          </p>
+        )}
+
+        {monitoringExpanded && monitoringTotals.networkCount > 0 && (
+          <div style={{ marginBlockStart: 'var(--spacing-md)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+            {scanOverview.map((net) => {
+              const netOpen = expandedMonitoringNetworkId === net.networkId
+              return (
+                <div
+                  key={net.networkId}
+                  style={{
+                    padding: 'var(--spacing-md)',
+                    backgroundColor: 'var(--bg-secondary)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-color)'
+                  }}
+                >
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)', justifyContent: 'space-between' }}>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() =>
+                        setExpandedMonitoringNetworkId((id) => (id === net.networkId ? null : net.networkId))
+                      }
+                      aria-expanded={netOpen}
+                      style={{
+                        flex: '1 1 200px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--spacing-sm)',
+                        justifyContent: 'flex-start',
+                        fontWeight: 'var(--font-weight-semibold)'
+                      }}
+                    >
+                      <NetworkIcon size={18} />
+                      <span style={{ textAlign: 'start' }}>{net.networkName}</span>
+                      <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'normal', color: 'var(--text-secondary)' }}>
+                        {t('pages.favorites.monitoringNetworkCounts', {
+                          newCount: net.newDevices.length,
+                          discCount: net.disconnected.length
+                        })}
+                      </span>
+                      {netOpen ? <ChevronUpIcon size={20} /> : <ChevronDownIcon size={20} />}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-small"
+                      onClick={() => navigate(`/networks/${net.networkId}`)}
+                    >
+                      {t('pages.favorites.viewNetwork')}
+                    </button>
+                  </div>
+
+                  {netOpen && (
+                    <div style={{ marginBlockStart: 'var(--spacing-md)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+                      {net.newDevices.length > 0 && (
+                        <div>
+                          <h4 style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--font-size-sm)', color: 'var(--success)' }}>
+                            {t('pages.networkView.newDevicesAutoScan')} ({net.newDevices.length})
+                          </h4>
+                          <div
+                            style={{
+                              maxHeight: 'min(38vh, 360px)',
+                              overflowY: 'auto',
+                              paddingInlineEnd: 'var(--spacing-xs)'
+                            }}
+                          >
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'var(--spacing-sm)' }}>
+                              {net.newDevices.map((result) => (
+                                <div key={result.id} className="card" style={{ padding: 'var(--spacing-sm)' }}>
+                                  <div style={{ fontWeight: 'var(--font-weight-medium)' }}>{result.host?.name || t('common.unknown')}</div>
+                                  <div style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                                    {result.host?.ip}
+                                  </div>
+                                  <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBlockStart: 'var(--spacing-xs)' }}>
+                                    {new Date(result.discovered_at).toLocaleString()}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {net.disconnected.length > 0 && (
+                        <div>
+                          <h4 style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--font-size-sm)', color: 'var(--danger)' }}>
+                            {t('pages.networkView.disconnected')} ({net.disconnected.length})
+                          </h4>
+                          <div
+                            style={{
+                              maxHeight: 'min(38vh, 360px)',
+                              overflowY: 'auto',
+                              paddingInlineEnd: 'var(--spacing-xs)'
+                            }}
+                          >
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'var(--spacing-sm)' }}>
+                              {net.disconnected.map((result) => (
+                                <div key={result.id} className="card" style={{ padding: 'var(--spacing-sm)' }}>
+                                  <div style={{ fontWeight: 'var(--font-weight-medium)' }}>{result.host?.name || t('common.unknown')}</div>
+                                  <div style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                                    {result.host?.ip}
+                                  </div>
+                                  <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBlockStart: 'var(--spacing-xs)' }}>
+                                    {new Date(result.discovered_at).toLocaleString()}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
       {error && (
         <div className="error-message">

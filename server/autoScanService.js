@@ -2,6 +2,7 @@ import { dbFunctions } from './database.js';
 import { scanNetwork } from './networkScanner.js';
 import { getNetworkCIDR, isIPInNetwork } from './networkUtils.js';
 import logger from './logger.js';
+import { purgeStaleOfflineHostsForNetwork } from './offlineReleaseService.js';
 
 // Translation object for auto scan descriptions
 const autoScanDescriptions = {
@@ -169,6 +170,8 @@ async function performAutoScan(networkId) {
     });
     
     logger.info(`[AutoScan] Scan completed for network ${networkId}: ${newDevicesCount} new devices, ${disconnectedCount} disconnected`);
+
+    purgeStaleOfflineHostsForNetwork(networkId);
   } catch (error) {
     logger.error(`[AutoScan] Error scanning network ${networkId}:`, { error: error.message });
   }

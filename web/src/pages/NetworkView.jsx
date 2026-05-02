@@ -9,6 +9,7 @@ import { useTranslation } from '../hooks/useTranslation'
 import { useLanguage } from '../contexts/LanguageContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import Modal from '../components/Modal'
 import {
   ScanIcon,
   RefreshIcon,
@@ -22,8 +23,26 @@ import {
   OfflineIcon,
   AlertIcon,
   InfoIcon,
-  ChevronLeftIcon
+  ChevronLeftIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
 } from '../components/Icons'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const AUTO_SCAN_INTERVAL_MS_OPTIONS = [5, 10, 15, 20, 30, 45, 60].map((m) => m * 60 * 1000)
+const OFFLINE_RELEASE_OPTIONS = [
+  { ms: null, labelKey: 'pages.networkView.offlineReleaseNever' },
+  { ms: 3 * DAY_MS, labelKey: 'pages.networkView.offlineRelease3d' },
+  { ms: 7 * DAY_MS, labelKey: 'pages.networkView.offlineRelease7d' },
+  { ms: 14 * DAY_MS, labelKey: 'pages.networkView.offlineRelease14d' },
+  { ms: 30 * DAY_MS, labelKey: 'pages.networkView.offlineRelease30d' },
+  { ms: 60 * DAY_MS, labelKey: 'pages.networkView.offlineRelease60d' },
+  { ms: 90 * DAY_MS, labelKey: 'pages.networkView.offlineRelease90d' }
+]
+
+const ALLOWED_OFFLINE_MS_SET = new Set(
+  OFFLINE_RELEASE_OPTIONS.filter((o) => o.ms !== null).map((o) => o.ms)
+)
 
 function NetworkView() {
   const navigate = useNavigate()
@@ -59,6 +78,11 @@ function NetworkView() {
   const [selectedHostIds, setSelectedHostIds] = useState([])
   const [bulkEditingIds, setBulkEditingIds] = useState(null)
   const [bulkWorking, setBulkWorking] = useState(false)
+  const [scanResultModal, setScanResultModal] = useState(null)
+  const [manualNewHostsExpanded, setManualNewHostsExpanded] = useState(false)
+  const [autoNewDevicesExpanded, setAutoNewDevicesExpanded] = useState(false)
+  const [disconnectedExpanded, setDisconnectedExpanded] = useState(false)
+  const [offlineReleaseAfterMs, setOfflineReleaseAfterMs] = useState(null)
 
   useEffect(() => {
     fetchNetwork()
@@ -69,7 +93,14 @@ function NetworkView() {
   useEffect(() => {
     if (network) {
       setAutoScanEnabled(network.auto_scan_enabled === 1)
-      setAutoScanInterval(network.auto_scan_interval || 300000)
+      const rawInterval = network.auto_scan_interval || 300000
+      setAutoScanInterval(
+        AUTO_SCAN_INTERVAL_MS_OPTIONS.includes(rawInterval) ? rawInterval : 300000
+      )
+      const orv = network.offline_release_after_ms
+      const parsed =
+        orv === undefined || orv === null ? null : Number(orv)
+      setOfflineReleaseAfterMs(parsed !== null && ALLOWED_OFFLINE_MS_SET.has(parsed) ? parsed : null)
       setScanUsePing((network.scan_use_ping ?? 1) === 1)
       setScanUseTcp((network.scan_use_tcp ?? 1) === 1)
       fetchAutoScanResults()
@@ -82,6 +113,9 @@ function NetworkView() {
 
   useEffect(() => {
     setSelectedHostIds([])
+    setManualNewHostsExpanded(false)
+    setAutoNewDevicesExpanded(false)
+    setDisconnectedExpanded(false)
   }, [id])
 
   const fetchFavorites = async () => {
@@ -189,6 +223,23 @@ function NetworkView() {
     }
   }
 
+  const handleAutoScanIntervalChange = async (ms) => {
+    setAutoScanInterval(ms)
+    if (!network || !autoScanEnabled) return
+    try {
+      setLoadingAutoScan(true)
+      await apiPost(`/networks/${id}/auto-scan`, {
+        enabled: true,
+        interval: ms
+      })
+      await fetchNetwork()
+    } catch (err) {
+      alert(`${t('common.error')}: ${err.message}`)
+    } finally {
+      setLoadingAutoScan(false)
+    }
+  }
+
   const handleSaveScanPreferences = async () => {
     if (!network || !isAdmin) return
     if (!scanUsePing && !scanUseTcp) {
@@ -202,7 +253,8 @@ function NetworkView() {
         networkId: network.network_id,
         subnet: network.subnet,
         scan_use_ping: scanUsePing,
-        scan_use_tcp: scanUseTcp
+        scan_use_tcp: scanUseTcp,
+        offline_release_after_ms: offlineReleaseAfterMs
       })
       await fetchNetwork()
       alert(t('pages.networkView.scanPreferencesSaved'))
@@ -261,18 +313,27 @@ function NetworkView() {
       if (result.hosts && result.hosts.length > 0) {
         const addedCount = result.addedCount ?? result.hosts.length
         const ds = result.detectionSummary
-        const summaryExtra = ds
-          ? '\n' + t('pages.networkView.detectionSummaryLine', {
+        const paragraphs = [
+          t('pages.networkView.scanResult', { total: result.hosts.length, added: addedCount })
+        ]
+        if (ds) {
+          paragraphs.push(
+            t('pages.networkView.detectionSummaryLine', {
               ping: ds.ping,
               port: ds.port,
               both: ds.both
             })
-          : ''
-        alert(
-          t('pages.networkView.scanResult', { total: result.hosts.length, added: addedCount }) + summaryExtra
-        )
+          )
+        }
+        setScanResultModal({
+          title: t('pages.networkView.scanResultModalTitle'),
+          paragraphs
+        })
       } else {
-        alert(t('pages.networkView.scanResultNoDevices'))
+        setScanResultModal({
+          title: t('pages.networkView.scanResultModalTitle'),
+          paragraphs: [t('pages.networkView.scanResultNoDevices')]
+        })
       }
     } catch (err) {
       console.error('Scan error:', err)
@@ -655,6 +716,34 @@ function NetworkView() {
             </p>
           )}
           <div style={{ marginTop: 'var(--spacing-md)' }}>
+            <label style={{ display: 'block', marginBlockEnd: 'var(--spacing-xs)', fontWeight: 'var(--font-weight-semibold)', fontSize: 'var(--font-size-sm)' }}>
+              {t('pages.networkView.offlineReleaseLabel')}
+            </label>
+            <p style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', maxWidth: '520px', lineHeight: 1.45 }}>
+              {t('pages.networkView.offlineReleaseHelp')}
+            </p>
+            <select
+              value={offlineReleaseAfterMs === null ? '' : String(offlineReleaseAfterMs)}
+              onChange={(e) =>
+                setOfflineReleaseAfterMs(e.target.value === '' ? null : Number(e.target.value))
+              }
+              style={{
+                padding: 'var(--spacing-xs) var(--spacing-sm)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                minWidth: 'min(100%, 280px)'
+              }}
+            >
+              {OFFLINE_RELEASE_OPTIONS.map((opt) => (
+                <option key={opt.ms === null ? 'never' : String(opt.ms)} value={opt.ms === null ? '' : String(opt.ms)}>
+                  {t(opt.labelKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ marginTop: 'var(--spacing-md)' }}>
             <button
               type="button"
               onClick={handleSaveScanPreferences}
@@ -691,11 +780,12 @@ function NetworkView() {
             )}
           </button>
           
-          {/* Auto scan toggle */}
+          {/* Auto scan */}
           <div style={{ 
             display: 'flex', 
+            flexWrap: 'wrap',
             alignItems: 'center', 
-            gap: 'var(--spacing-sm)',
+            gap: 'var(--spacing-md)',
             padding: 'var(--spacing-sm) var(--spacing-md)',
             backgroundColor: 'var(--bg-primary)',
             borderRadius: 'var(--radius-md)',
@@ -717,11 +807,27 @@ function NetworkView() {
               />
               <span>{t('pages.networkView.autoScan')}</span>
             </label>
-            {autoScanEnabled && (
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                ({Math.round(autoScanInterval / 60000)} min)
-              </span>
-            )}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)' }}>
+              <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{t('pages.networkView.autoScanIntervalLabel')}</span>
+              <select
+                value={autoScanInterval}
+                onChange={(e) => handleAutoScanIntervalChange(Number(e.target.value))}
+                disabled={loadingAutoScan}
+                style={{
+                  padding: 'var(--spacing-xs) var(--spacing-sm)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)'
+                }}
+              >
+                {AUTO_SCAN_INTERVAL_MS_OPTIONS.map((ms) => (
+                  <option key={ms} value={ms}>
+                    {t('pages.networkView.autoScanIntervalOption', { minutes: ms / 60000 })}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           
           <button onClick={handleClearNetworkHosts} className="btn-danger">
@@ -751,7 +857,7 @@ function NetworkView() {
       {/* Devices Tab */}
       {activeTab === 'devices' && (
         <>
-          {/* New Hosts Section */}
+          {/* New Hosts Section (manual scan) — collapsed summary */}
           {visibleNewHosts.length > 0 && (
             <div style={{ 
               marginBlockEnd: 'var(--spacing-xl)',
@@ -760,52 +866,84 @@ function NetworkView() {
               border: '1px solid var(--success)',
               borderRadius: 'var(--radius-lg)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBlockEnd: 'var(--spacing-md)' }}>
-                <h2 style={{ margin: 0, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-lg)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)', justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => setManualNewHostsExpanded((v) => !v)}
+                  aria-expanded={manualNewHostsExpanded}
+                  aria-label={manualNewHostsExpanded ? t('pages.networkView.collapseDeviceList') : t('pages.networkView.expandDeviceList')}
+                  style={{
+                    flex: '1 1 220px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-sm)',
+                    justifyContent: 'flex-start',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    fontSize: 'var(--font-size-lg)',
+                    color: 'var(--success)',
+                    padding: 'var(--spacing-xs) var(--spacing-sm)',
+                    borderRadius: 'var(--radius-md)'
+                  }}
+                >
                   <OnlineIcon size={20} />
-                  {t('pages.networkView.newDevices')} ({visibleNewHosts.length})
-                </h2>
-                <button onClick={handleHideAllNewHosts} className="btn-success btn-small">
+                  <span style={{ flex: 1, textAlign: 'start' }}>
+                    {t('pages.networkView.newDevicesManual')} ({visibleNewHosts.length})
+                  </span>
+                  {manualNewHostsExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
+                </button>
+                <button type="button" onClick={handleHideAllNewHosts} className="btn-success btn-small">
                   <CheckIcon size={14} />
                   <span>{t('pages.networkView.hideAll')}</span>
                 </button>
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
-                {visibleNewHosts.map(host => (
-                  <div key={host.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)', fontSize: 'var(--font-size-base)' }}>{host.name}</h3>
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{host.ip}</p>
+              {manualNewHostsExpanded && (
+                <div
+                  style={{
+                    marginBlockStart: 'var(--spacing-md)',
+                    maxHeight: 'min(55vh, 440px)',
+                    overflowY: 'auto',
+                    paddingInlineEnd: 'var(--spacing-xs)'
+                  }}
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
+                    {visibleNewHosts.map(host => (
+                      <div key={host.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)', fontSize: 'var(--font-size-base)' }}>{host.name}</h3>
+                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{host.ip}</p>
+                          </div>
+                          <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
+                            {host.status === 'online' ? t('common.online') : t('common.offline')}
+                          </span>
+                        </div>
+                        
+                        {getDescription(host.description, language) && (
+                          <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                            {getDescription(host.description, language)}
+                          </p>
+                        )}
+                        
+                        <div style={{ display: 'flex', gap: 'var(--spacing-xs)', marginBlockStart: 'var(--spacing-sm)' }}>
+                          {isAdmin && (
+                            <>
+                              <button type="button" onClick={() => handleEditHost(host)} className="btn-primary btn-small" style={{ flex: 1 }}>
+                                <EditIcon size={14} />
+                                <span>{t('common.edit')}</span>
+                              </button>
+                              <button type="button" onClick={() => handleHideNewHost(host.id)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.viewed')}>
+                                <CheckIcon size={14} />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
-                        {host.status === 'online' ? t('common.online') : t('common.offline')}
-                      </span>
-                    </div>
-                    
-                    {getDescription(host.description, language) && (
-                      <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                        {getDescription(host.description, language)}
-                      </p>
-                    )}
-                    
-                    <div style={{ display: 'flex', gap: 'var(--spacing-xs)', marginBlockStart: 'var(--spacing-sm)' }}>
-                      {isAdmin && (
-                        <>
-                          <button onClick={() => handleEditHost(host)} className="btn-primary btn-small" style={{ flex: 1 }}>
-                            <EditIcon size={14} />
-                            <span>{t('common.edit')}</span>
-                          </button>
-                          <button onClick={() => handleHideNewHost(host.id)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.viewed')}>
-                            <CheckIcon size={14} />
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -818,13 +956,35 @@ function NetworkView() {
               border: '1px solid var(--success)',
               borderRadius: 'var(--radius-lg)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBlockEnd: 'var(--spacing-md)' }}>
-                <h2 style={{ margin: 0, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-lg)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)', justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => setAutoNewDevicesExpanded((v) => !v)}
+                  aria-expanded={autoNewDevicesExpanded}
+                  aria-label={autoNewDevicesExpanded ? t('pages.networkView.collapseDeviceList') : t('pages.networkView.expandDeviceList')}
+                  style={{
+                    flex: '1 1 220px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-sm)',
+                    justifyContent: 'flex-start',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    fontSize: 'var(--font-size-lg)',
+                    color: 'var(--success)',
+                    padding: 'var(--spacing-xs) var(--spacing-sm)',
+                    borderRadius: 'var(--radius-md)'
+                  }}
+                >
                   <OnlineIcon size={20} />
-                  {t('pages.networkView.newDevices')} ({autoScanResults.newDevices.length})
-                </h2>
+                  <span style={{ flex: 1, textAlign: 'start' }}>
+                    {t('pages.networkView.newDevicesAutoScan')} ({autoScanResults.newDevices.length})
+                  </span>
+                  {autoNewDevicesExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
+                </button>
                 {isAdmin && (
                   <button
+                    type="button"
                     onClick={async () => {
                       try {
                         await apiDelete(`/networks/${id}/auto-scan-results?type=new_device`)
@@ -840,24 +1000,35 @@ function NetworkView() {
                 )}
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
-                {autoScanResults.newDevices.map(result => (
-                  <div key={result.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host?.name || t('common.unknown')}</h3>
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{result.host?.ip || t('common.unknown')}</p>
-                        <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                          {new Date(result.discovered_at).toLocaleString()}
-                        </p>
+              {autoNewDevicesExpanded && (
+                <div
+                  style={{
+                    marginBlockStart: 'var(--spacing-md)',
+                    maxHeight: 'min(55vh, 440px)',
+                    overflowY: 'auto',
+                    paddingInlineEnd: 'var(--spacing-xs)'
+                  }}
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
+                    {autoScanResults.newDevices.map(result => (
+                      <div key={result.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host?.name || t('common.unknown')}</h3>
+                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{result.host?.ip || t('common.unknown')}</p>
+                            <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+                              {new Date(result.discovered_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <span className={`status-badge ${result.host?.status === 'online' ? 'status-online' : 'status-offline'}`}>
+                            {result.host?.status === 'online' ? t('common.online') : t('common.offline')}
+                          </span>
+                        </div>
                       </div>
-                      <span className={`status-badge ${result.host?.status === 'online' ? 'status-online' : 'status-offline'}`}>
-                        {result.host?.status === 'online' ? t('common.online') : t('common.offline')}
-                      </span>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -870,13 +1041,35 @@ function NetworkView() {
               border: '1px solid var(--danger)',
               borderRadius: 'var(--radius-lg)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBlockEnd: 'var(--spacing-md)' }}>
-                <h2 style={{ margin: 0, color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-lg)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)', justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => setDisconnectedExpanded((v) => !v)}
+                  aria-expanded={disconnectedExpanded}
+                  aria-label={disconnectedExpanded ? t('pages.networkView.collapseDeviceList') : t('pages.networkView.expandDeviceList')}
+                  style={{
+                    flex: '1 1 220px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-sm)',
+                    justifyContent: 'flex-start',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    fontSize: 'var(--font-size-lg)',
+                    color: 'var(--danger)',
+                    padding: 'var(--spacing-xs) var(--spacing-sm)',
+                    borderRadius: 'var(--radius-md)'
+                  }}
+                >
                   <OfflineIcon size={20} />
-                  {t('pages.networkView.disconnected')} ({autoScanResults.disconnected.length})
-                </h2>
+                  <span style={{ flex: 1, textAlign: 'start' }}>
+                    {t('pages.networkView.disconnected')} ({autoScanResults.disconnected.length})
+                  </span>
+                  {disconnectedExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
+                </button>
                 {isAdmin && (
                   <button
+                    type="button"
                     onClick={async () => {
                       try {
                         await apiDelete(`/networks/${id}/auto-scan-results?type=disconnected`)
@@ -892,22 +1085,33 @@ function NetworkView() {
                 )}
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
-                {autoScanResults.disconnected.map(result => (
-                  <div key={result.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host?.name || t('common.unknown')}</h3>
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{result.host?.ip || t('common.unknown')}</p>
-                        <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                          {new Date(result.discovered_at).toLocaleString()}
-                        </p>
+              {disconnectedExpanded && (
+                <div
+                  style={{
+                    marginBlockStart: 'var(--spacing-md)',
+                    maxHeight: 'min(55vh, 440px)',
+                    overflowY: 'auto',
+                    paddingInlineEnd: 'var(--spacing-xs)'
+                  }}
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
+                    {autoScanResults.disconnected.map(result => (
+                      <div key={result.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host?.name || t('common.unknown')}</h3>
+                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{result.host?.ip || t('common.unknown')}</p>
+                            <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+                              {new Date(result.discovered_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <span className="status-badge status-offline">{t('common.offline')}</span>
+                        </div>
                       </div>
-                      <span className="status-badge status-offline">{t('common.offline')}</span>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1331,6 +1535,44 @@ function NetworkView() {
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={scanResultModal !== null}
+        onClose={() => setScanResultModal(null)}
+        title={scanResultModal?.title}
+        size="small"
+        closeOnOverlay={false}
+        showCloseButton={false}
+        footer={
+          <button type="button" className="btn-primary" onClick={() => setScanResultModal(null)}>
+            {t('common.ok')}
+          </button>
+        }
+      >
+        {scanResultModal && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--spacing-md)'
+            }}
+          >
+            {scanResultModal.paragraphs.map((line, idx) => (
+              <p
+                key={idx}
+                style={{
+                  margin: 0,
+                  color: idx === 0 ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontWeight: idx === 0 ? 'var(--font-weight-medium)' : undefined,
+                  lineHeight: 1.55
+                }}
+              >
+                {line}
+              </p>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

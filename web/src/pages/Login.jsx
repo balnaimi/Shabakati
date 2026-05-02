@@ -14,7 +14,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [setupRequired, setSetupRequired] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
-  const { login } = useAuth();
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -32,6 +32,13 @@ function Login() {
         setCheckingSetup(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (checkingSetup || authLoading || setupRequired) return;
+    if (!isAuthenticated) return;
+    const from = new URLSearchParams(window.location.search).get('from') || '/';
+    navigate(from, { replace: true });
+  }, [checkingSetup, authLoading, setupRequired, isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

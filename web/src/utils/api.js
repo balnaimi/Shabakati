@@ -49,10 +49,13 @@ function getAuthHeaders(customToken = null) {
 
 /**
  * Handle API response with error checking
+ * @param {{ clearTokensOn401?: boolean }} [opts] — When false, 401 does not clear stored tokens (e.g. wrong admin password while visitor session is valid).
  */
-export async function handleApiResponse(response) {
-  // Handle 401 Unauthorized
-  if (response.status === 401) {
+export async function handleApiResponse(response, opts = {}) {
+  const { clearTokensOn401 = true } = opts
+
+  // Handle 401 Unauthorized (wrong login password must NOT revoke an existing visitor session)
+  if (response.status === 401 && clearTokensOn401) {
     handleUnauthorized()
   }
   
@@ -130,13 +133,26 @@ export async function apiGet(endpoint, signal = null) {
 }
 
 /**
- * POST request with error handling
- * @param {string} endpoint - API endpoint
- * @param {object} data - Request body data
- * @param {string} customToken - Optional custom auth token
- * @param {AbortSignal} signal - Optional abort signal for cancellation
+ * POST request with error handling.
+ * @param {string|null} [thirdOrOpts] — Bearer token string, or options `{ token?, signal?, clearTokensOn401? }`.
+ * @param {AbortSignal|null} [fourth] — AbortSignal when third arg is a token string (legacy).
  */
-export async function apiPost(endpoint, data, customToken = null, signal = null) {
+export async function apiPost(endpoint, data, thirdOrOpts = null, fourth = null) {
+  let customToken = null
+  let signal = null
+  let clearTokensOn401 = true
+
+  if (thirdOrOpts != null && typeof thirdOrOpts === 'object' && !(thirdOrOpts instanceof AbortSignal)) {
+    customToken = thirdOrOpts.token ?? null
+    signal = thirdOrOpts.signal ?? null
+    if (thirdOrOpts.clearTokensOn401 === false) {
+      clearTokensOn401 = false
+    }
+  } else {
+    customToken = thirdOrOpts
+    signal = fourth
+  }
+
   try {
     const response = await fetchWithAbort(
       `${API_URL}${endpoint}`,
@@ -147,8 +163,8 @@ export async function apiPost(endpoint, data, customToken = null, signal = null)
       },
       signal
     )
-    
-    return await handleApiResponse(response)
+
+    return await handleApiResponse(response, { clearTokensOn401 })
   } catch (error) {
     if (error.message !== 'Request was cancelled') {
       console.error(`API POST Error (${endpoint}):`, error)

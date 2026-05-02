@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { apiPost, apiGet } from '../utils/api';
+import { decodeJwtPayloadUnsafe, isLikelyNetworkError } from '../utils/jwtPayload';
 
 const AuthContext = createContext();
 
@@ -18,33 +19,29 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const checkAuthStatus = useCallback(async () => {
-    try {
-      // Check localStorage for visitor token first
-      let token = localStorage.getItem('visitorToken');
-      let isVisitor = true;
-      
-      // If no visitor token, check localStorage for admin token
-      if (!token) {
-        token = localStorage.getItem('authToken');
-        isVisitor = false;
-      }
-      
-      if (!token) {
-        setIsAuthenticated(false);
-        setUsername(null);
-        setUserType(null);
-        setLoading(false);
-        return;
-      }
+    let token = localStorage.getItem('visitorToken');
+    let isVisitor = true;
 
-      // Check token validity with backend
+    if (!token) {
+      token = localStorage.getItem('authToken');
+      isVisitor = false;
+    }
+
+    if (!token) {
+      setIsAuthenticated(false);
+      setUsername(null);
+      setUserType(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
       const response = await apiGet('/auth/status');
       if (response.authenticated) {
         setIsAuthenticated(true);
         setUsername(response.username);
         setUserType(response.userType || 'visitor');
       } else {
-        // Token is invalid, remove it
         if (isVisitor) {
           localStorage.removeItem('visitorToken');
         } else {
@@ -55,12 +52,33 @@ export function AuthProvider({ children }) {
         setUserType(null);
       }
     } catch (error) {
-      // If check fails, assume not authenticated
-      localStorage.removeItem('visitorToken');
-      localStorage.removeItem('authToken');
-      setIsAuthenticated(false);
-      setUsername(null);
-      setUserType(null);
+      if (isLikelyNetworkError(error)) {
+        const payload = decodeJwtPayloadUnsafe(token);
+        const expired = payload?.exp != null && payload.exp * 1000 < Date.now();
+        if (expired) {
+          if (isVisitor) localStorage.removeItem('visitorToken');
+          else localStorage.removeItem('authToken');
+          setIsAuthenticated(false);
+          setUsername(null);
+          setUserType(null);
+        } else if (payload?.username && (payload.type === 'visitor' || payload.type === 'admin')) {
+          setIsAuthenticated(true);
+          setUsername(payload.username);
+          setUserType(payload.type);
+        } else {
+          if (isVisitor) localStorage.removeItem('visitorToken');
+          else localStorage.removeItem('authToken');
+          setIsAuthenticated(false);
+          setUsername(null);
+          setUserType(null);
+        }
+      } else {
+        localStorage.removeItem('visitorToken');
+        localStorage.removeItem('authToken');
+        setIsAuthenticated(false);
+        setUsername(null);
+        setUserType(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -73,7 +91,9 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (password) => {
     try {
-      const response = await apiPost('/auth/login', { password });
+      const response = await apiPost('/auth/login', { password }, {
+        clearTokensOn401: false
+      });
       
       if (response.token) {
         // Store visitor token in localStorage
@@ -101,7 +121,10 @@ export function AuthProvider({ children }) {
         return { success: false, error: 'يجب تسجيل الدخول كزائر أولاً' };
       }
 
-      const response = await apiPost('/auth/admin-login', { password }, visitorToken);
+      const response = await apiPost('/auth/admin-login', { password }, {
+        token: visitorToken,
+        clearTokensOn401: false
+      });
       
       if (response.token) {
         // Store admin token in localStorage and remove visitor token
