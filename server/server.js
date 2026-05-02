@@ -61,31 +61,33 @@ if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
 // Configure CORS
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : isDevelopment 
-    ? ['http://localhost:5173', 'http://localhost:3000'] 
-    : ['http://localhost:5173', 'http://localhost:3000'];
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+  : ['http://localhost:5173', 'http://localhost:3000', `http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // In development mode, allow all origins for easier testing
-    if (isDevelopment) {
-      return callback(null, true);
-    }
-    
-    // In production, check against allowed origins
-    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
-      callback(null, true);
-    } else {
+app.use((req, res, next) => {
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (isDevelopment) return callback(null, true);
+      if (allowedOrigins.includes('*')) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
+
+      const host = req.headers.host;
+      if (host) {
+        const xfProto = req.headers['x-forwarded-proto'];
+        const forwarded = typeof xfProto === 'string' ? xfProto.split(',')[0].trim() : null;
+        const protos = forwarded ? [forwarded] : [req.secure ? 'https' : 'http', 'https', 'http'];
+        for (const proto of protos) {
+          if (origin === `${proto}://${host}`) return callback(null, true);
+        }
+      }
+
       logger.warn(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+    },
+    credentials: true
+  })(req, res, next);
+});
 
 // Compression middleware
 app.use(compression());

@@ -31,7 +31,7 @@ RUN npm ci --omit=dev
 # Copy built frontend from builder
 COPY --from=builder /app/web/dist ./dist
 
-# Copy server files
+# Application code only (server/node_modules must stay out of context — see .dockerignore)
 COPY server/ ./
 
 # Create logs directory

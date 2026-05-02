@@ -1,4 +1,8 @@
+# Never send local node_modules: musl vs glibc mismatch (e.g. better-sqlite3) breaks the final image.
 node_modules
+web/node_modules
+server/node_modules
+**/node_modules
 dist
 .git
 .gitignore
