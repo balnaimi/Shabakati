@@ -1,4 +1,5 @@
 import { API_URL } from '../constants'
+import { ApiHttpError } from './apiHttpError.js'
 
 /**
  * Utility functions for handling API calls with improved error handling
@@ -63,13 +64,21 @@ export async function handleApiResponse(response, opts = {}) {
   
   if (!response.ok) {
     let errorMessage = `${ERROR_CODES.SERVER_ERROR}: ${response.status} ${response.statusText}`
+    let errorCode = undefined
+    let errorDetails = undefined
     try {
       const text = await response.text()
-      
+
       if (contentType && contentType.includes('application/json')) {
         const errorData = JSON.parse(text)
         if (errorData.error) {
           errorMessage = errorData.error
+        }
+        if (errorData.code && typeof errorData.code === 'string') {
+          errorCode = errorData.code
+        }
+        if (errorData.details && typeof errorData.details === 'object') {
+          errorDetails = errorData.details
         }
       } else if (text) {
         errorMessage = text.length > 200 ? text.substring(0, 200) : text
@@ -77,7 +86,11 @@ export async function handleApiResponse(response, opts = {}) {
     } catch (e) {
       // If parse fails, use the default message
     }
-    throw new Error(errorMessage)
+    throw new ApiHttpError(errorMessage, {
+      code: errorCode,
+      status: response.status,
+      details: errorDetails
+    })
   }
 
   if (!contentType || !contentType.includes('application/json')) {

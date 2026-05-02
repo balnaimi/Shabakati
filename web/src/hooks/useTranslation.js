@@ -53,7 +53,11 @@ export function useTranslation() {
 
   // Memoize the current translations object
   const currentTranslations = useMemo(() => translations[language], [language])
-  const fallbackTranslations = useMemo(() => translations.ar, [])
+  // When UI is Arabic, fall back to English for missing keys — never show Arabic strings in English mode
+  const secondaryLocale = useMemo(
+    () => (language === 'ar' ? enTranslations : null),
+    [language]
+  )
 
   // Memoize the translation function
   const t = useCallback((key, params = {}) => {
@@ -64,9 +68,8 @@ export function useTranslation() {
     // Try current language first
     let value = getNestedValue(currentTranslations, keys)
     
-    // Fallback to Arabic if not found
-    if (value === undefined) {
-      value = getNestedValue(fallbackTranslations, keys)
+    if (value === undefined && secondaryLocale) {
+      value = getNestedValue(secondaryLocale, keys)
     }
     
     // Return key if translation not found
@@ -76,7 +79,7 @@ export function useTranslation() {
 
     // Replace parameters in translation string
     return replaceParams(value, params)
-  }, [currentTranslations, fallbackTranslations])
+  }, [currentTranslations, secondaryLocale])
 
   // Return memoized object
   return useMemo(() => ({ t, language }), [t, language])

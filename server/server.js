@@ -16,7 +16,14 @@ import { purgeStaleOfflineHostsForNetwork, startOfflineReleaseTicker } from './o
 import { requireAdmin, requireVisitor } from './middleware.js';
 import authRouter from './routes/auth.js';
 import logger from './logger.js';
-import { errorHandler, notFoundHandler, asyncHandler, ApiError } from './errorHandler.js';
+import {
+  errorHandler,
+  notFoundHandler,
+  asyncHandler,
+  apiThrow,
+  jsonError,
+  jsonInternalError
+} from './errorHandler.js';
 import cache from './cache.js';
 import {
   isValidIP,
@@ -28,7 +35,7 @@ import {
   validateTagName,
   validateColor
 } from './validators.js';
-import { Err, Msg, hostAlreadyExists, deletedHostsCount, importedHostsCount } from './apiMessages.js';
+import { Err, Msg, errHostAlreadyExists, deletedHostsCount, importedHostsCount } from './apiMessages.js';
 import { buildNetworkScanHostDescription } from './discoveryDescription.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -141,7 +148,7 @@ app.get('/api/hosts', (req, res) => {
       res.json(hosts);
     }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -152,7 +159,7 @@ app.post('/api/hosts/:id/check-status', requireAdmin, async (req, res) => {
     const host = dbFunctions.getHostById(id);
     
     if (!host) {
-      return res.status(404).json({ error: Err.hostNotFound });
+      return res.status(404).json(jsonError(Err.hostNotFound));
     }
 
     // Check host status
@@ -178,7 +185,7 @@ app.post('/api/hosts/:id/check-status', requireAdmin, async (req, res) => {
 
     res.json(updatedHost);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -189,12 +196,12 @@ app.patch('/api/hosts/:id/toggle-status', requireAdmin, (req, res) => {
     const host = dbFunctions.toggleHostStatus(id);
     
     if (!host) {
-      return res.status(404).json({ error: Err.hostNotFound });
+      return res.status(404).json(jsonError(Err.hostNotFound));
     }
 
     res.json(host);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -203,11 +210,11 @@ app.get('/api/hosts/:id', (req, res) => {
   try {
     const host = dbFunctions.getHostById(parseInt(req.params.id));
     if (!host) {
-      return res.status(404).json({ error: Err.hostNotFound });
+      return res.status(404).json(jsonError(Err.hostNotFound));
     }
     res.json(host);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -218,31 +225,28 @@ app.post('/api/hosts', requireAdmin, asyncHandler(async (req, res) => {
   // Validate host name
   const nameValidation = validateHostName(name);
   if (!nameValidation.valid) {
-    throw new ApiError(400, nameValidation.error);
+    apiThrow(400, nameValidation.apiDef);
   }
   
   // Validate IP
   if (!ip || !isValidIP(ip)) {
-    throw new ApiError(400, Err.invalidIPAddress);
+    apiThrow(400, Err.invalidIPAddress);
   }
   
   // Validate description
   const descValidation = validateDescription(description);
-  if (!descValidation.valid) {
-    throw new ApiError(400, descValidation.error);
-  }
   
   // Validate URL
   const urlValidation = validateURL(url);
   if (!urlValidation.valid) {
-    throw new ApiError(400, urlValidation.error);
+    apiThrow(400, urlValidation.apiDef);
   }
 
   // Check for existing host with same IP
   const existingHosts = dbFunctions.getAllHosts();
   const existingHost = existingHosts.find(h => h.ip === ip.trim());
   if (existingHost) {
-    throw new ApiError(400, hostAlreadyExists(existingHost.name, ip));
+    apiThrow(400, errHostAlreadyExists(existingHost.name, ip));
   }
 
   // Automatically check host status
@@ -278,10 +282,10 @@ app.post('/api/hosts', requireAdmin, asyncHandler(async (req, res) => {
 app.put('/api/hosts/bulk-tags', requireAdmin, asyncHandler(async (req, res) => {
   const { ids, tagIds } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
-    throw new ApiError(400, Err.hostIdsRequired);
+    apiThrow(400, Err.hostIdsRequired);
   }
   if (ids.length > 500) {
-    throw new ApiError(400, Err.maxHostsPerOperation);
+    apiThrow(400, Err.maxHostsPerOperation);
   }
   const tagIdsArray = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds] : []);
 
@@ -326,30 +330,27 @@ app.put('/api/hosts/:id', requireAdmin, asyncHandler((req, res) => {
   // Validate host name
   const nameValidation = validateHostName(name);
   if (!nameValidation.valid) {
-    throw new ApiError(400, nameValidation.error);
+    apiThrow(400, nameValidation.apiDef);
   }
   
   // Validate IP
   if (!ip || !isValidIP(ip)) {
-    throw new ApiError(400, Err.invalidIPAddress);
+    apiThrow(400, Err.invalidIPAddress);
   }
   
   // Validate description
   const descValidation = validateDescription(description);
-  if (!descValidation.valid) {
-    throw new ApiError(400, descValidation.error);
-  }
   
   // Validate URL
   const urlValidation = validateURL(url);
   if (!urlValidation.valid) {
-    throw new ApiError(400, urlValidation.error);
+    apiThrow(400, urlValidation.apiDef);
   }
 
   // Get current host to preserve existing values
   const existingHost = dbFunctions.getHostById(id);
   if (!existingHost) {
-    throw new ApiError(404, Err.hostNotFound);
+    apiThrow(404, Err.hostNotFound);
   }
 
   // Ensure tagIds is an array
@@ -368,7 +369,7 @@ app.put('/api/hosts/:id', requireAdmin, asyncHandler((req, res) => {
   });
 
   if (!updatedHost) {
-    throw new ApiError(404, Err.hostNotFound);
+    apiThrow(404, Err.hostNotFound);
   }
 
   logger.info('Host updated', { hostId: id, ip: updatedHost.ip });
@@ -382,12 +383,12 @@ app.delete('/api/hosts/:id', requireAdmin, (req, res) => {
     const result = dbFunctions.deleteHost(id);
     
     if (result.changes === 0) {
-      return res.status(404).json({ error: Err.hostNotFound });
+      return res.status(404).json(jsonError(Err.hostNotFound));
     }
 
     res.json({ message: Msg.hostDeleted });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -407,7 +408,7 @@ app.get('/api/tags', (req, res) => {
     
     res.json(tags);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -416,11 +417,11 @@ app.get('/api/tags/:id', (req, res) => {
   try {
     const tag = dbFunctions.getTagById(parseInt(req.params.id));
     if (!tag) {
-      return res.status(404).json({ error: Err.tagNotFound });
+      return res.status(404).json(jsonError(Err.tagNotFound));
     }
     res.json(tag);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -431,19 +432,19 @@ app.post('/api/tags', requireAdmin, asyncHandler((req, res) => {
   // Validate tag name
   const nameValidation = validateTagName(name);
   if (!nameValidation.valid) {
-    throw new ApiError(400, nameValidation.error);
+    apiThrow(400, nameValidation.apiDef);
   }
   
   // Validate color
   const colorValidation = validateColor(color || '#4a9eff');
   if (!colorValidation.valid) {
-    throw new ApiError(400, colorValidation.error);
+    apiThrow(400, colorValidation.apiDef);
   }
 
   // Check for existing tag with same name
   const existingTag = dbFunctions.getTagByName(nameValidation.sanitized);
   if (existingTag) {
-    throw new ApiError(400, Err.tagAlreadyExists);
+    apiThrow(400, Err.tagAlreadyExists);
   }
 
   const newTag = {
@@ -466,24 +467,24 @@ app.put('/api/tags/:id', requireAdmin, asyncHandler((req, res) => {
   // Validate tag name
   const nameValidation = validateTagName(name);
   if (!nameValidation.valid) {
-    throw new ApiError(400, nameValidation.error);
+    apiThrow(400, nameValidation.apiDef);
   }
   
   // Validate color
   const colorValidation = validateColor(color || '#4a9eff');
   if (!colorValidation.valid) {
-    throw new ApiError(400, colorValidation.error);
+    apiThrow(400, colorValidation.apiDef);
   }
 
   const existingTag = dbFunctions.getTagById(id);
   if (!existingTag) {
-    throw new ApiError(404, Err.tagNotFound);
+    apiThrow(404, Err.tagNotFound);
   }
 
   // Check for another tag with same name
   const tagWithSameName = dbFunctions.getTagByName(nameValidation.sanitized);
   if (tagWithSameName && tagWithSameName.id !== id) {
-    throw new ApiError(400, Err.tagAlreadyExists);
+    apiThrow(400, Err.tagAlreadyExists);
   }
 
   const updatedTag = dbFunctions.updateTag(id, {
@@ -503,14 +504,14 @@ app.delete('/api/tags/:id', requireAdmin, (req, res) => {
     const result = dbFunctions.deleteTag(id);
     
     if (result.changes === 0) {
-      return res.status(404).json({ error: Err.tagNotFound });
+      return res.status(404).json(jsonError(Err.tagNotFound));
     }
 
     cache.delete('tags'); // Invalidate tags cache
     cache.delete('stats'); // Invalidate stats cache
     res.json({ message: Msg.tagDeleted });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -522,7 +523,7 @@ app.get('/api/hosts/:id/history', (req, res) => {
     const history = dbFunctions.getStatusHistory(id, limit);
     res.json(history);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -533,7 +534,7 @@ app.get('/api/export', (req, res) => {
     const tags = dbFunctions.getAllTags();
     res.json({ hosts, tags, exportedAt: new Date().toISOString() });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -575,7 +576,7 @@ app.post('/api/import', requireAdmin, async (req, res) => {
     
     res.json({ message: importedHostsCount(imported) });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -629,7 +630,7 @@ app.get('/api/stats', (req, res) => {
     res.json(stats);
   } catch (error) {
     logger.error('Error in GET /api/stats:', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -639,13 +640,13 @@ app.post('/api/network/scan', requireAdmin, async (req, res) => {
     const { networkRange, timeout } = req.body;
     
     if (!networkRange) {
-      return res.status(400).json({ error: Err.networkRangeRequired });
+      return res.status(400).json(jsonError(Err.networkRangeRequired));
     }
 
     const usePing = req.body.usePing !== false;
     const useTcpPorts = req.body.useTcpPorts !== false;
     if (!usePing && !useTcpPorts) {
-      return res.status(400).json({ error: Err.enablePingOrTcp });
+      return res.status(400).json(jsonError(Err.enablePingOrTcp));
     }
 
     const scanTimeout = timeout || 2;
@@ -661,7 +662,7 @@ app.post('/api/network/scan', requireAdmin, async (req, res) => {
       detectionSummary
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -680,7 +681,7 @@ app.get('/api/networks', (req, res) => {
     
     res.json(networks);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -689,11 +690,11 @@ app.get('/api/networks/:id', (req, res) => {
   try {
     const network = dbFunctions.getNetworkById(parseInt(req.params.id));
     if (!network) {
-      return res.status(404).json({ error: Err.networkNotFound });
+      return res.status(404).json(jsonError(Err.networkNotFound));
     }
     res.json(network);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -702,25 +703,25 @@ app.post('/api/networks', requireAdmin, asyncHandler((req, res) => {
   const { name, networkId, subnet } = req.body;
   
   if (!name || !networkId || subnet === undefined) {
-    throw new ApiError(400, Err.networkFieldsRequired);
+    apiThrow(400, Err.networkFieldsRequired);
   }
 
   // Validate network ID
   const networkIdValidation = validateNetworkID(networkId);
   if (!networkIdValidation.valid) {
-    throw new ApiError(400, networkIdValidation.error);
+    apiThrow(400, networkIdValidation.apiDef);
   }
 
   // Validate subnet
   const subnetValidation = validateSubnet(subnet);
   if (!subnetValidation.valid) {
-    throw new ApiError(400, subnetValidation.error);
+    apiThrow(400, subnetValidation.apiDef);
   }
 
   // Validate and sanitize name
   const nameValidation = validateHostName(name); // Reuse host name validation
   if (!nameValidation.valid) {
-    throw new ApiError(400, Err.invalidNetworkName);
+    apiThrow(400, nameValidation.apiDef);
   }
 
   const network = {
@@ -737,54 +738,76 @@ app.post('/api/networks', requireAdmin, asyncHandler((req, res) => {
   res.status(201).json(newNetwork);
 }));
 
-// Update network
-app.put('/api/networks/:id', requireAdmin, (req, res) => {
-  try {
-    const { name, networkId, subnet, lastScanned } = req.body;
-    const id = parseInt(req.params.id);
-    
-    const existingNetwork = dbFunctions.getNetworkById(id);
-    if (!existingNetwork) {
-      return res.status(404).json({ error: Err.networkNotFound });
-    }
-
-    if (subnet && (subnet < 0 || subnet > 32)) {
-      return res.status(400).json({ error: Err.subnetBetween0And32 });
-    }
-
-    const { scan_use_ping, scan_use_tcp } = req.body;
-
-    let offline_release_patch = undefined;
-    if (req.body.offline_release_after_ms !== undefined) {
-      const v = req.body.offline_release_after_ms;
-      if (v === null || v === '') {
-        offline_release_patch = null;
-      } else {
-        const n = parseInt(v, 10);
-        if (!ALLOWED_OFFLINE_RELEASE_SET.has(n)) {
-          return res.status(400).json({ error: Err.offlineReleaseNotAllowed });
-        }
-        offline_release_patch = n;
-      }
-    }
-
-    const network = {
-      name: name !== undefined ? name.trim() : existingNetwork.name,
-      networkId: networkId !== undefined ? networkId.trim() : existingNetwork.network_id,
-      subnet: subnet !== undefined ? parseInt(subnet) : existingNetwork.subnet,
-      lastScanned: lastScanned !== undefined ? lastScanned : existingNetwork.last_scanned,
-      scan_use_ping: scan_use_ping !== undefined ? (scan_use_ping ? 1 : 0) : undefined,
-      scan_use_tcp: scan_use_tcp !== undefined ? (scan_use_tcp ? 1 : 0) : undefined,
-      offline_release_after_ms: offline_release_patch
-    };
-
-    const updatedNetwork = dbFunctions.updateNetwork(id, network);
-    cache.delete('networks');
-    res.json(updatedNetwork);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+// Update network (same validators as POST for any field sent in body)
+app.put('/api/networks/:id', requireAdmin, asyncHandler(async (req, res) => {
+  const { name, networkId, subnet, lastScanned } = req.body;
+  const id = parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) {
+    apiThrow(404, Err.networkNotFound);
   }
-});
+
+  const existingNetwork = dbFunctions.getNetworkById(id);
+  if (!existingNetwork) {
+    apiThrow(404, Err.networkNotFound);
+  }
+
+  let resolvedName = existingNetwork.name;
+  if (name !== undefined) {
+    const nameValidation = validateHostName(name);
+    if (!nameValidation.valid) {
+      apiThrow(400, nameValidation.apiDef);
+    }
+    resolvedName = nameValidation.sanitized;
+  }
+
+  let resolvedNetworkId = existingNetwork.network_id;
+  if (networkId !== undefined) {
+    const networkIdValidation = validateNetworkID(networkId);
+    if (!networkIdValidation.valid) {
+      apiThrow(400, networkIdValidation.apiDef);
+    }
+    resolvedNetworkId = networkId.trim();
+  }
+
+  let resolvedSubnet = existingNetwork.subnet;
+  if (subnet !== undefined) {
+    const subnetValidation = validateSubnet(subnet);
+    if (!subnetValidation.valid) {
+      apiThrow(400, subnetValidation.apiDef);
+    }
+    resolvedSubnet = parseInt(subnet, 10);
+  }
+
+  const { scan_use_ping, scan_use_tcp } = req.body;
+
+  let offline_release_patch = undefined;
+  if (req.body.offline_release_after_ms !== undefined) {
+    const v = req.body.offline_release_after_ms;
+    if (v === null || v === '') {
+      offline_release_patch = null;
+    } else {
+      const n = parseInt(v, 10);
+      if (!ALLOWED_OFFLINE_RELEASE_SET.has(n)) {
+        apiThrow(400, Err.offlineReleaseNotAllowed);
+      }
+      offline_release_patch = n;
+    }
+  }
+
+  const network = {
+    name: resolvedName,
+    networkId: resolvedNetworkId,
+    subnet: resolvedSubnet,
+    lastScanned: lastScanned !== undefined ? lastScanned : existingNetwork.last_scanned,
+    scan_use_ping: scan_use_ping !== undefined ? (scan_use_ping ? 1 : 0) : undefined,
+    scan_use_tcp: scan_use_tcp !== undefined ? (scan_use_tcp ? 1 : 0) : undefined,
+    offline_release_after_ms: offline_release_patch
+  };
+
+  const updatedNetwork = dbFunctions.updateNetwork(id, network);
+  cache.delete('networks');
+  res.json(updatedNetwork);
+}));
 
 // Delete network hosts (without deleting the network itself)
 app.delete('/api/networks/:id/hosts', requireAdmin, (req, res) => {
@@ -792,7 +815,7 @@ app.delete('/api/networks/:id/hosts', requireAdmin, (req, res) => {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: Err.networkNotFound });
+      return res.status(404).json(jsonError(Err.networkNotFound));
     }
     
     // Get all hosts associated with the network
@@ -814,7 +837,7 @@ app.delete('/api/networks/:id/hosts', requireAdmin, (req, res) => {
     });
   } catch (error) {
     logger.error('Error in DELETE /api/networks/:id/hosts:', { error: error.message, networkId: id });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -824,7 +847,7 @@ app.delete('/api/networks/:id', requireAdmin, (req, res) => {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: Err.networkNotFound });
+      return res.status(404).json(jsonError(Err.networkNotFound));
     }
     
     // Delete all hosts associated with the network
@@ -849,7 +872,7 @@ app.delete('/api/networks/:id', requireAdmin, (req, res) => {
     });
   } catch (error) {
     logger.error('Error in DELETE /api/networks/:id:', { error: error.message, networkId: id });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -859,7 +882,7 @@ app.get('/api/networks/:id/hosts', (req, res) => {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: Err.networkNotFound });
+      return res.status(404).json(jsonError(Err.networkNotFound));
     }
 
     // Get all hosts and filter based on IP range
@@ -870,7 +893,7 @@ app.get('/api/networks/:id/hosts', (req, res) => {
 
     res.json(networkHosts);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -879,15 +902,15 @@ app.post('/api/networks/:id/hosts/bulk-delete', requireAdmin, asyncHandler(async
   const networkId = parseInt(req.params.id, 10);
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
-    throw new ApiError(400, Err.hostIdsRequired);
+    apiThrow(400, Err.hostIdsRequired);
   }
   if (ids.length > 500) {
-    throw new ApiError(400, Err.maxHostsPerOperation);
+    apiThrow(400, Err.maxHostsPerOperation);
   }
 
   const network = dbFunctions.getNetworkById(networkId);
   if (!network) {
-    throw new ApiError(404, Err.networkNotFound);
+    apiThrow(404, Err.networkNotFound);
   }
 
   const toDelete = [];
@@ -919,7 +942,7 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: Err.networkNotFound });
+      return res.status(404).json(jsonError(Err.networkNotFound));
     }
 
     const { timeout, addHosts, language = 'ar' } = req.body;
@@ -940,7 +963,7 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
       useTcpPorts = (network.scan_use_tcp ?? 1) === 1;
     }
     if (!usePing && !useTcpPorts) {
-      return res.status(400).json({ error: Err.enablePingOrTcp });
+      return res.status(400).json(jsonError(Err.enablePingOrTcp));
     }
 
     const scanOptions = { usePing, useTcpPorts };
@@ -1052,7 +1075,7 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
       detectionSummary
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1063,7 +1086,7 @@ app.post('/api/networks/:id/auto-scan', requireAdmin, asyncHandler(async (req, r
   
   const network = dbFunctions.getNetworkById(id);
   if (!network) {
-    throw new ApiError(404, Err.networkNotFound);
+    apiThrow(404, Err.networkNotFound);
   }
   
   const requestedMs =
@@ -1073,7 +1096,7 @@ app.post('/api/networks/:id/auto-scan', requireAdmin, asyncHandler(async (req, r
     : parseInt(network.auto_scan_interval, 10);
 
   if (!ALLOWED_AUTO_SCAN_INTERVAL_SET.has(scanInterval)) {
-    throw new ApiError(400, Err.autoScanIntervalInvalid);
+    apiThrow(400, Err.autoScanIntervalInvalid);
   }
   
   // Update database
@@ -1100,7 +1123,7 @@ app.get('/api/auto-scan-overview', requireVisitor, (req, res) => {
     res.json(overview);
   } catch (error) {
     logger.error('Error in GET /api/auto-scan-overview:', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1112,7 +1135,7 @@ app.get('/api/networks/:id/auto-scan-results', requireVisitor, (req, res) => {
     
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: Err.networkNotFound });
+      return res.status(404).json(jsonError(Err.networkNotFound));
     }
     
     const results = dbFunctions.getAutoScanResults(id, type || null);
@@ -1129,7 +1152,7 @@ app.get('/api/networks/:id/auto-scan-results', requireVisitor, (req, res) => {
     res.json(resultsWithHosts);
   } catch (error) {
     logger.error('Error in GET /api/networks/:id/auto-scan-results:', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1141,14 +1164,14 @@ app.delete('/api/networks/:id/auto-scan-results', requireAdmin, (req, res) => {
     
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: Err.networkNotFound });
+      return res.status(404).json(jsonError(Err.networkNotFound));
     }
     
     dbFunctions.clearAutoScanResults(id, type || null);
     res.json({ success: true, message: Msg.resultsCleared });
   } catch (error) {
     logger.error('Error in DELETE /api/networks/:id/auto-scan-results:', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1209,7 +1232,7 @@ app.delete('/api/data/all', requireAdmin, asyncHandler((req, res) => {
     }
   } catch (error) {
     logger.error('Error in DELETE /api/data/all:', { error: error.message });
-    throw new ApiError(500, `Error deleting data: ${error.message}`);
+    apiThrow(500, { code: 'DELETE_ALL_FAILED', message: `Error deleting data: ${error.message}` });
   }
 }));
 
@@ -1229,7 +1252,7 @@ app.get('/api/favorites', (req, res) => {
     res.json(favorites);
   } catch (error) {
     logger.error('Error in GET /api/favorites:', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1239,12 +1262,12 @@ app.get('/api/favorites/:id', (req, res) => {
     const id = parseInt(req.params.id);
     const favorite = dbFunctions.getFavoriteById(id);
     if (!favorite) {
-      return res.status(404).json({ error: Err.favoriteNotFound });
+      return res.status(404).json(jsonError(Err.favoriteNotFound));
     }
     res.json(favorite);
   } catch (error) {
     logger.error('Error in GET /api/favorites/:id:', { error: error.message, favoriteId: id });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1252,13 +1275,13 @@ app.get('/api/favorites/:id', (req, res) => {
 app.post('/api/favorites/bulk', requireAdmin, asyncHandler(async (req, res) => {
   const { hostIds, action } = req.body;
   if (!Array.isArray(hostIds) || hostIds.length === 0) {
-    throw new ApiError(400, Err.hostIdsArrayRequired);
+    apiThrow(400, Err.hostIdsArrayRequired);
   }
   if (hostIds.length > 500) {
-    throw new ApiError(400, Err.maxHostsPerRequest);
+    apiThrow(400, Err.maxHostsPerRequest);
   }
   if (action !== 'add' && action !== 'remove') {
-    throw new ApiError(400, Err.actionAddOrRemove);
+    apiThrow(400, Err.actionAddOrRemove);
   }
 
   const unique = [...new Set(hostIds.map((x) => parseInt(x, 10)).filter((n) => !Number.isNaN(n) && n > 0))];
@@ -1299,13 +1322,13 @@ app.post('/api/favorites', requireAdmin, (req, res) => {
     const { hostId, url, groupId, displayOrder, customName, description } = req.body;
     
     if (!hostId) {
-      return res.status(400).json({ error: Err.hostIdRequired });
+      return res.status(400).json(jsonError(Err.hostIdRequired));
     }
     
     // Check if host exists
     const host = dbFunctions.getHostById(hostId);
     if (!host) {
-      return res.status(404).json({ error: Err.hostNotFound });
+      return res.status(404).json(jsonError(Err.hostNotFound));
     }
     
     const favorite = dbFunctions.addFavorite({
@@ -1321,7 +1344,7 @@ app.post('/api/favorites', requireAdmin, (req, res) => {
     res.status(201).json(favorite);
   } catch (error) {
     logger.error('Error in POST /api/favorites:', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1333,7 +1356,7 @@ app.put('/api/favorites/:id', requireAdmin, (req, res) => {
     
     const favorite = dbFunctions.getFavoriteById(id);
     if (!favorite) {
-      return res.status(404).json({ error: Err.favoriteNotFound });
+      return res.status(404).json(jsonError(Err.favoriteNotFound));
     }
     
     const updated = dbFunctions.updateFavorite(id, {
@@ -1348,7 +1371,7 @@ app.put('/api/favorites/:id', requireAdmin, (req, res) => {
     res.json(updated);
   } catch (error) {
     logger.error('Error in PUT /api/favorites/:id:', { error: error.message, favoriteId: id });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1358,7 +1381,7 @@ app.delete('/api/favorites/:id', requireAdmin, (req, res) => {
     const id = parseInt(req.params.id);
     const favorite = dbFunctions.getFavoriteById(id);
     if (!favorite) {
-      return res.status(404).json({ error: Err.favoriteNotFound });
+      return res.status(404).json(jsonError(Err.favoriteNotFound));
     }
     
     dbFunctions.deleteFavorite(id);
@@ -1366,7 +1389,7 @@ app.delete('/api/favorites/:id', requireAdmin, (req, res) => {
     res.json({ success: true, message: Msg.favoriteRemoved });
   } catch (error) {
     logger.error('Error in DELETE /api/favorites/:id:', { error: error.message, favoriteId: id });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1386,7 +1409,7 @@ app.get('/api/groups', (req, res) => {
     res.json(groups);
   } catch (error) {
     logger.error('Error in GET /api/groups:', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1396,12 +1419,12 @@ app.get('/api/groups/:id', (req, res) => {
     const id = parseInt(req.params.id);
     const group = dbFunctions.getGroupById(id);
     if (!group) {
-      return res.status(404).json({ error: Err.groupNotFound });
+      return res.status(404).json(jsonError(Err.groupNotFound));
     }
     res.json(group);
   } catch (error) {
     logger.error('Error in GET /api/groups/:id:', { error: error.message, groupId: id });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1411,7 +1434,7 @@ app.post('/api/groups', requireAdmin, (req, res) => {
     const { name, color, displayOrder } = req.body;
     
     if (!name || name.trim() === '') {
-      return res.status(400).json({ error: Err.groupNameRequired });
+      return res.status(400).json(jsonError(Err.groupNameRequired));
     }
     
     const group = dbFunctions.addGroup({
@@ -1424,7 +1447,7 @@ app.post('/api/groups', requireAdmin, (req, res) => {
     res.status(201).json(group);
   } catch (error) {
     logger.error('Error in POST /api/groups:', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1436,11 +1459,11 @@ app.put('/api/groups/:id', requireAdmin, (req, res) => {
     
     const group = dbFunctions.getGroupById(id);
     if (!group) {
-      return res.status(404).json({ error: Err.groupNotFound });
+      return res.status(404).json(jsonError(Err.groupNotFound));
     }
     
     if (name && name.trim() === '') {
-      return res.status(400).json({ error: Err.groupNameEmpty });
+      return res.status(400).json(jsonError(Err.groupNameEmpty));
     }
     
     const updated = dbFunctions.updateGroup(id, {
@@ -1453,7 +1476,7 @@ app.put('/api/groups/:id', requireAdmin, (req, res) => {
     res.json(updated);
   } catch (error) {
     logger.error('Error in PUT /api/groups/:id:', { error: error.message, groupId: id });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1463,7 +1486,7 @@ app.delete('/api/groups/:id', requireAdmin, (req, res) => {
     const id = parseInt(req.params.id);
     const group = dbFunctions.getGroupById(id);
     if (!group) {
-      return res.status(404).json({ error: Err.groupNotFound });
+      return res.status(404).json(jsonError(Err.groupNotFound));
     }
     
     dbFunctions.deleteGroup(id);
@@ -1471,7 +1494,7 @@ app.delete('/api/groups/:id', requireAdmin, (req, res) => {
     res.json({ success: true, message: Msg.groupDeleted });
   } catch (error) {
     logger.error('Error in DELETE /api/groups/:id:', { error: error.message, groupId: id });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -1492,7 +1515,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // Handle Chrome DevTools .well-known requests (to avoid 404 errors)
 app.get('/.well-known/*', (req, res) => {
-  res.status(404).json({ error: Err.notFound });
+  res.status(404).json(jsonError(Err.notFound));
 });
 
 // Handle favicon.ico requests (browsers automatically request this)

@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { LanguageProvider } from './contexts/LanguageContext'
 import Layout from './components/Layout'
+import DocumentTitle from './components/DocumentTitle'
 
 const Favorites = lazy(() => import('./pages/Favorites'))
 const HostsList = lazy(() => import('./pages/HostsList'))
@@ -107,6 +108,7 @@ function App() {
   return (
     <ErrorBoundary>
       <LanguageProvider>
+        <DocumentTitle />
         <ThemeProvider>
           <ToastProvider>
             <AuthProvider>

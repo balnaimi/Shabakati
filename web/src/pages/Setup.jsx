@@ -5,6 +5,7 @@ import { apiPost } from '../utils/api';
 import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
 import { useTranslation } from '../hooks/useTranslation';
+import { formatClientError } from '../utils/formatClientError';
 import { LogoIcon, KeyIcon, AdminIcon, UserIcon, AlertIcon, CheckIcon } from '../components/Icons';
 
 function Setup() {
@@ -70,7 +71,7 @@ function Setup() {
         setError(t('pages.setup.setupFailed'));
       }
     } catch (err) {
-      setError(err.message || t('pages.setup.setupError'));
+      setError(formatClientError(err, t) || t('pages.setup.setupError'));
     } finally {
       setLoading(false);
     }
@@ -146,7 +147,7 @@ function Setup() {
           </div>
         )}
         
-        <form onSubmit={handleSubmit}>
+        <form noValidate onSubmit={handleSubmit}>
           {/* Visitor Password Section */}
           <div style={{ 
             marginBlockEnd: 'var(--spacing-lg)', 
@@ -193,7 +194,6 @@ function Setup() {
                 type="password"
                 value={visitorPassword}
                 onChange={(e) => setVisitorPassword(e.target.value)}
-                required
                 disabled={loading}
                 autoFocus
                 minLength={3}
@@ -211,7 +211,6 @@ function Setup() {
                 type="password"
                 value={visitorConfirmPassword}
                 onChange={(e) => setVisitorConfirmPassword(e.target.value)}
-                required
                 disabled={loading}
                 minLength={3}
               />
@@ -264,7 +263,6 @@ function Setup() {
                 type="password"
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
-                required
                 disabled={loading}
                 minLength={3}
                 placeholder={t('pages.setup.adminPasswordPlaceholder')}
@@ -281,7 +279,6 @@ function Setup() {
                 type="password"
                 value={adminConfirmPassword}
                 onChange={(e) => setAdminConfirmPassword(e.target.value)}
-                required
                 disabled={loading}
                 minLength={3}
               />

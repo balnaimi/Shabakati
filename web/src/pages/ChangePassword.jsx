@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiPost } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
+import { formatClientError } from '../utils/formatClientError'
 import Layout from '../components/Layout'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { KeyIcon, AlertIcon, CheckIcon } from '../components/Icons'
@@ -64,7 +65,7 @@ function ChangePassword() {
         navigate('/')
       }, 3000)
     } catch (err) {
-      setError(err.message || t('pages.changePassword.error'))
+      setError(formatClientError(err, t) || t('pages.changePassword.error'))
     } finally {
       setLoading(false)
     }
@@ -102,7 +103,7 @@ function ChangePassword() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form noValidate onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="currentPassword">
                 <KeyIcon size={14} />
@@ -113,7 +114,6 @@ function ChangePassword() {
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                required
                 disabled={loading}
                 autoFocus
               />
@@ -129,9 +129,7 @@ function ChangePassword() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                required
                 disabled={loading}
-                minLength={3}
               />
             </div>
 
@@ -145,9 +143,7 @@ function ChangePassword() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                required
                 disabled={loading}
-                minLength={3}
               />
             </div>
 

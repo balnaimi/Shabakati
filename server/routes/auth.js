@@ -4,7 +4,7 @@ import { dbFunctions } from '../database.js';
 import { hashPassword, comparePassword, generateToken, verifyToken } from '../auth.js';
 import { requireAdmin, requireVisitor } from '../middleware.js';
 import logger from '../logger.js';
-import { asyncHandler, ApiError } from '../errorHandler.js';
+import { asyncHandler, apiThrow, jsonInternalError } from '../errorHandler.js';
 import { Err, Msg } from '../apiMessages.js';
 import cache from '../cache.js';
 import { loginLimiter, adminLoginLimiter, setupLimiter } from '../rateLimiters.js';
@@ -31,13 +31,13 @@ router.post(
     const { password } = req.body;
 
     if (!password) {
-      throw new ApiError(400, Err.passwordRequired);
+      apiThrow(400, Err.passwordRequired);
     }
 
     const visitor = dbFunctions.verifyVisitorPasswordOnly(password, comparePassword);
     if (!visitor) {
       logger.warn('Failed visitor login attempt', { ip: req.ip });
-      throw new ApiError(401, Err.incorrectVisitorPassword);
+      apiThrow(401, Err.incorrectVisitorPassword);
     }
 
     const token = generateToken(visitor.username, 'visitor');
@@ -60,13 +60,13 @@ router.post(
     const { password } = req.body;
 
     if (!password) {
-      throw new ApiError(400, Err.adminPasswordRequired);
+      apiThrow(400, Err.adminPasswordRequired);
     }
 
     const admin = dbFunctions.verifyAdminPasswordOnlyForAdmin(password, comparePassword);
     if (!admin) {
       logger.warn('Failed admin login attempt', { ip: req.ip, username: req.user.username });
-      throw new ApiError(401, Err.incorrectAdminPassword);
+      apiThrow(401, Err.incorrectAdminPassword);
     }
 
     const token = generateToken(admin.username, 'admin');
@@ -138,7 +138,7 @@ router.get('/check-setup', (req, res) => {
     res.json(result);
   } catch (error) {
     logger.error('Error checking setup status:', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json(jsonInternalError(error));
   }
 });
 
@@ -149,15 +149,15 @@ router.post(
     const { visitorPassword, adminPassword } = req.body;
 
     if (!dbFunctions.isSetupRequired()) {
-      throw new ApiError(400, Err.setupAlreadyComplete);
+      apiThrow(400, Err.setupAlreadyComplete);
     }
 
     if (!visitorPassword || visitorPassword.length < 3) {
-      throw new ApiError(400, Err.visitorPasswordMinLength);
+      apiThrow(400, Err.visitorPasswordMinLength);
     }
 
     if (!adminPassword || adminPassword.length < 3) {
-      throw new ApiError(400, Err.adminPasswordMinLength);
+      apiThrow(400, Err.adminPasswordMinLength);
     }
 
     const visitorPasswordHash = hashPassword(visitorPassword);
@@ -187,23 +187,23 @@ router.post(
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      throw new ApiError(400, Err.currentAndNewPasswordRequired);
+      apiThrow(400, Err.currentAndNewPasswordRequired);
     }
 
     if (newPassword.length < 3) {
-      throw new ApiError(400, Err.newPasswordMinLength);
+      apiThrow(400, Err.newPasswordMinLength);
     }
 
     const admin = dbFunctions.verifyAdminPasswordOnlyForAdmin(currentPassword, comparePassword);
     if (!admin) {
-      throw new ApiError(401, Err.currentPasswordIncorrect);
+      apiThrow(401, Err.currentPasswordIncorrect);
     }
 
     const newPasswordHash = hashPassword(newPassword);
     const updatedAdmin = dbFunctions.updateAdminPassword(admin.id, newPasswordHash);
 
     if (!updatedAdmin) {
-      throw new ApiError(500, Err.failedUpdatePassword);
+      apiThrow(500, Err.failedUpdatePassword);
     }
 
     cache.deleteByPrefix(AUTH_STATUS_PREFIX);
@@ -220,23 +220,23 @@ router.post(
     const { newPassword } = req.body;
 
     if (!newPassword) {
-      throw new ApiError(400, Err.newPasswordRequired);
+      apiThrow(400, Err.newPasswordRequired);
     }
 
     if (newPassword.length < 3) {
-      throw new ApiError(400, Err.newPasswordMinLength);
+      apiThrow(400, Err.newPasswordMinLength);
     }
 
     const visitor = dbFunctions.getAdminByType('visitor');
     if (!visitor) {
-      throw new ApiError(404, Err.visitorAccountNotFound);
+      apiThrow(404, Err.visitorAccountNotFound);
     }
 
     const newPasswordHash = hashPassword(newPassword);
     const updatedVisitor = dbFunctions.updateAdminPassword(visitor.id, newPasswordHash);
 
     if (!updatedVisitor) {
-      throw new ApiError(500, Err.failedUpdateVisitorPassword);
+      apiThrow(500, Err.failedUpdateVisitorPassword);
     }
 
     cache.deleteByPrefix(AUTH_STATUS_PREFIX);

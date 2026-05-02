@@ -6,6 +6,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { API_URL } from '../constants';
 import { useTranslation } from '../hooks/useTranslation';
+import { formatClientError } from '../utils/formatClientError';
 import { LogoIcon, LoginIcon, SettingsIcon, KeyIcon, AlertIcon } from '../components/Icons';
 
 function Login() {
@@ -43,6 +44,10 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!password.trim()) {
+      setError(t('validation.passwordRequired'));
+      return;
+    }
     setLoading(true);
 
     try {
@@ -53,10 +58,17 @@ function Login() {
         const from = new URLSearchParams(window.location.search).get('from') || '/';
         navigate(from);
       } else {
-        setError(result.error || t('pages.login.loginFailed'));
+        const apiMsg = result.error
+          ? formatClientError({
+              message: result.error,
+              code: result.code,
+              details: result.details
+            }, t)
+          : null;
+        setError(apiMsg || t('pages.login.loginFailed'));
       }
     } catch (err) {
-      setError(err.message || t('pages.login.loginError'));
+      setError(formatClientError(err, t) || t('pages.login.loginError'));
     } finally {
       setLoading(false);
     }
@@ -167,7 +179,7 @@ function Login() {
             </button>
           </>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <form noValidate onSubmit={handleSubmit}>
             <p style={{ 
               textAlign: 'center', 
               color: 'var(--text-secondary)', 
@@ -186,7 +198,6 @@ function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
                 disabled={loading}
                 autoFocus
                 placeholder={t('pages.login.visitorPasswordPlaceholder')}

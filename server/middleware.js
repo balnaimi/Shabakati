@@ -1,5 +1,6 @@
 import { verifyToken } from './auth.js';
 import { Err } from './apiMessages.js';
+import { jsonError } from './errorHandler.js';
 
 /**
  * Middleware to require visitor authentication (visitor or admin)
@@ -9,19 +10,19 @@ export function requireVisitor(req, res, next) {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: Err.unauthorized });
+    return res.status(401).json(jsonError(Err.unauthorized));
   }
   
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
   const decoded = verifyToken(token);
   
   if (!decoded) {
-    return res.status(401).json({ error: Err.invalidToken });
+    return res.status(401).json(jsonError(Err.invalidToken));
   }
   
   // Check if user is visitor or admin
   if (decoded.type !== 'visitor' && decoded.type !== 'admin') {
-    return res.status(403).json({ error: Err.invalidUserType });
+    return res.status(403).json(jsonError(Err.invalidUserType));
   }
   
   // Add user info to request object
@@ -37,19 +38,19 @@ export function requireAdmin(req, res, next) {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: Err.unauthorizedAdmin });
+    return res.status(401).json(jsonError(Err.unauthorizedAdmin));
   }
   
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
   const decoded = verifyToken(token);
   
   if (!decoded) {
-    return res.status(401).json({ error: Err.invalidToken });
+    return res.status(401).json(jsonError(Err.invalidToken));
   }
   
   // Check if user is admin
   if (decoded.type !== 'admin') {
-    return res.status(403).json({ error: Err.forbiddenAdmin });
+    return res.status(403).json(jsonError(Err.forbiddenAdmin));
   }
   
   // Add user info to request object

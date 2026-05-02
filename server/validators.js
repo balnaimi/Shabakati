@@ -1,6 +1,9 @@
 /**
- * Validation utilities for input sanitization and validation
+ * Validation utilities for input sanitization and validation.
+ * On failure return `apiDef` ({ code, message, details? }) for apiThrow / JSON errors.
  */
+
+import { Err } from './apiMessages.js';
 
 /**
  * Validate IP address format and range
@@ -9,13 +12,13 @@
  */
 export function isValidIP(ip) {
   if (!ip || typeof ip !== 'string') return false;
-  
+
   const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
   if (!ipRegex.test(ip.trim())) return false;
-  
+
   const parts = ip.trim().split('.');
   if (parts.length !== 4) return false;
-  
+
   return parts.every(part => {
     const num = parseInt(part, 10);
     return !isNaN(num) && num >= 0 && num <= 255;
@@ -28,8 +31,8 @@ export function isValidIP(ip) {
  * @returns {boolean} true if valid URL
  */
 export function isValidURL(url) {
-  if (!url || typeof url !== 'string' || url.trim() === '') return true; // Empty URL is allowed
-  
+  if (!url || typeof url !== 'string' || url.trim() === '') return true;
+
   try {
     const urlObj = new URL(url.trim());
     return ['http:', 'https:'].includes(urlObj.protocol);
@@ -40,173 +43,152 @@ export function isValidURL(url) {
 
 /**
  * Sanitize string input (remove HTML tags and dangerous characters)
- * @param {string} input - Input string to sanitize
+ * @param {string} input - Input to sanitize
  * @param {number} maxLength - Maximum allowed length
  * @returns {string} Sanitized string
  */
 export function sanitizeString(input, maxLength = 1000) {
   if (!input || typeof input !== 'string') return '';
-  
-  // Remove HTML tags
+
   let sanitized = input.replace(/<[^>]*>/g, '');
-  
-  // Remove dangerous characters
   sanitized = sanitized.replace(/[<>\"']/g, '');
-  
-  // Trim and limit length
   sanitized = sanitized.trim();
   if (sanitized.length > maxLength) {
     sanitized = sanitized.substring(0, maxLength);
   }
-  
+
   return sanitized;
 }
 
 /**
- * Validate and sanitize host name
- * @param {string} name - Host name
- * @returns {{valid: boolean, sanitized: string, error?: string}}
+ * @param {string} name
+ * @returns {{ valid: boolean, sanitized: string, apiDef?: object }}
  */
 export function validateHostName(name) {
   const MAX_NAME_LENGTH = 100;
-  
+
   if (!name || typeof name !== 'string' || name.trim() === '') {
-    return { valid: false, sanitized: '', error: 'Host name is required' };
+    return { valid: false, sanitized: '', apiDef: Err.hostNameRequired };
   }
-  
+
   const sanitized = sanitizeString(name, MAX_NAME_LENGTH);
-  
+
   if (sanitized.length === 0) {
-    return { valid: false, sanitized: '', error: 'Invalid host name' };
+    return { valid: false, sanitized: '', apiDef: Err.invalidHostName };
   }
-  
-  if (sanitized.length > MAX_NAME_LENGTH) {
-    return { valid: false, sanitized: '', error: `Host name too long (max ${MAX_NAME_LENGTH} characters)` };
-  }
-  
+
   return { valid: true, sanitized };
 }
 
 /**
- * Validate and sanitize description
- * @param {string} description - Description text
- * @returns {{valid: boolean, sanitized: string, error?: string}}
+ * @param {string} description
+ * @returns {{ valid: boolean, sanitized: string, apiDef?: object }}
  */
 export function validateDescription(description) {
   const MAX_DESCRIPTION_LENGTH = 500;
-  
+
   if (!description || description.trim() === '') {
-    return { valid: true, sanitized: '' }; // Description is optional
+    return { valid: true, sanitized: '' };
   }
-  
+
   const sanitized = sanitizeString(description, MAX_DESCRIPTION_LENGTH);
-  
-  if (sanitized.length > MAX_DESCRIPTION_LENGTH) {
-    return { valid: false, sanitized: '', error: `Description too long (max ${MAX_DESCRIPTION_LENGTH} characters)` };
-  }
-  
   return { valid: true, sanitized };
 }
 
 /**
- * Validate and sanitize URL
- * @param {string} url - URL to validate
- * @returns {{valid: boolean, sanitized: string, error?: string}}
+ * @param {string} url
+ * @returns {{ valid: boolean, sanitized: string, apiDef?: object }}
  */
 export function validateURL(url) {
   const MAX_URL_LENGTH = 2048;
-  
+
   if (!url || url.trim() === '') {
-    return { valid: true, sanitized: '' }; // URL is optional
+    return { valid: true, sanitized: '' };
   }
-  
+
   if (!isValidURL(url)) {
-    return { valid: false, sanitized: '', error: 'Invalid URL' };
+    return { valid: false, sanitized: '', apiDef: Err.invalidUrlFormat };
   }
-  
+
   const sanitized = url.trim();
   if (sanitized.length > MAX_URL_LENGTH) {
-    return { valid: false, sanitized: '', error: `URL too long (max ${MAX_URL_LENGTH} characters)` };
+    return {
+      valid: false,
+      sanitized: '',
+      apiDef: { ...Err.urlTooLong, details: { max: MAX_URL_LENGTH } }
+    };
   }
-  
+
   return { valid: true, sanitized };
 }
 
 /**
- * Validate network ID (IP address)
- * @param {string} networkId - Network ID to validate
- * @returns {{valid: boolean, error?: string}}
+ * @param {string} networkId
+ * @returns {{ valid: boolean, apiDef?: object }}
  */
 export function validateNetworkID(networkId) {
   if (!networkId || typeof networkId !== 'string' || networkId.trim() === '') {
-    return { valid: false, error: 'Network ID is required' };
+    return { valid: false, apiDef: Err.networkIdRequiredField };
   }
-  
+
   if (!isValidIP(networkId)) {
-    return { valid: false, error: 'Invalid network ID' };
+    return { valid: false, apiDef: Err.networkIdInvalidIp };
   }
-  
+
   return { valid: true };
 }
 
 /**
- * Validate subnet mask
- * @param {number} subnet - Subnet mask value
- * @returns {{valid: boolean, error?: string}}
+ * @param {number|string} subnet
+ * @returns {{ valid: boolean, apiDef?: object }}
  */
 export function validateSubnet(subnet) {
   const subnetNum = parseInt(subnet, 10);
-  
+
   if (isNaN(subnetNum)) {
-    return { valid: false, error: 'Subnet must be a number' };
+    return { valid: false, apiDef: Err.subnetNotNumber };
   }
-  
+
   if (subnetNum < 0 || subnetNum > 32) {
-    return { valid: false, error: 'Subnet must be between 0 and 32' };
+    return { valid: false, apiDef: Err.subnetBetween0And32 };
   }
-  
+
   return { valid: true };
 }
 
 /**
- * Validate tag name
- * @param {string} name - Tag name
- * @returns {{valid: boolean, sanitized: string, error?: string}}
+ * @param {string} name
+ * @returns {{ valid: boolean, sanitized: string, apiDef?: object }}
  */
 export function validateTagName(name) {
   const MAX_TAG_NAME_LENGTH = 50;
-  
+
   if (!name || typeof name !== 'string' || name.trim() === '') {
-    return { valid: false, sanitized: '', error: 'Tag name is required' };
+    return { valid: false, sanitized: '', apiDef: Err.tagNameRequiredField };
   }
-  
+
   const sanitized = sanitizeString(name, MAX_TAG_NAME_LENGTH);
-  
+
   if (sanitized.length === 0) {
-    return { valid: false, sanitized: '', error: 'Invalid tag name' };
+    return { valid: false, sanitized: '', apiDef: Err.invalidTagName };
   }
-  
-  if (sanitized.length > MAX_TAG_NAME_LENGTH) {
-    return { valid: false, sanitized: '', error: `Tag name too long (max ${MAX_TAG_NAME_LENGTH} characters)` };
-  }
-  
+
   return { valid: true, sanitized };
 }
 
 /**
- * Validate color hex code
- * @param {string} color - Color hex code
- * @returns {{valid: boolean, error?: string}}
+ * @param {string} color
+ * @returns {{ valid: boolean, apiDef?: object }}
  */
 export function validateColor(color) {
   if (!color || typeof color !== 'string') {
-    return { valid: false, error: 'Color is required' };
+    return { valid: false, apiDef: Err.colorRequiredField };
   }
-  
+
   const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
   if (!hexRegex.test(color.trim())) {
-    return { valid: false, error: 'Invalid color format (use hex like #4a9eff)' };
+    return { valid: false, apiDef: Err.invalidColorHex };
   }
-  
+
   return { valid: true };
 }

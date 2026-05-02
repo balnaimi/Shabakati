@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
+import { formatClientError } from '../utils/formatClientError'
 import Modal from './Modal'
 import { KeyIcon, AlertIcon } from './Icons'
 
@@ -14,6 +15,10 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (!password.trim()) {
+      setError(t('validation.adminPasswordRequired'))
+      return
+    }
     setLoading(true)
 
     try {
@@ -26,10 +31,18 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
         }
         onClose()
       } else {
-        setError(result.error || t('auth.adminLoginFailed'))
+        setError(
+          result.error
+            ? formatClientError({
+                message: result.error,
+                code: result.code,
+                details: result.details
+              }, t)
+            : t('auth.adminLoginFailed')
+        )
       }
     } catch (err) {
-      setError(err.message || t('auth.adminLoginError'))
+      setError(formatClientError(err, t) || t('auth.adminLoginError'))
     } finally {
       setLoading(false)
     }
@@ -83,7 +96,7 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
         </div>
       )}
 
-      <form id="admin-login-form" onSubmit={handleSubmit}>
+      <form noValidate id="admin-login-form" onSubmit={handleSubmit}>
         <div className="form-group" style={{ marginBlockEnd: 0 }}>
           <label htmlFor="adminPassword">
             <KeyIcon size={14} />
@@ -94,7 +107,6 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
             disabled={loading}
             autoFocus
             placeholder={t('auth.adminPasswordPlaceholder')}

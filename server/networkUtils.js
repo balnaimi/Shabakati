@@ -3,6 +3,7 @@
  */
 
 import { Err } from './apiMessages.js';
+import { apiThrow } from './errorHandler.js';
 
 /**
  * Validate IP address
@@ -80,7 +81,7 @@ export function isIPInNetwork(ip, networkId, subnet) {
  */
 export function calculateIPRange(networkId, subnet) {
   if (!isValidIP(networkId) || subnet < 0 || subnet > 32) {
-    throw new Error(Err.invalidNetworkIdOrSubnet);
+    apiThrow(400, Err.invalidNetworkIdOrSubnet);
   }
 
   const networkNum = ipToNumber(networkId);

@@ -30,6 +30,7 @@ import {
   ChevronUpIcon
 } from '../components/Icons'
 import { COMMON_TCP_SCAN_PORTS } from '../../../server/scanTcpPorts.js'
+import { formatClientError, toastApiError } from '../utils/formatClientError'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const AUTO_SCAN_INTERVAL_MS_OPTIONS = [5, 10, 15, 20, 30, 45, 60].map((m) => m * 60 * 1000)
@@ -142,7 +143,7 @@ function NetworkView() {
       await fetchFavorites()
       toast.success(t('messages.success.addedToFavorites'))
     } catch (err) {
-      toast.error(`${t('common.error')}: ${err.message}`)
+      toastApiError(toast, t, err)
     }
   }
 
@@ -155,7 +156,7 @@ function NetworkView() {
         toast.success(t('messages.success.removedFromFavorites'))
       }
     } catch (err) {
-      toast.error(`${t('common.error')}: ${err.message}`)
+      toastApiError(toast, t, err)
     }
   }
 
@@ -182,7 +183,7 @@ function NetworkView() {
         setIpRange(range)
       }
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     } finally {
       setLoading(false)
     }
@@ -222,7 +223,7 @@ function NetworkView() {
       setNetwork(result)
       toast.success(newState ? t('pages.networkView.autoScanEnabled') : t('pages.networkView.autoScanDisabled'))
     } catch (err) {
-      toast.error(`${t('common.error')}: ${err.message}`)
+      toastApiError(toast, t, err)
     } finally {
       setLoadingAutoScan(false)
     }
@@ -239,7 +240,7 @@ function NetworkView() {
       })
       await fetchNetwork()
     } catch (err) {
-      toast.error(`${t('common.error')}: ${err.message}`)
+      toastApiError(toast, t, err)
     } finally {
       setLoadingAutoScan(false)
     }
@@ -264,7 +265,7 @@ function NetworkView() {
       await fetchNetwork()
       toast.success(t('pages.networkView.scanPreferencesSaved'))
     } catch (err) {
-      toast.error(`${t('common.error')}: ${err.message}`)
+      toastApiError(toast, t, err)
     } finally {
       setSavingScanPrefs(false)
     }
@@ -352,8 +353,8 @@ function NetworkView() {
       }
     } catch (err) {
       console.error('Scan error:', err)
-      setError(err.message)
-      toast.error(`${t('common.error')}: ${err.message}`)
+      setError(formatClientError(err, t))
+      toastApiError(toast, t, err)
     } finally {
       setScanning(false)
     }
@@ -378,7 +379,7 @@ function NetworkView() {
       
       toast.success(result.message || t('messages.success.hostsDeleted'))
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -400,7 +401,7 @@ function NetworkView() {
       await fetchNetwork()
       setSelectedHostIds((prev) => prev.filter((hid) => hid !== hostId))
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -454,7 +455,7 @@ function NetworkView() {
       await fetchHosts()
       handleCancelEdit()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -483,8 +484,8 @@ function NetworkView() {
       setSelectedHostIds([])
       toast.success(t('pages.networkView.bulkDeleteSuccess'))
     } catch (err) {
-      setError(err.message)
-      toast.error(`${t('common.error')}: ${err.message}`)
+      setError(formatClientError(err, t))
+      toastApiError(toast, t, err)
     } finally {
       setBulkWorking(false)
     }
@@ -498,7 +499,7 @@ function NetworkView() {
       await fetchFavorites()
       toast.success(t('pages.networkView.bulkFavoritesAddResult', { affected: result.affected, skipped: result.skipped }))
     } catch (err) {
-      toast.error(`${t('common.error')}: ${err.message}`)
+      toastApiError(toast, t, err)
     } finally {
       setBulkWorking(false)
     }
@@ -512,7 +513,7 @@ function NetworkView() {
       await fetchFavorites()
       toast.success(t('pages.networkView.bulkFavoritesRemoveResult', { affected: result.affected, skipped: result.skipped }))
     } catch (err) {
-      toast.error(`${t('common.error')}: ${err.message}`)
+      toastApiError(toast, t, err)
     } finally {
       setBulkWorking(false)
     }
@@ -1023,7 +1024,7 @@ function NetworkView() {
                         await apiDelete(`/networks/${id}/auto-scan-results?type=new_device`)
                         await fetchAutoScanResults()
                       } catch (err) {
-                        toast.error(`${t('common.error')}: ${err.message}`)
+                        toastApiError(toast, t, err)
                       }
                     }}
                     className="btn-success btn-small"
@@ -1108,7 +1109,7 @@ function NetworkView() {
                         await apiDelete(`/networks/${id}/auto-scan-results?type=disconnected`)
                         await fetchAutoScanResults()
                       } catch (err) {
-                        toast.error(`${t('common.error')}: ${err.message}`)
+                        toastApiError(toast, t, err)
                       }
                     }}
                     className="btn-danger btn-small"
@@ -1321,7 +1322,15 @@ function NetworkView() {
                           {(() => {
                             const desc = getDescription(host.description, language);
                             return desc ? (
-                              <span title={desc}>{desc.length > 50 ? `${desc.substring(0, 50)}...` : desc}</span>
+                              <span
+                                style={{
+                                  whiteSpace: 'normal',
+                                  wordBreak: 'break-word',
+                                  lineHeight: 1.45
+                                }}
+                              >
+                                {desc}
+                              </span>
                             ) : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>);
                           })()}
                         </td>

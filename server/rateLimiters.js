@@ -9,7 +9,7 @@ export const loginLimiter = rateLimit({
   max: 40,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: Msg.rateLimitLogin }
+  message: { error: Msg.rateLimitLogin, code: 'RATE_LIMIT_LOGIN' }
 });
 
 /**
@@ -20,7 +20,7 @@ export const adminLoginLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: Msg.rateLimitAdminLogin }
+  message: { error: Msg.rateLimitAdminLogin, code: 'RATE_LIMIT_ADMIN_LOGIN' }
 });
 
 /**
@@ -31,5 +31,5 @@ export const setupLimiter = rateLimit({
   max: 15,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: Msg.rateLimitSetup }
+  message: { error: Msg.rateLimitSetup, code: 'RATE_LIMIT_SETUP' }
 });

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiPost } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
+import { formatClientError } from '../utils/formatClientError'
 import Layout from '../components/Layout'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { KeyIcon, AlertIcon, CheckIcon } from '../components/Icons'
@@ -63,7 +64,7 @@ function ChangeVisitorPassword() {
         navigate('/')
       }, 3000)
     } catch (err) {
-      setError(err.message || t('pages.changeVisitorPassword.error'))
+      setError(formatClientError(err, t) || t('pages.changeVisitorPassword.error'))
     } finally {
       setLoading(false)
     }
@@ -101,7 +102,7 @@ function ChangeVisitorPassword() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form noValidate onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="newPassword">
                 <KeyIcon size={14} />
@@ -112,10 +113,8 @@ function ChangeVisitorPassword() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                required
                 disabled={loading}
                 autoFocus
-                minLength={3}
               />
             </div>
 
@@ -129,9 +128,7 @@ function ChangeVisitorPassword() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                required
                 disabled={loading}
-                minLength={3}
               />
             </div>
 

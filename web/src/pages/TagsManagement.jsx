@@ -15,6 +15,7 @@ import {
   CloseIcon,
   AlertIcon
 } from '../components/Icons'
+import { formatClientError } from '../utils/formatClientError'
 
 function TagsManagement() {
   const navigate = useNavigate()
@@ -41,7 +42,7 @@ function TagsManagement() {
       setShowAddForm(false)
       await fetchTags()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -59,7 +60,7 @@ function TagsManagement() {
       setFormData({ name: '', color: '#3b82f6' })
       await fetchTags()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -77,7 +78,7 @@ function TagsManagement() {
       await apiDelete(`/tags/${id}`)
       await fetchTags()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -147,7 +148,7 @@ function TagsManagement() {
             </button>
           </div>
 
-          <form onSubmit={editingTag ? handleUpdateTag : handleAddTag}>
+          <form noValidate onSubmit={editingTag ? handleUpdateTag : handleAddTag}>
             <div className="form-group">
               <label>
                 <TagIcon size={14} />
@@ -158,7 +159,6 @@ function TagsManagement() {
                 placeholder={t('pages.tagsManagement.tagName')}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
               />
             </div>
             

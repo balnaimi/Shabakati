@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { apiPost, apiGet } from '../utils/api';
+import { ApiHttpError } from '../utils/apiHttpError.js';
 import { decodeJwtPayloadUnsafe, isLikelyNetworkError } from '../utils/jwtPayload';
 
 const AuthContext = createContext();
@@ -106,10 +107,15 @@ export function AuthProvider({ children }) {
         return { success: false, error: 'Login failed' };
       }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.message || 'An error occurred during login' 
+      const payload = {
+        success: false,
+        error: error.message || 'An error occurred during login'
       };
+      if (error instanceof ApiHttpError && error.code) {
+        payload.code = error.code;
+        if (error.details) payload.details = error.details;
+      }
+      return payload;
     }
   }, []);
 
@@ -142,10 +148,15 @@ export function AuthProvider({ children }) {
         return { success: false, error: 'Admin login failed' };
       }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.message || 'An error occurred during admin login' 
+      const payload = {
+        success: false,
+        error: error.message || 'An error occurred during admin login'
       };
+      if (error instanceof ApiHttpError && error.code) {
+        payload.code = error.code;
+        if (error.details) payload.details = error.details;
+      }
+      return payload;
     }
   }, [checkAuthStatus]);
 

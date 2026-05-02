@@ -25,6 +25,7 @@ import {
   AlertIcon,
   ScanIcon
 } from '../components/Icons'
+import { formatClientError } from '../utils/formatClientError'
 
 function Favorites() {
   const navigate = useNavigate()
@@ -88,7 +89,7 @@ function Favorites() {
         setScanOverview([])
       }
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     } finally {
       setLoading(false)
     }
@@ -96,6 +97,10 @@ function Favorites() {
 
   const handleAddFavorite = async (e) => {
     e.preventDefault()
+    if (!addFormData.hostId) {
+      setError(t('validation.deviceRequired'))
+      return
+    }
     try {
       setError(null)
       await apiPost('/favorites', {
@@ -107,7 +112,7 @@ function Favorites() {
       setAddFormData({ hostId: '', url: '', groupId: '' })
       await fetchData()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -125,7 +130,7 @@ function Favorites() {
       await apiDelete(`/favorites/${id}`)
       await fetchData()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -165,12 +170,16 @@ function Favorites() {
       setEditFormData({ url: '', groupId: '', customName: '', description: '' })
       await fetchData()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
   const handleCreateGroup = async (e) => {
     e.preventDefault()
+    if (!groupFormData.name.trim()) {
+      setError(t('validation.groupNameRequired'))
+      return
+    }
     try {
       setError(null)
       await apiPost('/groups', {
@@ -182,13 +191,17 @@ function Favorites() {
       setGroupFormData({ name: '', color: '#3b82f6' })
       await fetchData()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
   const handleUpdateGroup = async (e) => {
     e.preventDefault()
     if (!editingGroup) return
+    if (!groupFormData.name.trim()) {
+      setError(t('validation.groupNameRequired'))
+      return
+    }
     try {
       setError(null)
       await apiPut(`/groups/${editingGroup.id}`, {
@@ -199,7 +212,7 @@ function Favorites() {
       setGroupFormData({ name: '', color: '#3b82f6' })
       await fetchData()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -222,7 +235,7 @@ function Favorites() {
       await apiDelete(`/groups/${id}`)
       await fetchData()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -279,7 +292,7 @@ function Favorites() {
 
       await fetchData()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -319,7 +332,7 @@ function Favorites() {
 
       await fetchData()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     }
   }
 
@@ -840,7 +853,7 @@ function Favorites() {
               </button>
             </div>
 
-            <form onSubmit={handleAddFavorite}>
+            <form noValidate onSubmit={handleAddFavorite}>
               <div className="form-group">
                 <label>
                   <DeviceIcon size={14} />
@@ -849,7 +862,6 @@ function Favorites() {
                 <select
                   value={addFormData.hostId}
                   onChange={(e) => setAddFormData({ ...addFormData, hostId: e.target.value })}
-                  required
                 >
                   <option value="">{t('pages.favorites.addFavoriteModal.selectDevice')}</option>
                   {availableHosts.map(host => (
@@ -932,7 +944,7 @@ function Favorites() {
               </p>
             </div>
 
-            <form onSubmit={handleUpdateFavorite}>
+            <form noValidate onSubmit={handleUpdateFavorite}>
               <div className="form-group">
                 <label>{t('pages.favorites.editFavoriteModal.customName')}:</label>
                 <input
@@ -1006,6 +1018,7 @@ function Favorites() {
             </div>
 
             <form 
+              noValidate
               onSubmit={editingGroup ? handleUpdateGroup : handleCreateGroup} 
               style={{ 
                 marginBlockEnd: 'var(--spacing-xl)',
@@ -1023,7 +1036,6 @@ function Favorites() {
                   type="text"
                   value={groupFormData.name}
                   onChange={(e) => setGroupFormData({ ...groupFormData, name: e.target.value })}
-                  required
                 />
               </div>
 

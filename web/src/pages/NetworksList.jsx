@@ -16,6 +16,7 @@ import {
   CloseIcon,
   AlertIcon
 } from '../components/Icons'
+import { formatClientError, toastApiError } from '../utils/formatClientError'
 
 function NetworksList() {
   const navigate = useNavigate()
@@ -41,7 +42,7 @@ function NetworksList() {
       const data = await apiGet('/networks')
       setNetworks(data)
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     } finally {
       setLoading(false)
     }
@@ -63,8 +64,8 @@ function NetworksList() {
       setNetworks(data)
       toast.success(t('messages.success.networkDeleted'))
     } catch (err) {
-      setError(err.message)
-      toast.error(`${t('common.error')}: ${err.message}`)
+      setError(formatClientError(err, t))
+      toastApiError(toast, t, err)
     }
   }
 
@@ -238,7 +239,7 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
       
       onSuccess()
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     } finally {
       setSubmitting(false)
     }
@@ -266,14 +267,13 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
         </button>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form noValidate onSubmit={handleSubmit}>
         <div className="form-group">
           <label>{t('forms.networkName')} *</label>
           <input
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
             placeholder={t('forms.networkName')}
           />
         </div>
@@ -284,7 +284,6 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
             type="text"
             value={formData.networkId}
             onChange={(e) => setFormData({ ...formData, networkId: e.target.value })}
-            required
             placeholder="192.168.1.0"
             style={{ fontFamily: 'monospace' }}
           />
@@ -298,7 +297,6 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
             max="32"
             value={formData.subnet}
             onChange={(e) => setFormData({ ...formData, subnet: e.target.value })}
-            required
             placeholder="24"
           />
         </div>

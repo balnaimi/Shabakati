@@ -18,6 +18,7 @@ import {
   DeviceIcon,
   AlertIcon
 } from '../components/Icons'
+import { formatClientError, toastApiError } from '../utils/formatClientError'
 
 function HostsList() {
   const navigate = useNavigate()
@@ -46,7 +47,7 @@ function HostsList() {
       const data = await apiGet('/stats')
       setStats(data)
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     } finally {
       setLoading(false)
     }
@@ -70,8 +71,8 @@ function HostsList() {
       
       toast.success(t('messages.success.dataCleared'))
     } catch (err) {
-      setError(err.message)
-      toast.error(`${t('common.error')}: ${err.message}`)
+      setError(formatClientError(err, t))
+      toastApiError(toast, t, err)
     }
   }
 

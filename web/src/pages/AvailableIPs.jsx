@@ -6,9 +6,12 @@ import { calculateIPRange, getLastOctet } from '../utils/networkUtils'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
 import { NetworkIcon, AlertIcon } from '../components/Icons'
+import { formatClientError } from '../utils/formatClientError'
+import { useAuth } from '../contexts/AuthContext'
 
 function AvailableIPs() {
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const { t } = useTranslation()
   const [networks, setNetworks] = useState([])
   const [selectedNetworkId, setSelectedNetworkId] = useState(null)
@@ -49,7 +52,7 @@ function AvailableIPs() {
         setSelectedNetworkId(data[0].id)
       }
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
     } finally {
       setLoading(false)
     }
@@ -82,7 +85,7 @@ function AvailableIPs() {
       try {
         rangeResult = calculateIPRange(network.network_id, network.subnet)
       } catch (e) {
-        setError(e.message)
+        setError(formatClientError(e, t))
         setAvailableIPs([])
         setRangeInfo(null)
         return
@@ -98,7 +101,7 @@ function AvailableIPs() {
         setAvailableIPs([])
       }
     } catch (err) {
-      setError(err.message)
+      setError(formatClientError(err, t))
       setAvailableIPs([])
       setRangeInfo(null)
       setRangeIsLarge(false)
@@ -127,10 +130,14 @@ function AvailableIPs() {
       {networks.length === 0 ? (
         <EmptyState
           icon="network"
-          title={t('pages.availableIPs.noNetworks')}
-          description={t('pages.availableIPs.noNetworksDescription')}
-          action={() => navigate('/networks')}
-          actionLabel={t('pages.networksList.view')}
+          title={
+            isAdmin
+              ? t('pages.availableIPs.noNetworks')
+              : t('pages.hostsList.noNetworksVisitor')
+          }
+          description={isAdmin ? t('pages.availableIPs.noNetworksDescription') : undefined}
+          action={isAdmin ? () => navigate('/networks') : undefined}
+          actionLabel={isAdmin ? t('pages.networksList.view') : undefined}
         />
       ) : (
         <>

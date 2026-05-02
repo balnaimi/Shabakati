@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync } from 'fs';
 import { Err } from './apiMessages.js';
+import { apiThrow } from './errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -970,7 +971,7 @@ export const dbFunctions = {
   addFavorite(favorite) {
     // Check if host is already in favorites
     if (this.isHostFavorite(favorite.hostId)) {
-      throw new Error(Err.hostAlreadyInFavorites);
+      apiThrow(400, Err.hostAlreadyInFavorites);
     }
     
     const stmt = db.prepare(`
