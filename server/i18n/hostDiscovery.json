@@ -1,0 +1,34 @@
+{
+  "introManual": {
+    "ar": "تم اكتشافه من فحص الشبكة «{{name}}»",
+    "en": "Discovered from network scan \"{{name}}\""
+  },
+  "introAuto": {
+    "ar": "تم اكتشافه تلقائياً من فحص الشبكة «{{name}}»",
+    "en": "Auto-discovered from network scan \"{{name}}\""
+  },
+  "suffixPing": {
+    "ar": " عبر ICMP (ping).",
+    "en": " via ICMP ping."
+  },
+  "suffixTcpPort": {
+    "ar": " عبر اتصال TCP على المنفذ {{port}}.",
+    "en": " via TCP on port {{port}}."
+  },
+  "suffixTcpCommon": {
+    "ar": " عبر اتصال TCP على أحد المنافذ الشائعة المفحوصة.",
+    "en": " via TCP on one of the scanned common ports."
+  },
+  "suffixBothTcpPort": {
+    "ar": " عبر ICMP (ping) وعبر اتصال TCP على المنفذ {{port}}.",
+    "en": " via ICMP ping and TCP on port {{port}}."
+  },
+  "suffixBothTcpGeneric": {
+    "ar": " عبر ICMP (ping) وعبر اتصال TCP.",
+    "en": " via ICMP ping and TCP."
+  },
+  "fallbackEnd": {
+    "ar": ".",
+    "en": "."
+  }
+}

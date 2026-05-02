@@ -103,12 +103,12 @@ export function AuthProvider({ children }) {
         setUserType(response.userType || 'visitor');
         return { success: true, userType: response.userType || 'visitor' };
       } else {
-        return { success: false, error: 'فشل تسجيل الدخول' };
+        return { success: false, error: 'Login failed' };
       }
     } catch (error) {
       return { 
         success: false, 
-        error: error.message || 'حدث خطأ أثناء تسجيل الدخول' 
+        error: error.message || 'An error occurred during login' 
       };
     }
   }, []);
@@ -118,7 +118,7 @@ export function AuthProvider({ children }) {
       // Get visitor token for authorization
       const visitorToken = localStorage.getItem('visitorToken');
       if (!visitorToken) {
-        return { success: false, error: 'يجب تسجيل الدخول كزائر أولاً' };
+        return { success: false, error: 'Sign in as visitor first' };
       }
 
       const response = await apiPost('/auth/admin-login', { password }, {
@@ -139,12 +139,12 @@ export function AuthProvider({ children }) {
         
         return { success: true, userType: response.userType || 'admin' };
       } else {
-        return { success: false, error: 'فشل تسجيل الدخول كمسؤول' };
+        return { success: false, error: 'Admin login failed' };
       }
     } catch (error) {
       return { 
         success: false, 
-        error: error.message || 'حدث خطأ أثناء تسجيل الدخول كمسؤول' 
+        error: error.message || 'An error occurred during admin login' 
       };
     }
   }, [checkAuthStatus]);

@@ -28,6 +28,7 @@ import {
   validateTagName,
   validateColor
 } from './validators.js';
+import { Err, Msg, hostAlreadyExists, deletedHostsCount, importedHostsCount } from './apiMessages.js';
 import { buildNetworkScanHostDescription } from './discoveryDescription.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -151,7 +152,7 @@ app.post('/api/hosts/:id/check-status', requireAdmin, async (req, res) => {
     const host = dbFunctions.getHostById(id);
     
     if (!host) {
-      return res.status(404).json({ error: 'المضيف غير موجود' });
+      return res.status(404).json({ error: Err.hostNotFound });
     }
 
     // Check host status
@@ -188,7 +189,7 @@ app.patch('/api/hosts/:id/toggle-status', requireAdmin, (req, res) => {
     const host = dbFunctions.toggleHostStatus(id);
     
     if (!host) {
-      return res.status(404).json({ error: 'المضيف غير موجود' });
+      return res.status(404).json({ error: Err.hostNotFound });
     }
 
     res.json(host);
@@ -202,7 +203,7 @@ app.get('/api/hosts/:id', (req, res) => {
   try {
     const host = dbFunctions.getHostById(parseInt(req.params.id));
     if (!host) {
-      return res.status(404).json({ error: 'المضيف غير موجود' });
+      return res.status(404).json({ error: Err.hostNotFound });
     }
     res.json(host);
   } catch (error) {
@@ -222,7 +223,7 @@ app.post('/api/hosts', requireAdmin, asyncHandler(async (req, res) => {
   
   // Validate IP
   if (!ip || !isValidIP(ip)) {
-    throw new ApiError(400, 'عنوان IP غير صحيح');
+    throw new ApiError(400, Err.invalidIPAddress);
   }
   
   // Validate description
@@ -241,7 +242,7 @@ app.post('/api/hosts', requireAdmin, asyncHandler(async (req, res) => {
   const existingHosts = dbFunctions.getAllHosts();
   const existingHost = existingHosts.find(h => h.ip === ip.trim());
   if (existingHost) {
-    throw new ApiError(400, `الجهاز موجود مسبقاً: ${existingHost.name} (${ip})`);
+    throw new ApiError(400, hostAlreadyExists(existingHost.name, ip));
   }
 
   // Automatically check host status
@@ -277,10 +278,10 @@ app.post('/api/hosts', requireAdmin, asyncHandler(async (req, res) => {
 app.put('/api/hosts/bulk-tags', requireAdmin, asyncHandler(async (req, res) => {
   const { ids, tagIds } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
-    throw new ApiError(400, 'قائمة معرفات الأجهزة مطلوبة');
+    throw new ApiError(400, Err.hostIdsRequired);
   }
   if (ids.length > 500) {
-    throw new ApiError(400, 'الحد الأقصى 500 جهاز في العملية الواحدة');
+    throw new ApiError(400, Err.maxHostsPerOperation);
   }
   const tagIdsArray = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds] : []);
 
@@ -330,7 +331,7 @@ app.put('/api/hosts/:id', requireAdmin, asyncHandler((req, res) => {
   
   // Validate IP
   if (!ip || !isValidIP(ip)) {
-    throw new ApiError(400, 'عنوان IP غير صحيح');
+    throw new ApiError(400, Err.invalidIPAddress);
   }
   
   // Validate description
@@ -348,7 +349,7 @@ app.put('/api/hosts/:id', requireAdmin, asyncHandler((req, res) => {
   // Get current host to preserve existing values
   const existingHost = dbFunctions.getHostById(id);
   if (!existingHost) {
-    throw new ApiError(404, 'المضيف غير موجود');
+    throw new ApiError(404, Err.hostNotFound);
   }
 
   // Ensure tagIds is an array
@@ -367,7 +368,7 @@ app.put('/api/hosts/:id', requireAdmin, asyncHandler((req, res) => {
   });
 
   if (!updatedHost) {
-    throw new ApiError(404, 'المضيف غير موجود');
+    throw new ApiError(404, Err.hostNotFound);
   }
 
   logger.info('Host updated', { hostId: id, ip: updatedHost.ip });
@@ -381,10 +382,10 @@ app.delete('/api/hosts/:id', requireAdmin, (req, res) => {
     const result = dbFunctions.deleteHost(id);
     
     if (result.changes === 0) {
-      return res.status(404).json({ error: 'المضيف غير موجود' });
+      return res.status(404).json({ error: Err.hostNotFound });
     }
 
-    res.json({ message: 'تم حذف المضيف بنجاح' });
+    res.json({ message: Msg.hostDeleted });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -415,7 +416,7 @@ app.get('/api/tags/:id', (req, res) => {
   try {
     const tag = dbFunctions.getTagById(parseInt(req.params.id));
     if (!tag) {
-      return res.status(404).json({ error: 'الوسم غير موجود' });
+      return res.status(404).json({ error: Err.tagNotFound });
     }
     res.json(tag);
   } catch (error) {
@@ -442,7 +443,7 @@ app.post('/api/tags', requireAdmin, asyncHandler((req, res) => {
   // Check for existing tag with same name
   const existingTag = dbFunctions.getTagByName(nameValidation.sanitized);
   if (existingTag) {
-    throw new ApiError(400, 'الوسم موجود بالفعل');
+    throw new ApiError(400, Err.tagAlreadyExists);
   }
 
   const newTag = {
@@ -476,13 +477,13 @@ app.put('/api/tags/:id', requireAdmin, asyncHandler((req, res) => {
 
   const existingTag = dbFunctions.getTagById(id);
   if (!existingTag) {
-    throw new ApiError(404, 'الوسم غير موجود');
+    throw new ApiError(404, Err.tagNotFound);
   }
 
   // Check for another tag with same name
   const tagWithSameName = dbFunctions.getTagByName(nameValidation.sanitized);
   if (tagWithSameName && tagWithSameName.id !== id) {
-    throw new ApiError(400, 'الوسم موجود بالفعل');
+    throw new ApiError(400, Err.tagAlreadyExists);
   }
 
   const updatedTag = dbFunctions.updateTag(id, {
@@ -502,12 +503,12 @@ app.delete('/api/tags/:id', requireAdmin, (req, res) => {
     const result = dbFunctions.deleteTag(id);
     
     if (result.changes === 0) {
-      return res.status(404).json({ error: 'الوسم غير موجود' });
+      return res.status(404).json({ error: Err.tagNotFound });
     }
 
     cache.delete('tags'); // Invalidate tags cache
     cache.delete('stats'); // Invalidate stats cache
-    res.json({ message: 'تم حذف الوسم بنجاح' });
+    res.json({ message: Msg.tagDeleted });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -572,7 +573,7 @@ app.post('/api/import', requireAdmin, async (req, res) => {
       }
     }
     
-    res.json({ message: `تم استيراد ${imported} مضيف بنجاح` });
+    res.json({ message: importedHostsCount(imported) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -638,13 +639,13 @@ app.post('/api/network/scan', requireAdmin, async (req, res) => {
     const { networkRange, timeout } = req.body;
     
     if (!networkRange) {
-      return res.status(400).json({ error: 'نطاق الشبكة مطلوب (مثال: 192.168.30.0/24 أو 192.168.30.1-254)' });
+      return res.status(400).json({ error: Err.networkRangeRequired });
     }
 
     const usePing = req.body.usePing !== false;
     const useTcpPorts = req.body.useTcpPorts !== false;
     if (!usePing && !useTcpPorts) {
-      return res.status(400).json({ error: 'يجب تفعيل Ping أو فحص المنافذ (أو كليهما)' });
+      return res.status(400).json({ error: Err.enablePingOrTcp });
     }
 
     const scanTimeout = timeout || 2;
@@ -688,7 +689,7 @@ app.get('/api/networks/:id', (req, res) => {
   try {
     const network = dbFunctions.getNetworkById(parseInt(req.params.id));
     if (!network) {
-      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+      return res.status(404).json({ error: Err.networkNotFound });
     }
     res.json(network);
   } catch (error) {
@@ -701,7 +702,7 @@ app.post('/api/networks', requireAdmin, asyncHandler((req, res) => {
   const { name, networkId, subnet } = req.body;
   
   if (!name || !networkId || subnet === undefined) {
-    throw new ApiError(400, 'اسم الشبكة و Network ID و Subnet مطلوبون');
+    throw new ApiError(400, Err.networkFieldsRequired);
   }
 
   // Validate network ID
@@ -719,7 +720,7 @@ app.post('/api/networks', requireAdmin, asyncHandler((req, res) => {
   // Validate and sanitize name
   const nameValidation = validateHostName(name); // Reuse host name validation
   if (!nameValidation.valid) {
-    throw new ApiError(400, 'اسم الشبكة غير صحيح');
+    throw new ApiError(400, Err.invalidNetworkName);
   }
 
   const network = {
@@ -744,11 +745,11 @@ app.put('/api/networks/:id', requireAdmin, (req, res) => {
     
     const existingNetwork = dbFunctions.getNetworkById(id);
     if (!existingNetwork) {
-      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+      return res.status(404).json({ error: Err.networkNotFound });
     }
 
     if (subnet && (subnet < 0 || subnet > 32)) {
-      return res.status(400).json({ error: 'Subnet يجب أن يكون بين 0 و 32' });
+      return res.status(400).json({ error: Err.subnetBetween0And32 });
     }
 
     const { scan_use_ping, scan_use_tcp } = req.body;
@@ -761,7 +762,7 @@ app.put('/api/networks/:id', requireAdmin, (req, res) => {
       } else {
         const n = parseInt(v, 10);
         if (!ALLOWED_OFFLINE_RELEASE_SET.has(n)) {
-          return res.status(400).json({ error: 'مدة تحرير عنوان الجهاز بعد الانقطاع غير مسموحة' });
+          return res.status(400).json({ error: Err.offlineReleaseNotAllowed });
         }
         offline_release_patch = n;
       }
@@ -791,7 +792,7 @@ app.delete('/api/networks/:id/hosts', requireAdmin, (req, res) => {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+      return res.status(404).json({ error: Err.networkNotFound });
     }
     
     // Get all hosts associated with the network
@@ -808,7 +809,7 @@ app.delete('/api/networks/:id/hosts', requireAdmin, (req, res) => {
     
     res.json({ 
       success: true, 
-      message: `تم حذف ${deletedCount} جهاز بنجاح`,
+      message: `Successfully deleted ${deletedCount} host(s)`,
       deletedCount 
     });
   } catch (error) {
@@ -823,7 +824,7 @@ app.delete('/api/networks/:id', requireAdmin, (req, res) => {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+      return res.status(404).json({ error: Err.networkNotFound });
     }
     
     // Delete all hosts associated with the network
@@ -843,7 +844,7 @@ app.delete('/api/networks/:id', requireAdmin, (req, res) => {
     
     res.json({ 
       success: true, 
-      message: `تم حذف الشبكة و ${deletedHostsCount} جهاز بنجاح`,
+      message: `Deleted network and ${deletedHostsCount} host(s)`,
       deletedHostsCount 
     });
   } catch (error) {
@@ -858,7 +859,7 @@ app.get('/api/networks/:id/hosts', (req, res) => {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+      return res.status(404).json({ error: Err.networkNotFound });
     }
 
     // Get all hosts and filter based on IP range
@@ -878,15 +879,15 @@ app.post('/api/networks/:id/hosts/bulk-delete', requireAdmin, asyncHandler(async
   const networkId = parseInt(req.params.id, 10);
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
-    throw new ApiError(400, 'قائمة معرفات الأجهزة مطلوبة');
+    throw new ApiError(400, Err.hostIdsRequired);
   }
   if (ids.length > 500) {
-    throw new ApiError(400, 'الحد الأقصى 500 جهاز في العملية الواحدة');
+    throw new ApiError(400, Err.maxHostsPerOperation);
   }
 
   const network = dbFunctions.getNetworkById(networkId);
   if (!network) {
-    throw new ApiError(404, 'الشبكة غير موجودة');
+    throw new ApiError(404, Err.networkNotFound);
   }
 
   const toDelete = [];
@@ -900,7 +901,7 @@ app.post('/api/networks/:id/hosts/bulk-delete', requireAdmin, asyncHandler(async
   }
 
   if (toDelete.length === 0) {
-    return res.json({ deletedCount: 0, message: 'لم يُحذف أي جهاز' });
+    return res.json({ deletedCount: 0, message: Msg.noHostsDeleted });
   }
 
   const deletedCount = dbFunctions.deleteHostsBulkIds(toDelete);
@@ -909,7 +910,7 @@ app.post('/api/networks/:id/hosts/bulk-delete', requireAdmin, asyncHandler(async
   cache.delete('favorites');
   cache.delete('networks');
   logger.info('Bulk delete hosts', { networkId, deletedCount, requested: ids.length });
-  res.json({ deletedCount, message: `تم حذف ${deletedCount} جهاز` });
+  res.json({ deletedCount, message: deletedHostsCount(deletedCount) });
 }));
 
 // Scan network
@@ -918,7 +919,7 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+      return res.status(404).json({ error: Err.networkNotFound });
     }
 
     const { timeout, addHosts, language = 'ar' } = req.body;
@@ -939,7 +940,7 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
       useTcpPorts = (network.scan_use_tcp ?? 1) === 1;
     }
     if (!usePing && !useTcpPorts) {
-      return res.status(400).json({ error: 'يجب تفعيل Ping أو فحص المنافذ (أو كليهما)' });
+      return res.status(400).json({ error: Err.enablePingOrTcp });
     }
 
     const scanOptions = { usePing, useTcpPorts };
@@ -1062,7 +1063,7 @@ app.post('/api/networks/:id/auto-scan', requireAdmin, asyncHandler(async (req, r
   
   const network = dbFunctions.getNetworkById(id);
   if (!network) {
-    throw new ApiError(404, 'الشبكة غير موجودة');
+    throw new ApiError(404, Err.networkNotFound);
   }
   
   const requestedMs =
@@ -1072,7 +1073,7 @@ app.post('/api/networks/:id/auto-scan', requireAdmin, asyncHandler(async (req, r
     : parseInt(network.auto_scan_interval, 10);
 
   if (!ALLOWED_AUTO_SCAN_INTERVAL_SET.has(scanInterval)) {
-    throw new ApiError(400, 'فترة الفحص التلقائي يجب أن تكون واحدة من: 5، 10، 15، 20، 30، 45، أو 60 دقيقة');
+    throw new ApiError(400, Err.autoScanIntervalInvalid);
   }
   
   // Update database
@@ -1111,7 +1112,7 @@ app.get('/api/networks/:id/auto-scan-results', requireVisitor, (req, res) => {
     
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+      return res.status(404).json({ error: Err.networkNotFound });
     }
     
     const results = dbFunctions.getAutoScanResults(id, type || null);
@@ -1140,11 +1141,11 @@ app.delete('/api/networks/:id/auto-scan-results', requireAdmin, (req, res) => {
     
     const network = dbFunctions.getNetworkById(id);
     if (!network) {
-      return res.status(404).json({ error: 'الشبكة غير موجودة' });
+      return res.status(404).json({ error: Err.networkNotFound });
     }
     
     dbFunctions.clearAutoScanResults(id, type || null);
-    res.json({ success: true, message: 'تم حذف النتائج بنجاح' });
+    res.json({ success: true, message: Msg.resultsCleared });
   } catch (error) {
     logger.error('Error in DELETE /api/networks/:id/auto-scan-results:', { error: error.message });
     res.status(500).json({ error: error.message });
@@ -1199,7 +1200,7 @@ app.delete('/api/data/all', requireAdmin, asyncHandler((req, res) => {
       
       res.json({ 
         success: true, 
-        message: 'تم حذف جميع البيانات بنجاح (الأجهزة، الشبكات، الوسوم، المجموعات، المفضلة)' 
+        message: Msg.allDataDeleted 
       });
     } catch (error) {
       // Rollback on error
@@ -1208,7 +1209,7 @@ app.delete('/api/data/all', requireAdmin, asyncHandler((req, res) => {
     }
   } catch (error) {
     logger.error('Error in DELETE /api/data/all:', { error: error.message });
-    throw new ApiError(500, `خطأ في حذف البيانات: ${error.message}`);
+    throw new ApiError(500, `Error deleting data: ${error.message}`);
   }
 }));
 
@@ -1238,7 +1239,7 @@ app.get('/api/favorites/:id', (req, res) => {
     const id = parseInt(req.params.id);
     const favorite = dbFunctions.getFavoriteById(id);
     if (!favorite) {
-      return res.status(404).json({ error: 'المفضلة غير موجودة' });
+      return res.status(404).json({ error: Err.favoriteNotFound });
     }
     res.json(favorite);
   } catch (error) {
@@ -1251,13 +1252,13 @@ app.get('/api/favorites/:id', (req, res) => {
 app.post('/api/favorites/bulk', requireAdmin, asyncHandler(async (req, res) => {
   const { hostIds, action } = req.body;
   if (!Array.isArray(hostIds) || hostIds.length === 0) {
-    throw new ApiError(400, 'قائمة hostIds مطلوبة');
+    throw new ApiError(400, Err.hostIdsArrayRequired);
   }
   if (hostIds.length > 500) {
-    throw new ApiError(400, 'الحد الأقصى 500 جهاز');
+    throw new ApiError(400, Err.maxHostsPerRequest);
   }
   if (action !== 'add' && action !== 'remove') {
-    throw new ApiError(400, 'action يجب أن يكون add أو remove');
+    throw new ApiError(400, Err.actionAddOrRemove);
   }
 
   const unique = [...new Set(hostIds.map((x) => parseInt(x, 10)).filter((n) => !Number.isNaN(n) && n > 0))];
@@ -1298,13 +1299,13 @@ app.post('/api/favorites', requireAdmin, (req, res) => {
     const { hostId, url, groupId, displayOrder, customName, description } = req.body;
     
     if (!hostId) {
-      return res.status(400).json({ error: 'hostId مطلوب' });
+      return res.status(400).json({ error: Err.hostIdRequired });
     }
     
     // Check if host exists
     const host = dbFunctions.getHostById(hostId);
     if (!host) {
-      return res.status(404).json({ error: 'الجهاز غير موجود' });
+      return res.status(404).json({ error: Err.hostNotFound });
     }
     
     const favorite = dbFunctions.addFavorite({
@@ -1332,7 +1333,7 @@ app.put('/api/favorites/:id', requireAdmin, (req, res) => {
     
     const favorite = dbFunctions.getFavoriteById(id);
     if (!favorite) {
-      return res.status(404).json({ error: 'المفضلة غير موجودة' });
+      return res.status(404).json({ error: Err.favoriteNotFound });
     }
     
     const updated = dbFunctions.updateFavorite(id, {
@@ -1357,12 +1358,12 @@ app.delete('/api/favorites/:id', requireAdmin, (req, res) => {
     const id = parseInt(req.params.id);
     const favorite = dbFunctions.getFavoriteById(id);
     if (!favorite) {
-      return res.status(404).json({ error: 'المفضلة غير موجودة' });
+      return res.status(404).json({ error: Err.favoriteNotFound });
     }
     
     dbFunctions.deleteFavorite(id);
     cache.delete('favorites'); // Invalidate favorites cache
-    res.json({ success: true, message: 'تم حذف المفضلة بنجاح' });
+    res.json({ success: true, message: Msg.favoriteRemoved });
   } catch (error) {
     logger.error('Error in DELETE /api/favorites/:id:', { error: error.message, favoriteId: id });
     res.status(500).json({ error: error.message });
@@ -1395,7 +1396,7 @@ app.get('/api/groups/:id', (req, res) => {
     const id = parseInt(req.params.id);
     const group = dbFunctions.getGroupById(id);
     if (!group) {
-      return res.status(404).json({ error: 'المجموعة غير موجودة' });
+      return res.status(404).json({ error: Err.groupNotFound });
     }
     res.json(group);
   } catch (error) {
@@ -1410,7 +1411,7 @@ app.post('/api/groups', requireAdmin, (req, res) => {
     const { name, color, displayOrder } = req.body;
     
     if (!name || name.trim() === '') {
-      return res.status(400).json({ error: 'اسم المجموعة مطلوب' });
+      return res.status(400).json({ error: Err.groupNameRequired });
     }
     
     const group = dbFunctions.addGroup({
@@ -1435,11 +1436,11 @@ app.put('/api/groups/:id', requireAdmin, (req, res) => {
     
     const group = dbFunctions.getGroupById(id);
     if (!group) {
-      return res.status(404).json({ error: 'المجموعة غير موجودة' });
+      return res.status(404).json({ error: Err.groupNotFound });
     }
     
     if (name && name.trim() === '') {
-      return res.status(400).json({ error: 'اسم المجموعة لا يمكن أن يكون فارغاً' });
+      return res.status(400).json({ error: Err.groupNameEmpty });
     }
     
     const updated = dbFunctions.updateGroup(id, {
@@ -1462,12 +1463,12 @@ app.delete('/api/groups/:id', requireAdmin, (req, res) => {
     const id = parseInt(req.params.id);
     const group = dbFunctions.getGroupById(id);
     if (!group) {
-      return res.status(404).json({ error: 'المجموعة غير موجودة' });
+      return res.status(404).json({ error: Err.groupNotFound });
     }
     
     dbFunctions.deleteGroup(id);
     cache.delete('groups'); // Invalidate groups cache
-    res.json({ success: true, message: 'تم حذف المجموعة بنجاح' });
+    res.json({ success: true, message: Msg.groupDeleted });
   } catch (error) {
     logger.error('Error in DELETE /api/groups/:id:', { error: error.message, groupId: id });
     res.status(500).json({ error: error.message });
@@ -1491,7 +1492,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // Handle Chrome DevTools .well-known requests (to avoid 404 errors)
 app.get('/.well-known/*', (req, res) => {
-  res.status(404).json({ error: 'Not found' });
+  res.status(404).json({ error: Err.notFound });
 });
 
 // Handle favicon.ico requests (browsers automatically request this)

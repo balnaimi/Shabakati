@@ -45,28 +45,28 @@ export function errorHandler(err, req, res, next) {
   // Handle validation errors
   if (err.name === 'ValidationError') {
     return res.status(400).json({
-      error: err.message || 'خطأ في التحقق من البيانات'
+      error: err.message || 'Validation error'
     });
   }
 
   // Handle JWT errors
   if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({
-      error: 'رمز المصادقة غير صحيح'
+      error: 'Invalid authentication token'
     });
   }
 
   if (err.name === 'TokenExpiredError') {
     return res.status(401).json({
-      error: 'انتهت صلاحية رمز المصادقة'
+      error: 'Authentication token expired'
     });
   }
 
   // Default error response
   const statusCode = err.statusCode || 500;
   const message = process.env.NODE_ENV === 'production'
-    ? 'حدث خطأ في الخادم'
-    : err.message || 'حدث خطأ غير متوقع';
+    ? 'Internal server error'
+    : err.message || 'An unexpected error occurred';
 
   res.status(statusCode).json({
     error: message,
@@ -90,6 +90,6 @@ export function asyncHandler(fn) {
  * 404 Not Found handler
  */
 export function notFoundHandler(req, res, next) {
-  const error = new ApiError(404, `المسار غير موجود: ${req.originalUrl}`);
+  const error = new ApiError(404, `Route not found: ${req.originalUrl}`);
   next(error);
 }

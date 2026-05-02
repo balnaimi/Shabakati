@@ -7,7 +7,7 @@ function LanguageToggle() {
     setLanguage(language === 'ar' ? 'en' : 'ar')
   }
 
-  const label = language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'
+  const label = language === 'ar' ? 'Switch to English' : 'Switch to Arabic'
 
   return (
     <button
@@ -16,7 +16,7 @@ function LanguageToggle() {
       title={label}
       aria-label={label}
     >
-      {language === 'ar' ? 'EN' : 'ع'}
+      {language === 'ar' ? 'EN' : 'AR'}
     </button>
   )
 }

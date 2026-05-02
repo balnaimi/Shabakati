@@ -1,4 +1,5 @@
 import { verifyToken } from './auth.js';
+import { Err } from './apiMessages.js';
 
 /**
  * Middleware to require visitor authentication (visitor or admin)
@@ -8,19 +9,19 @@ export function requireVisitor(req, res, next) {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'غير مصرح - يرجى تسجيل الدخول' });
+    return res.status(401).json({ error: Err.unauthorized });
   }
   
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
   const decoded = verifyToken(token);
   
   if (!decoded) {
-    return res.status(401).json({ error: 'رمز الدخول غير صالح أو منتهي الصلاحية' });
+    return res.status(401).json({ error: Err.invalidToken });
   }
   
   // Check if user is visitor or admin
   if (decoded.type !== 'visitor' && decoded.type !== 'admin') {
-    return res.status(403).json({ error: 'نوع المستخدم غير صالح' });
+    return res.status(403).json({ error: Err.invalidUserType });
   }
   
   // Add user info to request object
@@ -36,19 +37,19 @@ export function requireAdmin(req, res, next) {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'غير مصرح - يرجى تسجيل الدخول كمسؤول' });
+    return res.status(401).json({ error: Err.unauthorizedAdmin });
   }
   
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
   const decoded = verifyToken(token);
   
   if (!decoded) {
-    return res.status(401).json({ error: 'رمز الدخول غير صالح أو منتهي الصلاحية' });
+    return res.status(401).json({ error: Err.invalidToken });
   }
   
   // Check if user is admin
   if (decoded.type !== 'admin') {
-    return res.status(403).json({ error: 'غير مصرح - صلاحية المسؤول مطلوبة' });
+    return res.status(403).json({ error: Err.forbiddenAdmin });
   }
   
   // Add user info to request object

@@ -71,17 +71,17 @@ export function validateHostName(name) {
   const MAX_NAME_LENGTH = 100;
   
   if (!name || typeof name !== 'string' || name.trim() === '') {
-    return { valid: false, sanitized: '', error: 'اسم الجهاز مطلوب' };
+    return { valid: false, sanitized: '', error: 'Host name is required' };
   }
   
   const sanitized = sanitizeString(name, MAX_NAME_LENGTH);
   
   if (sanitized.length === 0) {
-    return { valid: false, sanitized: '', error: 'اسم الجهاز غير صحيح' };
+    return { valid: false, sanitized: '', error: 'Invalid host name' };
   }
   
   if (sanitized.length > MAX_NAME_LENGTH) {
-    return { valid: false, sanitized: '', error: `اسم الجهاز طويل جداً (الحد الأقصى ${MAX_NAME_LENGTH} حرف)` };
+    return { valid: false, sanitized: '', error: `Host name too long (max ${MAX_NAME_LENGTH} characters)` };
   }
   
   return { valid: true, sanitized };
@@ -102,7 +102,7 @@ export function validateDescription(description) {
   const sanitized = sanitizeString(description, MAX_DESCRIPTION_LENGTH);
   
   if (sanitized.length > MAX_DESCRIPTION_LENGTH) {
-    return { valid: false, sanitized: '', error: `الوصف طويل جداً (الحد الأقصى ${MAX_DESCRIPTION_LENGTH} حرف)` };
+    return { valid: false, sanitized: '', error: `Description too long (max ${MAX_DESCRIPTION_LENGTH} characters)` };
   }
   
   return { valid: true, sanitized };
@@ -121,12 +121,12 @@ export function validateURL(url) {
   }
   
   if (!isValidURL(url)) {
-    return { valid: false, sanitized: '', error: 'رابط URL غير صحيح' };
+    return { valid: false, sanitized: '', error: 'Invalid URL' };
   }
   
   const sanitized = url.trim();
   if (sanitized.length > MAX_URL_LENGTH) {
-    return { valid: false, sanitized: '', error: `رابط URL طويل جداً (الحد الأقصى ${MAX_URL_LENGTH} حرف)` };
+    return { valid: false, sanitized: '', error: `URL too long (max ${MAX_URL_LENGTH} characters)` };
   }
   
   return { valid: true, sanitized };
@@ -139,11 +139,11 @@ export function validateURL(url) {
  */
 export function validateNetworkID(networkId) {
   if (!networkId || typeof networkId !== 'string' || networkId.trim() === '') {
-    return { valid: false, error: 'Network ID مطلوب' };
+    return { valid: false, error: 'Network ID is required' };
   }
   
   if (!isValidIP(networkId)) {
-    return { valid: false, error: 'Network ID غير صحيح' };
+    return { valid: false, error: 'Invalid network ID' };
   }
   
   return { valid: true };
@@ -158,11 +158,11 @@ export function validateSubnet(subnet) {
   const subnetNum = parseInt(subnet, 10);
   
   if (isNaN(subnetNum)) {
-    return { valid: false, error: 'Subnet يجب أن يكون رقماً' };
+    return { valid: false, error: 'Subnet must be a number' };
   }
   
   if (subnetNum < 0 || subnetNum > 32) {
-    return { valid: false, error: 'Subnet يجب أن يكون بين 0 و 32' };
+    return { valid: false, error: 'Subnet must be between 0 and 32' };
   }
   
   return { valid: true };
@@ -177,17 +177,17 @@ export function validateTagName(name) {
   const MAX_TAG_NAME_LENGTH = 50;
   
   if (!name || typeof name !== 'string' || name.trim() === '') {
-    return { valid: false, sanitized: '', error: 'اسم الوسم مطلوب' };
+    return { valid: false, sanitized: '', error: 'Tag name is required' };
   }
   
   const sanitized = sanitizeString(name, MAX_TAG_NAME_LENGTH);
   
   if (sanitized.length === 0) {
-    return { valid: false, sanitized: '', error: 'اسم الوسم غير صحيح' };
+    return { valid: false, sanitized: '', error: 'Invalid tag name' };
   }
   
   if (sanitized.length > MAX_TAG_NAME_LENGTH) {
-    return { valid: false, sanitized: '', error: `اسم الوسم طويل جداً (الحد الأقصى ${MAX_TAG_NAME_LENGTH} حرف)` };
+    return { valid: false, sanitized: '', error: `Tag name too long (max ${MAX_TAG_NAME_LENGTH} characters)` };
   }
   
   return { valid: true, sanitized };
@@ -200,12 +200,12 @@ export function validateTagName(name) {
  */
 export function validateColor(color) {
   if (!color || typeof color !== 'string') {
-    return { valid: false, error: 'اللون مطلوب' };
+    return { valid: false, error: 'Color is required' };
   }
   
   const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
   if (!hexRegex.test(color.trim())) {
-    return { valid: false, error: 'تنسيق اللون غير صحيح (يجب أن يكون hex مثل #4a9eff)' };
+    return { valid: false, error: 'Invalid color format (use hex like #4a9eff)' };
   }
   
   return { valid: true };

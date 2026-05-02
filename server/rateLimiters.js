@@ -1,6 +1,5 @@
 import rateLimit from 'express-rate-limit';
-
-const jsonMessage = (ar, en) => ({ error: ar, errorEn: en });
+import { Msg } from './apiMessages.js';
 
 /**
  * Login / visitor auth — limits brute-force attempts per IP.
@@ -10,10 +9,7 @@ export const loginLimiter = rateLimit({
   max: 40,
   standardHeaders: true,
   legacyHeaders: false,
-  message: jsonMessage(
-    'عدد كبير من محاولات تسجيل الدخول. انتظر قليلاً ثم أعد المحاولة.',
-    'Too many login attempts. Please try again later.'
-  )
+  message: { error: Msg.rateLimitLogin }
 });
 
 /**
@@ -24,10 +20,7 @@ export const adminLoginLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: jsonMessage(
-    'عدد كبير من محاولات تسجيل دخول المسؤول. انتظر قليلاً.',
-    'Too many admin login attempts. Please try again later.'
-  )
+  message: { error: Msg.rateLimitAdminLogin }
 });
 
 /**
@@ -38,8 +31,5 @@ export const setupLimiter = rateLimit({
   max: 15,
   standardHeaders: true,
   legacyHeaders: false,
-  message: jsonMessage(
-    'محاولات إعداد كثيرة. انتظر ثم أعد المحاولة.',
-    'Too many setup attempts. Please try again later.'
-  )
+  message: { error: Msg.rateLimitSetup }
 });

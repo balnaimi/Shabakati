@@ -5,6 +5,7 @@ import { hashPassword, comparePassword, generateToken, verifyToken } from '../au
 import { requireAdmin, requireVisitor } from '../middleware.js';
 import logger from '../logger.js';
 import { asyncHandler, ApiError } from '../errorHandler.js';
+import { Err, Msg } from '../apiMessages.js';
 import cache from '../cache.js';
 import { loginLimiter, adminLoginLimiter, setupLimiter } from '../rateLimiters.js';
 
@@ -30,13 +31,13 @@ router.post(
     const { password } = req.body;
 
     if (!password) {
-      throw new ApiError(400, 'كلمة المرور مطلوبة');
+      throw new ApiError(400, Err.passwordRequired);
     }
 
     const visitor = dbFunctions.verifyVisitorPasswordOnly(password, comparePassword);
     if (!visitor) {
       logger.warn('Failed visitor login attempt', { ip: req.ip });
-      throw new ApiError(401, 'كلمة مرور الزوار غير صحيحة');
+      throw new ApiError(401, Err.incorrectVisitorPassword);
     }
 
     const token = generateToken(visitor.username, 'visitor');
@@ -46,7 +47,7 @@ router.post(
       token,
       username: visitor.username,
       userType: 'visitor',
-      message: 'تم تسجيل الدخول كزائر بنجاح'
+      message: Msg.loggedInVisitor
     });
   })
 );
@@ -59,13 +60,13 @@ router.post(
     const { password } = req.body;
 
     if (!password) {
-      throw new ApiError(400, 'كلمة مرور المسؤول مطلوبة');
+      throw new ApiError(400, Err.adminPasswordRequired);
     }
 
     const admin = dbFunctions.verifyAdminPasswordOnlyForAdmin(password, comparePassword);
     if (!admin) {
       logger.warn('Failed admin login attempt', { ip: req.ip, username: req.user.username });
-      throw new ApiError(401, 'كلمة مرور المسؤول غير صحيحة');
+      throw new ApiError(401, Err.incorrectAdminPassword);
     }
 
     const token = generateToken(admin.username, 'admin');
@@ -75,7 +76,7 @@ router.post(
       token,
       username: admin.username,
       userType: 'admin',
-      message: 'تم تسجيل الدخول كمسؤول بنجاح'
+      message: Msg.loggedInAdmin
     });
   })
 );
@@ -148,15 +149,15 @@ router.post(
     const { visitorPassword, adminPassword } = req.body;
 
     if (!dbFunctions.isSetupRequired()) {
-      throw new ApiError(400, 'الإعداد مكتمل بالفعل');
+      throw new ApiError(400, Err.setupAlreadyComplete);
     }
 
     if (!visitorPassword || visitorPassword.length < 3) {
-      throw new ApiError(400, 'كلمة مرور الزوار يجب أن تكون 3 أحرف على الأقل');
+      throw new ApiError(400, Err.visitorPasswordMinLength);
     }
 
     if (!adminPassword || adminPassword.length < 3) {
-      throw new ApiError(400, 'كلمة مرور المسؤول يجب أن تكون 3 أحرف على الأقل');
+      throw new ApiError(400, Err.adminPasswordMinLength);
     }
 
     const visitorPasswordHash = hashPassword(visitorPassword);
@@ -174,7 +175,7 @@ router.post(
       token,
       username: visitor.username,
       userType: 'visitor',
-      message: 'تم إنشاء كلمتي المرور بنجاح'
+      message: Msg.passwordsCreated
     });
   })
 );
@@ -186,29 +187,29 @@ router.post(
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      throw new ApiError(400, 'كلمة المرور الحالية والجديدة مطلوبة');
+      throw new ApiError(400, Err.currentAndNewPasswordRequired);
     }
 
     if (newPassword.length < 3) {
-      throw new ApiError(400, 'كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل');
+      throw new ApiError(400, Err.newPasswordMinLength);
     }
 
     const admin = dbFunctions.verifyAdminPasswordOnlyForAdmin(currentPassword, comparePassword);
     if (!admin) {
-      throw new ApiError(401, 'كلمة المرور الحالية غير صحيحة');
+      throw new ApiError(401, Err.currentPasswordIncorrect);
     }
 
     const newPasswordHash = hashPassword(newPassword);
     const updatedAdmin = dbFunctions.updateAdminPassword(admin.id, newPasswordHash);
 
     if (!updatedAdmin) {
-      throw new ApiError(500, 'فشل تحديث كلمة المرور');
+      throw new ApiError(500, Err.failedUpdatePassword);
     }
 
     cache.deleteByPrefix(AUTH_STATUS_PREFIX);
 
     logger.info('Admin password changed', { username: updatedAdmin.username });
-    res.json({ message: 'تم تغيير كلمة المرور بنجاح' });
+    res.json({ message: Msg.passwordChanged });
   })
 );
 
@@ -219,29 +220,29 @@ router.post(
     const { newPassword } = req.body;
 
     if (!newPassword) {
-      throw new ApiError(400, 'كلمة المرور الجديدة مطلوبة');
+      throw new ApiError(400, Err.newPasswordRequired);
     }
 
     if (newPassword.length < 3) {
-      throw new ApiError(400, 'كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل');
+      throw new ApiError(400, Err.newPasswordMinLength);
     }
 
     const visitor = dbFunctions.getAdminByType('visitor');
     if (!visitor) {
-      throw new ApiError(404, 'حساب الزوار غير موجود');
+      throw new ApiError(404, Err.visitorAccountNotFound);
     }
 
     const newPasswordHash = hashPassword(newPassword);
     const updatedVisitor = dbFunctions.updateAdminPassword(visitor.id, newPasswordHash);
 
     if (!updatedVisitor) {
-      throw new ApiError(500, 'فشل تحديث كلمة مرور الزوار');
+      throw new ApiError(500, Err.failedUpdateVisitorPassword);
     }
 
     cache.deleteByPrefix(AUTH_STATUS_PREFIX);
 
     logger.info('Visitor password changed', { username: updatedVisitor.username });
-    res.json({ message: 'تم تغيير كلمة مرور الزوار بنجاح' });
+    res.json({ message: Msg.visitorPasswordUpdated });
   })
 );
 

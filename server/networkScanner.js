@@ -5,6 +5,7 @@ import ping from 'ping';
 import { dbFunctions } from './database.js';
 import logger from './logger.js';
 import { COMMON_TCP_SCAN_PORTS } from './scanTcpPorts.js';
+import { Err } from './apiMessages.js';
 
 const dnsLookup = promisify(lookup);
 const dnsReverse = promisify(reverse);
@@ -41,7 +42,7 @@ export async function scanNetwork(networkRange, timeout = 2, options = {}) {
   const useTcpPorts = options.useTcpPorts !== false;
 
   if (!usePing && !useTcpPorts) {
-    throw new Error('يجب تفعيل Ping أو فحص المنافذ (أو كليهما)');
+    throw new Error(Err.enablePingOrTcp);
   }
 
   const activeHosts = [];
@@ -229,7 +230,7 @@ function parseCIDR(cidr) {
   const prefixLength = parseInt(prefix);
   
   if (prefixLength < 22 || prefixLength > 30) {
-    throw new Error('CIDR range must be between /22 and /30');
+    throw new Error(Err.cidrRange22to30);
   }
 
   const ipParts = ip.split('.').map(Number);
@@ -260,7 +261,7 @@ function parseCIDR(cidr) {
 function parseRange(range) {
   const parts = range.split('-');
   if (parts.length !== 2) {
-    throw new Error('Invalid range format. Use: 192.168.30.1-254');
+    throw new Error(Err.invalidRangeFormat);
   }
 
   const baseIP = parts[0].trim();
@@ -268,12 +269,12 @@ function parseRange(range) {
   
   const ipParts = baseIP.split('.').map(Number);
   if (ipParts.length !== 4) {
-    throw new Error('Invalid IP address');
+    throw new Error(Err.invalidIPAddress);
   }
 
   const startNum = ipParts[3];
   if (startNum >= endNum || endNum > 254) {
-    throw new Error('Invalid IP range');
+    throw new Error(Err.invalidIpRange);
   }
 
   const ipRange = [];

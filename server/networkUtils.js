@@ -2,6 +2,8 @@
  * Helper functions for working with networks and IP addresses
  */
 
+import { Err } from './apiMessages.js';
+
 /**
  * Validate IP address
  * @param {string} ip - IP address to validate
@@ -78,7 +80,7 @@ export function isIPInNetwork(ip, networkId, subnet) {
  */
 export function calculateIPRange(networkId, subnet) {
   if (!isValidIP(networkId) || subnet < 0 || subnet > 32) {
-    throw new Error('Invalid network ID or subnet');
+    throw new Error(Err.invalidNetworkIdOrSubnet);
   }
 
   const networkNum = ipToNumber(networkId);

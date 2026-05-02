@@ -2,7 +2,7 @@ import { Component } from 'react'
 import { useTranslation } from '../hooks/useTranslation'
 
 /**
- * Error Boundary للتعامل مع الأخطاء في React components
+ * Error boundary for catching errors in React subtrees.
  */
 class ErrorBoundary extends Component {
   constructor(props) {
