@@ -111,9 +111,9 @@ if command_exists node; then
         fi
         
         # Install project dependencies
-        if [ -f "package.json" ]; then
+        if [ -f "web/package.json" ]; then
             echo -e "${YELLOW}Installing frontend dependencies...${NC}"
-            npm install
+            (cd web && npm install)
         fi
         
         if [ -f "server/package.json" ]; then
@@ -165,9 +165,9 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
-if [ -f "package.json" ]; then
+if [ -f "web/package.json" ]; then
     echo -e "${YELLOW}Installing frontend dependencies...${NC}"
-    npm install
+    (cd web && npm install)
     echo -e "${GREEN}✓ Frontend dependencies installed${NC}\n"
 fi
 

@@ -36,6 +36,21 @@ const scanDescriptions = {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/** Built SPA output: Docker (/app/dist), legacy repo root dist/, or web/dist/. */
+function resolveFrontendDistPath() {
+  const candidates = [
+    join(__dirname, 'dist'),
+    join(__dirname, '..', 'dist'),
+    join(__dirname, '..', 'web', 'dist'),
+  ];
+  for (const distPath of candidates) {
+    if (existsSync(join(distPath, 'index.html'))) {
+      return distPath;
+    }
+  }
+  return candidates[0];
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -82,12 +97,7 @@ app.use(express.json({ limit: '10mb' })); // Increase data size limit
 app.get('/', (req, res) => {
   // In production, serve the frontend directly
   if (process.env.NODE_ENV === 'production') {
-    // Try Docker path first (dist is sibling to server.js at /app/dist)
-    let distPath = join(__dirname, 'dist');
-    // Fallback to local development path (dist is sibling to server/ folder)
-    if (!existsSync(join(distPath, 'index.html'))) {
-      distPath = join(__dirname, '..', 'dist');
-    }
+    const distPath = resolveFrontendDistPath();
     return res.sendFile(join(distPath, 'index.html'));
   }
   
@@ -1433,12 +1443,7 @@ app.delete('/api/groups/:id', requireAdmin, (req, res) => {
 
 // Serve static files from dist (for production)
 if (process.env.NODE_ENV === 'production') {
-  // Try Docker path first (dist is sibling to server.js at /app/dist)
-  let distPath = join(__dirname, 'dist');
-  // Fallback to local development path (dist is sibling to server/ folder)
-  if (!existsSync(join(distPath, 'index.html'))) {
-    distPath = join(__dirname, '..', 'dist');
-  }
+  const distPath = resolveFrontendDistPath();
   app.use(express.static(distPath));
   
   // Serve index.html for all non-API routes (SPA routing)
@@ -1460,12 +1465,16 @@ app.get('/.well-known/*', (req, res) => {
 app.get('/favicon.ico', (req, res) => {
   // Try multiple possible paths for favicon
   const possiblePaths = [
+    join(__dirname, '..', 'web', 'public', 'favicon.svg'),
+    join(__dirname, '..', 'web', 'dist', 'favicon.svg'),
     join(__dirname, '..', 'public', 'favicon.svg'),
     join(__dirname, '..', 'dist', 'favicon.svg'),
     join(__dirname, 'dist', 'favicon.svg'),
+    join(__dirname, '..', 'web', 'public', 'favicon.ico'),
+    join(__dirname, '..', 'web', 'dist', 'favicon.ico'),
     join(__dirname, '..', 'public', 'favicon.ico'),
     join(__dirname, '..', 'dist', 'favicon.ico'),
-    join(__dirname, 'dist', 'favicon.ico')
+    join(__dirname, 'dist', 'favicon.ico'),
   ];
   
   for (const faviconPath of possiblePaths) {

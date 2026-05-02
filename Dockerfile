@@ -5,17 +5,17 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY web/package*.json ./web/
 COPY server/package*.json ./server/
 
 # Install dependencies
-RUN npm ci && cd server && npm ci
+RUN cd web && npm ci && cd ../server && npm ci
 
 # Copy source files
 COPY . .
 
 # Build frontend
-RUN npm run build
+RUN cd web && npm run build
 
 # Production stage
 FROM node:24-alpine
@@ -26,10 +26,10 @@ WORKDIR /app
 COPY server/package*.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy built frontend from builder
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/web/dist ./dist
 
 # Copy server files
 COPY server/ ./

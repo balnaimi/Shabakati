@@ -43,9 +43,9 @@ if [ -s "$HOME/.nvm/nvm.sh" ]; then
 fi
 
 # Check if dependencies are installed
-if [ ! -d "node_modules" ]; then
+if [ ! -d "web/node_modules" ]; then
     echo -e "${YELLOW}Frontend dependencies not found. Installing...${NC}"
-    npm install
+    (cd web && npm install)
 fi
 
 if [ ! -d "server/node_modules" ]; then
@@ -110,7 +110,7 @@ echo -e "${GREEN}✓ Backend server started and ready (PID: $BACKEND_PID)${NC}"
 
 # Start frontend server
 echo -e "${YELLOW}Starting frontend server on port 5173...${NC}"
-cd "$PROJECT_DIR"
+cd "$PROJECT_DIR/web"
 npm run dev > /tmp/frontend.log 2>&1 &
 FRONTEND_PID=$!
 
