@@ -25,3 +25,16 @@ export function getDescription(description, language = 'ar') {
   // Return as-is for user-written descriptions
   return description;
 }
+
+/** Optional discoveryTcpPort on system-generated descriptions (network scan). */
+export function parseSystemDiscoveryTcpPort(description) {
+  if (!description) return null;
+  try {
+    const parsed = JSON.parse(description);
+    if (parsed?.type !== 'system' || parsed.discoveryTcpPort == null) return null;
+    const n = Number(parsed.discoveryTcpPort);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}

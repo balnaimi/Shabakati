@@ -1652,6 +1652,7 @@ table tbody tr:last-child td {
   font-size: var(--font-size-sm);
   color: var(--text-primary);
   line-height: var(--line-height-normal);
+  white-space: pre-line;
 }
 
 .toast-close {

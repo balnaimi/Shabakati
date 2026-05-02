@@ -1,6 +1,6 @@
 {
   "name": "network-dashboard",
-  "version": "1.0.13",
+  "version": "1.0.15",
   "private": true,
   "scripts": {
     "dev": "npm --prefix web run dev",

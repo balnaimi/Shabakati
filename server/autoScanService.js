@@ -3,12 +3,7 @@ import { scanNetwork } from './networkScanner.js';
 import { getNetworkCIDR, isIPInNetwork } from './networkUtils.js';
 import logger from './logger.js';
 import { purgeStaleOfflineHostsForNetwork } from './offlineReleaseService.js';
-
-// Translation object for auto scan descriptions
-const autoScanDescriptions = {
-  ar: (networkName) => `تم اكتشافه تلقائياً من فحص الشبكة ${networkName}`,
-  en: (networkName) => `Auto-discovered from network scan ${networkName}`
-};
+import { buildNetworkScanHostDescription } from './discoveryDescription.js';
 
 let scanIntervals = new Map(); // Store intervals for each network
 
@@ -95,11 +90,11 @@ async function performAutoScan(networkId) {
           const newHost = dbFunctions.addHost({
             name: host.hostname || host.existingName || `Host ${host.ip.split('.').pop()}`,
             ip: host.ip,
-            description: JSON.stringify({
-              type: 'system',
-              ar: autoScanDescriptions.ar(network.name),
-              en: autoScanDescriptions.en(network.name)
-            }),
+            description: JSON.stringify(
+              buildNetworkScanHostDescription(network.name, host.detectionMethod, host.port, {
+                auto: true
+              })
+            ),
             url: '',
             status: 'online',
             tagIds: [],

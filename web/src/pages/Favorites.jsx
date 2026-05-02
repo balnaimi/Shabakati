@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import { 
   PlusIcon, 
   FolderIcon, 
@@ -29,6 +30,7 @@ function Favorites() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
   const { t } = useTranslation()
+  const { confirm, confirmDialogSlot } = useConfirmDialog()
   const [favorites, setFavorites] = useState([])
   const [groups, setGroups] = useState([])
   const [allHosts, setAllHosts] = useState([])
@@ -110,9 +112,14 @@ function Favorites() {
   }
 
   const handleDeleteFavorite = async (id) => {
-    if (!window.confirm(t('messages.confirm.deleteFavorite'))) {
-      return
-    }
+    const ok = await confirm({
+      title: t('common.confirm'),
+      message: t('messages.confirm.deleteFavorite'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      confirmClassName: 'btn-danger'
+    })
+    if (!ok) return
     try {
       setError(null)
       await apiDelete(`/favorites/${id}`)
@@ -202,9 +209,14 @@ function Favorites() {
   }
 
   const handleDeleteGroup = async (id) => {
-    if (!window.confirm(t('messages.confirm.deleteGroup'))) {
-      return
-    }
+    const ok = await confirm({
+      title: t('common.confirm'),
+      message: t('messages.confirm.deleteGroup'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      confirmClassName: 'btn-danger'
+    })
+    if (!ok) return
     try {
       setError(null)
       await apiDelete(`/groups/${id}`)
@@ -1086,6 +1098,7 @@ function Favorites() {
           </div>
         </div>
       )}
+      {confirmDialogSlot}
     </div>
   )
 }

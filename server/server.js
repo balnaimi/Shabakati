@@ -28,12 +28,7 @@ import {
   validateTagName,
   validateColor
 } from './validators.js';
-
-// Translation object for scan descriptions
-const scanDescriptions = {
-  ar: (networkName) => `تم اكتشافه من فحص الشبكة ${networkName}`,
-  en: (networkName) => `Discovered from network scan ${networkName}`
-};
+import { buildNetworkScanHostDescription } from './discoveryDescription.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -980,11 +975,13 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
             dbFunctions.addHost({
               name: host.hostname || host.existingName || `Host ${host.ip.split('.').pop()}`,
               ip: host.ip,
-              description: host.description || JSON.stringify({
-                type: 'system',
-                ar: scanDescriptions.ar(network.name),
-                en: scanDescriptions.en(network.name)
-              }),
+              description:
+                host.description ||
+                JSON.stringify(
+                  buildNetworkScanHostDescription(network.name, host.detectionMethod, host.port, {
+                    auto: false
+                  })
+                ),
               url: '',
               status: 'online',
               tagIds: [],

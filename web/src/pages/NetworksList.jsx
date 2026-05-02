@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import { useToast } from '../components/Toast'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import { 
   PlusIcon, 
   EditIcon, 
@@ -19,6 +21,8 @@ function NetworksList() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
   const { t } = useTranslation()
+  const toast = useToast()
+  const { confirm, confirmDialogSlot } = useConfirmDialog()
   const [networks, setNetworks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -44,16 +48,23 @@ function NetworksList() {
   }
 
   const handleDeleteNetwork = async (id) => {
-    if (!window.confirm(t('messages.confirm.deleteNetwork'))) return
+    const ok = await confirm({
+      title: t('common.confirm'),
+      message: t('messages.confirm.deleteNetwork'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      confirmClassName: 'btn-danger'
+    })
+    if (!ok) return
     try {
       setError(null)
       await apiDelete(`/networks/${id}`)
       const data = await apiGet('/networks')
       setNetworks(data)
-      alert(t('messages.success.networkDeleted'))
+      toast.success(t('messages.success.networkDeleted'))
     } catch (err) {
       setError(err.message)
-      alert(`${t('common.error')}: ${err.message}`)
+      toast.error(`${t('common.error')}: ${err.message}`)
     }
   }
 
@@ -181,6 +192,7 @@ function NetworksList() {
           ))}
         </div>
       )}
+      {confirmDialogSlot}
     </div>
   )
 }

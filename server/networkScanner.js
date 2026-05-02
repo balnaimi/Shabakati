@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import ping from 'ping';
 import { dbFunctions } from './database.js';
 import logger from './logger.js';
+import { COMMON_TCP_SCAN_PORTS } from './scanTcpPorts.js';
 
 const dnsLookup = promisify(lookup);
 const dnsReverse = promisify(reverse);
@@ -66,37 +67,7 @@ export async function scanNetwork(networkRange, timeout = 2, options = {}) {
     // Increased batch size for better performance (200 instead of 100)
     const batchSize = 200;
     
-    // Comprehensive list of common ports (Linux, Windows, popular services)
-    const commonPorts = [
-      // Linux
-      22,   // SSH
-      80,   // HTTP
-      443,  // HTTPS
-      21,   // FTP
-      25,   // SMTP
-      53,   // DNS
-      110,  // POP3
-      143,  // IMAP
-      993,  // IMAPS
-      995,  // POP3S
-      3306, // MySQL
-      5432, // PostgreSQL
-      8080, // HTTP Alternate
-      8443, // HTTPS Alternate
-      // Windows
-      135,  // RPC Endpoint Mapper
-      139,  // NetBIOS Session Service
-      445,  // SMB/CIFS
-      3389, // RDP
-      5985, // WinRM HTTP
-      5986, // WinRM HTTPS
-      // Popular services
-      23,    // Telnet
-      5900,  // VNC
-      27017, // MongoDB
-      6379,  // Redis
-      9200   // Elasticsearch
-    ];
+    const commonPorts = [...COMMON_TCP_SCAN_PORTS];
     
     const portTimeout = Math.min(timeout * 1000, 1500); // Reduce timeout for speed
     const pingTimeout = timeout; // timeout for ping in seconds

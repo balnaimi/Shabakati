@@ -160,7 +160,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{message}</p>
+      <p style={{ margin: 0, color: 'var(--text-secondary)', whiteSpace: 'pre-line' }}>{message}</p>
     </Modal>
   )
 }

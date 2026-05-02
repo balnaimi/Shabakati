@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import { useToast } from '../components/Toast'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import { 
   NetworkIcon, 
   SettingsIcon, 
@@ -21,6 +23,8 @@ function HostsList() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
   const { t } = useTranslation()
+  const toast = useToast()
+  const { confirm, confirmDialogSlot } = useConfirmDialog()
   const [stats, setStats] = useState({
     totalNetworks: 0,
     totalHosts: 0,
@@ -49,9 +53,14 @@ function HostsList() {
   }
 
   const handleClearAllData = async () => {
-    if (!window.confirm(t('messages.confirm.clearAllData'))) {
-      return
-    }
+    const ok = await confirm({
+      title: t('common.confirm'),
+      message: t('messages.confirm.clearAllData'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      confirmClassName: 'btn-danger'
+    })
+    if (!ok) return
 
     try {
       setError(null)
@@ -59,9 +68,10 @@ function HostsList() {
       
       await fetchStats()
       
-      alert(t('messages.success.dataCleared'))
+      toast.success(t('messages.success.dataCleared'))
     } catch (err) {
       setError(err.message)
+      toast.error(`${t('common.error')}: ${err.message}`)
     }
   }
 
@@ -190,6 +200,7 @@ function HostsList() {
           </div>
         )}
       </div>
+      {confirmDialogSlot}
     </div>
   )
 }

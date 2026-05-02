@@ -6,6 +6,7 @@ import { useTags } from '../hooks/useTags'
 import { useTranslation } from '../hooks/useTranslation'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import {
   PlusIcon,
   EditIcon,
@@ -20,6 +21,7 @@ function TagsManagement() {
   const { isAdmin } = useAuth()
   const { tags, loading, error: tagsError, refetch: fetchTags } = useTags()
   const { t } = useTranslation()
+  const { confirm, confirmDialogSlot } = useConfirmDialog()
   const [error, setError] = useState(null)
   const [editingTag, setEditingTag] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -62,7 +64,14 @@ function TagsManagement() {
   }
 
   const handleDeleteTag = async (id) => {
-    if (!window.confirm(t('messages.confirm.deleteTag'))) return
+    const ok = await confirm({
+      title: t('common.confirm'),
+      message: t('messages.confirm.deleteTag'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      confirmClassName: 'btn-danger'
+    })
+    if (!ok) return
     try {
       setError(null)
       await apiDelete(`/tags/${id}`)
@@ -255,6 +264,7 @@ function TagsManagement() {
           </div>
         )}
       </div>
+      {confirmDialogSlot}
     </div>
   )
 }

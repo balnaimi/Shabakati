@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiGet, apiPost, apiDelete, apiPut } from '../utils/api'
 import { calculateIPRange, getLastOctet } from '../utils/networkUtils'
-import { getDescription } from '../utils/descriptionUtils'
+import { getDescription, parseSystemDiscoveryTcpPort } from '../utils/descriptionUtils'
 import { useAuth } from '../contexts/AuthContext'
 import { useTags } from '../hooks/useTags'
 import { useTranslation } from '../hooks/useTranslation'
@@ -10,6 +10,8 @@ import { useLanguage } from '../contexts/LanguageContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
 import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
+import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import {
   ScanIcon,
   RefreshIcon,
@@ -27,6 +29,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon
 } from '../components/Icons'
+import { COMMON_TCP_SCAN_PORTS } from '../../../server/scanTcpPorts.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const AUTO_SCAN_INTERVAL_MS_OPTIONS = [5, 10, 15, 20, 30, 45, 60].map((m) => m * 60 * 1000)
@@ -62,6 +65,8 @@ function NetworkView() {
   const { tags: availableTags } = useTags()
   const { t } = useTranslation()
   const { language } = useLanguage()
+  const toast = useToast()
+  const { confirm, confirmDialogSlot } = useConfirmDialog()
   const [editingHostId, setEditingHostId] = useState(null)
   const [editFormData, setEditFormData] = useState({ tagIds: [] })
   const [activeTab, setActiveTab] = useState('devices')
@@ -135,9 +140,9 @@ function NetworkView() {
     try {
       await apiPost('/favorites', { hostId: parseInt(hostId) })
       await fetchFavorites()
-      alert(t('messages.success.addedToFavorites'))
+      toast.success(t('messages.success.addedToFavorites'))
     } catch (err) {
-      alert(`${t('common.error')}: ${err.message}`)
+      toast.error(`${t('common.error')}: ${err.message}`)
     }
   }
 
@@ -147,10 +152,10 @@ function NetworkView() {
       if (favorite) {
         await apiDelete(`/favorites/${favorite.id}`)
         await fetchFavorites()
-        alert(t('messages.success.removedFromFavorites'))
+        toast.success(t('messages.success.removedFromFavorites'))
       }
     } catch (err) {
-      alert(`${t('common.error')}: ${err.message}`)
+      toast.error(`${t('common.error')}: ${err.message}`)
     }
   }
 
@@ -215,9 +220,9 @@ function NetworkView() {
       })
       setAutoScanEnabled(newState)
       setNetwork(result)
-      alert(newState ? t('pages.networkView.autoScanEnabled') : t('pages.networkView.autoScanDisabled'))
+      toast.success(newState ? t('pages.networkView.autoScanEnabled') : t('pages.networkView.autoScanDisabled'))
     } catch (err) {
-      alert(`${t('common.error')}: ${err.message}`)
+      toast.error(`${t('common.error')}: ${err.message}`)
     } finally {
       setLoadingAutoScan(false)
     }
@@ -234,7 +239,7 @@ function NetworkView() {
       })
       await fetchNetwork()
     } catch (err) {
-      alert(`${t('common.error')}: ${err.message}`)
+      toast.error(`${t('common.error')}: ${err.message}`)
     } finally {
       setLoadingAutoScan(false)
     }
@@ -243,7 +248,7 @@ function NetworkView() {
   const handleSaveScanPreferences = async () => {
     if (!network || !isAdmin) return
     if (!scanUsePing && !scanUseTcp) {
-      alert(t('pages.networkView.scanNeedOneMethod'))
+      toast.warning(t('pages.networkView.scanNeedOneMethod'))
       return
     }
     try {
@@ -257,25 +262,35 @@ function NetworkView() {
         offline_release_after_ms: offlineReleaseAfterMs
       })
       await fetchNetwork()
-      alert(t('pages.networkView.scanPreferencesSaved'))
+      toast.success(t('pages.networkView.scanPreferencesSaved'))
     } catch (err) {
-      alert(`${t('common.error')}: ${err.message}`)
+      toast.error(`${t('common.error')}: ${err.message}`)
     } finally {
       setSavingScanPrefs(false)
     }
   }
 
-  const formatDiscoveryCell = (method) => {
+  const formatDiscoveryCell = (host) => {
+    const method = host.discovery_method
+    const tcpPort = parseSystemDiscoveryTcpPort(host.description)
     if (!method) return <span style={{ color: 'var(--text-tertiary)' }}>—</span>
     if (method === 'ping') return t('pages.networkView.discoveryPing')
-    if (method === 'port') return t('pages.networkView.discoveryPort')
-    if (method === 'both') return t('pages.networkView.discoveryBoth')
+    if (method === 'port') {
+      return tcpPort != null
+        ? t('pages.networkView.discoveryTcpOnPort', { port: tcpPort })
+        : t('pages.networkView.discoveryPort')
+    }
+    if (method === 'both') {
+      return tcpPort != null
+        ? t('pages.networkView.discoveryBothOnPort', { port: tcpPort })
+        : t('pages.networkView.discoveryBoth')
+    }
     return method
   }
 
   const handleScan = async () => {
     if (!scanUsePing && !scanUseTcp) {
-      alert(t('pages.networkView.scanNeedOneMethod'))
+      toast.warning(t('pages.networkView.scanNeedOneMethod'))
       return
     }
     try {
@@ -338,16 +353,21 @@ function NetworkView() {
     } catch (err) {
       console.error('Scan error:', err)
       setError(err.message)
-      alert(`${t('common.error')}: ${err.message}`)
+      toast.error(`${t('common.error')}: ${err.message}`)
     } finally {
       setScanning(false)
     }
   }
 
   const handleClearNetworkHosts = async () => {
-    if (!window.confirm(t('messages.confirm.clearAllHosts'))) {
-      return
-    }
+    const ok = await confirm({
+      title: t('common.confirm'),
+      message: t('messages.confirm.clearAllHosts'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      confirmClassName: 'btn-danger'
+    })
+    if (!ok) return
 
     try {
       setError(null)
@@ -356,16 +376,21 @@ function NetworkView() {
       await fetchHosts()
       await fetchNetwork()
       
-      alert(result.message || t('messages.success.hostsDeleted'))
+      toast.success(result.message || t('messages.success.hostsDeleted'))
     } catch (err) {
       setError(err.message)
     }
   }
 
   const handleDeleteHost = async (hostId) => {
-    if (!window.confirm(t('messages.confirm.deleteHost'))) {
-      return
-    }
+    const ok = await confirm({
+      title: t('common.confirm'),
+      message: t('messages.confirm.deleteHost'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      confirmClassName: 'btn-danger'
+    })
+    if (!ok) return
 
     try {
       setError(null)
@@ -408,7 +433,7 @@ function NetworkView() {
         await fetchHosts()
         handleCancelEdit()
         setSelectedHostIds([])
-        alert(t('pages.networkView.bulkTagsSuccess', { count: bulkEditingIds.length }))
+        toast.success(t('pages.networkView.bulkTagsSuccess', { count: bulkEditingIds.length }))
         return
       }
 
@@ -441,9 +466,14 @@ function NetworkView() {
 
   const handleBulkDelete = async () => {
     if (!isAdmin || selectedHostIds.length === 0) return
-    if (!window.confirm(t('pages.networkView.bulkDeleteConfirm', { count: selectedHostIds.length }))) {
-      return
-    }
+    const ok = await confirm({
+      title: t('common.confirm'),
+      message: t('pages.networkView.bulkDeleteConfirm', { count: selectedHostIds.length }),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      confirmClassName: 'btn-danger'
+    })
+    if (!ok) return
     try {
       setBulkWorking(true)
       setError(null)
@@ -451,10 +481,10 @@ function NetworkView() {
       await fetchHosts()
       await fetchNetwork()
       setSelectedHostIds([])
-      alert(t('pages.networkView.bulkDeleteSuccess'))
+      toast.success(t('pages.networkView.bulkDeleteSuccess'))
     } catch (err) {
       setError(err.message)
-      alert(`${t('common.error')}: ${err.message}`)
+      toast.error(`${t('common.error')}: ${err.message}`)
     } finally {
       setBulkWorking(false)
     }
@@ -466,9 +496,9 @@ function NetworkView() {
       setBulkWorking(true)
       const result = await apiPost('/favorites/bulk', { hostIds: selectedHostIds, action: 'add' })
       await fetchFavorites()
-      alert(t('pages.networkView.bulkFavoritesAddResult', { affected: result.affected, skipped: result.skipped }))
+      toast.success(t('pages.networkView.bulkFavoritesAddResult', { affected: result.affected, skipped: result.skipped }))
     } catch (err) {
-      alert(`${t('common.error')}: ${err.message}`)
+      toast.error(`${t('common.error')}: ${err.message}`)
     } finally {
       setBulkWorking(false)
     }
@@ -480,9 +510,9 @@ function NetworkView() {
       setBulkWorking(true)
       const result = await apiPost('/favorites/bulk', { hostIds: selectedHostIds, action: 'remove' })
       await fetchFavorites()
-      alert(t('pages.networkView.bulkFavoritesRemoveResult', { affected: result.affected, skipped: result.skipped }))
+      toast.success(t('pages.networkView.bulkFavoritesRemoveResult', { affected: result.affected, skipped: result.skipped }))
     } catch (err) {
-      alert(`${t('common.error')}: ${err.message}`)
+      toast.error(`${t('common.error')}: ${err.message}`)
     } finally {
       setBulkWorking(false)
     }
@@ -706,6 +736,9 @@ function NetworkView() {
                 <strong>{t('pages.networkView.scanMethodTcpLabel')}</strong>
                 <span style={{ display: 'block', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', fontWeight: 'normal', marginTop: '4px' }}>
                   {t('pages.networkView.scanMethodTcpHelp')}
+                </span>
+                <span style={{ display: 'block', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', fontWeight: 'normal', marginTop: '6px', fontFamily: 'monospace', lineHeight: 1.45, wordBreak: 'break-word' }}>
+                  {t('pages.networkView.scanMethodTcpPortsLine', { ports: COMMON_TCP_SCAN_PORTS.join(', ') })}
                 </span>
               </span>
             </label>
@@ -990,7 +1023,7 @@ function NetworkView() {
                         await apiDelete(`/networks/${id}/auto-scan-results?type=new_device`)
                         await fetchAutoScanResults()
                       } catch (err) {
-                        alert(`${t('common.error')}: ${err.message}`)
+                        toast.error(`${t('common.error')}: ${err.message}`)
                       }
                     }}
                     className="btn-success btn-small"
@@ -1075,7 +1108,7 @@ function NetworkView() {
                         await apiDelete(`/networks/${id}/auto-scan-results?type=disconnected`)
                         await fetchAutoScanResults()
                       } catch (err) {
-                        alert(`${t('common.error')}: ${err.message}`)
+                        toast.error(`${t('common.error')}: ${err.message}`)
                       }
                     }}
                     className="btn-danger btn-small"
@@ -1282,7 +1315,7 @@ function NetworkView() {
                           </span>
                         </td>
                         <td style={{ fontSize: 'var(--font-size-sm)', whiteSpace: 'nowrap' }}>
-                          {formatDiscoveryCell(host.discovery_method)}
+                          {formatDiscoveryCell(host)}
                         </td>
                         <td>
                           {(() => {
@@ -1430,9 +1463,19 @@ function NetworkView() {
                                   }}
                                   onClick={() => {
                                     if (host) {
-                                      alert(t('pages.networkView.deviceInfo', { name: host.name, ip: ip, status: host.status === 'online' ? t('common.online') : t('common.offline') }))
+                                      toast.info(
+                                        t('pages.networkView.deviceInfo', {
+                                          name: host.name,
+                                          ip,
+                                          status:
+                                            host.status === 'online'
+                                              ? t('common.online')
+                                              : t('common.offline')
+                                        }),
+                                        6000
+                                      )
                                     } else {
-                                      alert(t('pages.networkView.ipAvailable', { ip: ip }))
+                                      toast.info(t('pages.networkView.ipAvailable', { ip }), 5000)
                                     }
                                   }}
                                 >
@@ -1573,6 +1616,7 @@ function NetworkView() {
           </div>
         )}
       </Modal>
+      {confirmDialogSlot}
     </div>
   )
 }
