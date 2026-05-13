@@ -65,7 +65,7 @@ function NetworkView() {
   const [sortOrder, setSortOrder] = useState('asc')
   const { tags: availableTags } = useTags()
   const { t } = useTranslation()
-  const { language } = useLanguage()
+  const { language, isRTL } = useLanguage()
   const toast = useToast()
   const { confirm, confirmDialogSlot } = useConfirmDialog()
   const [editingHostId, setEditingHostId] = useState(null)
@@ -744,16 +744,28 @@ function NetworkView() {
             <strong>{t('pages.networkView.range')}:</strong> {range.start} - {range.end} ({range.count} {t('pages.networkView.addresses')})
           </p>
           {network.dhcp_range_start && network.dhcp_range_end && (
-            <p style={{ margin: 0 }}>
-              <strong>{t('pages.networkView.dhcpPool')}:</strong>{' '}
+            <p
+              style={{
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-sm)',
+                flexWrap: 'wrap'
+              }}
+            >
+              <strong>{t('pages.networkView.dhcpPool')}</strong>
+              {isRTL ? '\u200e : ' : ': '}
               <code
+                dir="ltr"
+                translate="no"
                 style={{
                   fontFamily: 'monospace',
                   backgroundColor: 'var(--dhcp-pool-light)',
                   color: 'var(--dhcp-pool)',
                   padding: '2px 8px',
                   borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--dhcp-pool)'
+                  border: '1px solid var(--dhcp-pool)',
+                  unicodeBidi: 'isolate'
                 }}
               >
                 {network.dhcp_range_start} – {network.dhcp_range_end}
