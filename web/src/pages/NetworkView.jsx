@@ -25,6 +25,7 @@ import {
   OfflineIcon,
   AlertIcon,
   InfoIcon,
+  NetworkIcon,
   ChevronLeftIcon,
   ChevronDownIcon,
   ChevronUpIcon
@@ -89,6 +90,8 @@ function NetworkView() {
   const [autoNewDevicesExpanded, setAutoNewDevicesExpanded] = useState(false)
   const [disconnectedExpanded, setDisconnectedExpanded] = useState(false)
   const [offlineReleaseAfterMs, setOfflineReleaseAfterMs] = useState(null)
+  const [networkInfoExpanded, setNetworkInfoExpanded] = useState(false)
+  const [scanMethodExpanded, setScanMethodExpanded] = useState(false)
 
   useEffect(() => {
     fetchNetwork()
@@ -122,6 +125,8 @@ function NetworkView() {
     setManualNewHostsExpanded(false)
     setAutoNewDevicesExpanded(false)
     setDisconnectedExpanded(false)
+    setNetworkInfoExpanded(false)
+    setScanMethodExpanded(false)
   }, [id])
 
   const fetchFavorites = async () => {
@@ -723,147 +728,304 @@ function NetworkView() {
         <h1>{network.name}</h1>
       </div>
 
-      {/* Network Info Card */}
+      {/* Network info — collapsible */}
       <div className="card" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
-        <div style={{ display: 'grid', gap: 'var(--spacing-sm)' }}>
-          <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-            <strong>{t('forms.networkId')}:</strong> 
-            <code style={{ 
-              fontFamily: 'monospace', 
-              backgroundColor: 'var(--bg-tertiary)', 
-              padding: '2px 8px', 
-              borderRadius: 'var(--radius-sm)' 
-            }}>
-              {network.network_id}
-            </code>
-          </p>
-          <p style={{ margin: 0 }}>
-            <strong>{t('forms.subnet')}:</strong> /{network.subnet}
-          </p>
-          <p style={{ margin: 0 }}>
-            <strong>{t('pages.networkView.range')}:</strong> {range.start} - {range.end} ({range.count} {t('pages.networkView.addresses')})
-          </p>
-          {network.dhcp_range_start && network.dhcp_range_end && (
-            <p
-              style={{
-                margin: 0,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--spacing-sm)',
-                flexWrap: 'wrap'
-              }}
-            >
-              <strong>{t('pages.networkView.dhcpPool')}</strong>
-              {isRTL ? '\u200e : ' : ': '}
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => setNetworkInfoExpanded((v) => !v)}
+          aria-expanded={networkInfoExpanded}
+          aria-label={
+            networkInfoExpanded
+              ? t('pages.networkView.collapseNetworkDetails')
+              : t('pages.networkView.expandNetworkDetails')
+          }
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-sm)',
+            justifyContent: 'flex-start',
+            fontWeight: 'var(--font-weight-semibold)',
+            fontSize: 'var(--font-size-base)',
+            color: 'var(--text-primary)',
+            padding: 'var(--spacing-xs) var(--spacing-sm)',
+            borderRadius: 'var(--radius-md)',
+            textAlign: 'start'
+          }}
+        >
+          <NetworkIcon size={20} />
+          <span
+            style={{
+              flex: '1 1 auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--spacing-sm)',
+              flexWrap: 'wrap',
+              justifyContent: 'flex-start',
+              minWidth: 0
+            }}
+          >
+            <span>{t('pages.networkView.networkDetailsTitle')}</span>
+            {!networkInfoExpanded && (
               <code
                 dir="ltr"
                 translate="no"
                 style={{
                   fontFamily: 'monospace',
-                  backgroundColor: 'var(--dhcp-pool-light)',
-                  color: 'var(--dhcp-pool)',
+                  fontSize: 'var(--font-size-sm)',
+                  fontWeight: 'normal',
+                  backgroundColor: 'var(--bg-tertiary)',
                   padding: '2px 8px',
                   borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--dhcp-pool)',
                   unicodeBidi: 'isolate'
                 }}
               >
-                {network.dhcp_range_start} – {network.dhcp_range_end}
+                {network.network_id}/{network.subnet}
+              </code>
+            )}
+          </span>
+          {networkInfoExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
+        </button>
+        {networkInfoExpanded && (
+          <div
+            style={{
+              display: 'grid',
+              gap: 'var(--spacing-sm)',
+              marginBlockStart: 'var(--spacing-md)',
+              paddingBlockStart: 'var(--spacing-md)',
+              borderTop: '1px solid var(--border-color-light)'
+            }}
+          >
+            <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+              <strong>{t('forms.networkId')}:</strong>
+              <code
+                dir="ltr"
+                translate="no"
+                style={{
+                  fontFamily: 'monospace',
+                  backgroundColor: 'var(--bg-tertiary)',
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  unicodeBidi: 'isolate'
+                }}
+              >
+                {network.network_id}
               </code>
             </p>
-          )}
-          {network.last_scanned && (
-            <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-              <strong>{t('pages.networksList.lastScanned')}:</strong> {new Date(network.last_scanned).toLocaleString()}
+            <p style={{ margin: 0 }}>
+              <strong>{t('forms.subnet')}:</strong> /{network.subnet}
             </p>
-          )}
-        </div>
+            <p style={{ margin: 0 }}>
+              <strong>{t('pages.networkView.range')}:</strong> {range.start} - {range.end} ({range.count}{' '}
+              {t('pages.networkView.addresses')})
+            </p>
+            {network.dhcp_range_start && network.dhcp_range_end && (
+              <p
+                style={{
+                  margin: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--spacing-sm)',
+                  flexWrap: 'wrap'
+                }}
+              >
+                <strong>{t('pages.networkView.dhcpPool')}</strong>
+                {isRTL ? '\u200e : ' : ': '}
+                <code
+                  dir="ltr"
+                  translate="no"
+                  style={{
+                    fontFamily: 'monospace',
+                    backgroundColor: 'var(--dhcp-pool-light)',
+                    color: 'var(--dhcp-pool)',
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--dhcp-pool)',
+                    unicodeBidi: 'isolate'
+                  }}
+                >
+                  {network.dhcp_range_start} – {network.dhcp_range_end}
+                </code>
+              </p>
+            )}
+            {network.last_scanned && (
+              <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                <strong>{t('pages.networksList.lastScanned')}:</strong>{' '}
+                {new Date(network.last_scanned).toLocaleString()}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {isAdmin && (
         <div className="card" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
-          <h3 style={{ margin: '0 0 var(--spacing-sm) 0', fontSize: 'var(--font-size-base)' }}>
-            {t('pages.networkView.scanMethodTitle')}
-          </h3>
-          <p style={{ margin: '0 0 var(--spacing-md) 0', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-            {t('pages.networkView.scanMethodIntro')}
-          </p>
-          <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={scanUsePing}
-                onChange={(e) => setScanUsePing(e.target.checked)}
-                style={{ marginTop: '4px' }}
-              />
-              <span>
-                <strong>{t('pages.networkView.scanMethodPingLabel')}</strong>
-                <span style={{ display: 'block', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', fontWeight: 'normal', marginTop: '4px' }}>
-                  {t('pages.networkView.scanMethodPingHelp')}
-                </span>
-              </span>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={scanUseTcp}
-                onChange={(e) => setScanUseTcp(e.target.checked)}
-                style={{ marginTop: '4px' }}
-              />
-              <span>
-                <strong>{t('pages.networkView.scanMethodTcpLabel')}</strong>
-                <span style={{ display: 'block', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', fontWeight: 'normal', marginTop: '4px' }}>
-                  {t('pages.networkView.scanMethodTcpHelp')}
-                </span>
-                <span style={{ display: 'block', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', fontWeight: 'normal', marginTop: '6px', fontFamily: 'monospace', lineHeight: 1.45, wordBreak: 'break-word' }}>
-                  {t('pages.networkView.scanMethodTcpPortsLine', { ports: COMMON_TCP_SCAN_PORTS.join(', ') })}
-                </span>
-              </span>
-            </label>
-          </div>
-          {!scanUsePing && !scanUseTcp && (
-            <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--font-size-sm)', color: 'var(--warning)' }}>
-              {t('pages.networkView.scanNeedOneMethod')}
-            </p>
-          )}
-          <div style={{ marginTop: 'var(--spacing-md)' }}>
-            <label style={{ display: 'block', marginBlockEnd: 'var(--spacing-xs)', fontWeight: 'var(--font-weight-semibold)', fontSize: 'var(--font-size-sm)' }}>
-              {t('pages.networkView.offlineReleaseLabel')}
-            </label>
-            <p style={{ margin: '0 0 var(--spacing-sm)', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', maxWidth: '520px', lineHeight: 1.45 }}>
-              {t('pages.networkView.offlineReleaseHelp')}
-            </p>
-            <select
-              value={offlineReleaseAfterMs === null ? '' : String(offlineReleaseAfterMs)}
-              onChange={(e) =>
-                setOfflineReleaseAfterMs(e.target.value === '' ? null : Number(e.target.value))
-              }
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setScanMethodExpanded((v) => !v)}
+            aria-expanded={scanMethodExpanded}
+            aria-label={
+              scanMethodExpanded
+                ? t('pages.networkView.collapseScanMethod')
+                : t('pages.networkView.expandScanMethod')
+            }
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--spacing-sm)',
+              justifyContent: 'flex-start',
+              fontWeight: 'var(--font-weight-semibold)',
+              fontSize: 'var(--font-size-base)',
+              color: 'var(--text-primary)',
+              padding: 'var(--spacing-xs) var(--spacing-sm)',
+              borderRadius: 'var(--radius-md)',
+              textAlign: 'start'
+            }}
+          >
+            <ScanIcon size={20} />
+            <span style={{ flex: '1 1 auto', textAlign: 'start' }}>{t('pages.networkView.scanMethodTitle')}</span>
+            {scanMethodExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
+          </button>
+          {scanMethodExpanded && (
+            <div
               style={{
-                padding: 'var(--spacing-xs) var(--spacing-sm)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-primary)',
-                color: 'var(--text-primary)',
-                minWidth: 'min(100%, 280px)'
+                marginBlockStart: 'var(--spacing-md)',
+                paddingBlockStart: 'var(--spacing-md)',
+                borderTop: '1px solid var(--border-color-light)'
               }}
             >
-              {OFFLINE_RELEASE_OPTIONS.map((opt) => (
-                <option key={opt.ms === null ? 'never' : String(opt.ms)} value={opt.ms === null ? '' : String(opt.ms)}>
-                  {t(opt.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div style={{ marginTop: 'var(--spacing-md)' }}>
-            <button
-              type="button"
-              onClick={handleSaveScanPreferences}
-              disabled={savingScanPrefs || (!scanUsePing && !scanUseTcp)}
-              className="btn-secondary btn-small"
-            >
-              {savingScanPrefs ? t('common.loading') : t('pages.networkView.scanSavePreferences')}
-            </button>
-          </div>
+              <p
+                style={{
+                  margin: '0 0 var(--spacing-md) 0',
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--text-secondary)'
+                }}
+              >
+                {t('pages.networkView.scanMethodIntro')}
+              </p>
+              <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={scanUsePing}
+                    onChange={(e) => setScanUsePing(e.target.checked)}
+                    style={{ marginTop: '4px' }}
+                  />
+                  <span>
+                    <strong>{t('pages.networkView.scanMethodPingLabel')}</strong>
+                    <span
+                      style={{
+                        display: 'block',
+                        fontSize: 'var(--font-size-xs)',
+                        color: 'var(--text-tertiary)',
+                        fontWeight: 'normal',
+                        marginTop: '4px'
+                      }}
+                    >
+                      {t('pages.networkView.scanMethodPingHelp')}
+                    </span>
+                  </span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={scanUseTcp}
+                    onChange={(e) => setScanUseTcp(e.target.checked)}
+                    style={{ marginTop: '4px' }}
+                  />
+                  <span>
+                    <strong>{t('pages.networkView.scanMethodTcpLabel')}</strong>
+                    <span
+                      style={{
+                        display: 'block',
+                        fontSize: 'var(--font-size-xs)',
+                        color: 'var(--text-tertiary)',
+                        fontWeight: 'normal',
+                        marginTop: '4px'
+                      }}
+                    >
+                      {t('pages.networkView.scanMethodTcpHelp')}
+                    </span>
+                    <span
+                      style={{
+                        display: 'block',
+                        fontSize: 'var(--font-size-xs)',
+                        color: 'var(--text-tertiary)',
+                        fontWeight: 'normal',
+                        marginTop: '6px',
+                        fontFamily: 'monospace',
+                        lineHeight: 1.45,
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {t('pages.networkView.scanMethodTcpPortsLine', { ports: COMMON_TCP_SCAN_PORTS.join(', ') })}
+                    </span>
+                  </span>
+                </label>
+              </div>
+              {!scanUsePing && !scanUseTcp && (
+                <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--font-size-sm)', color: 'var(--warning)' }}>
+                  {t('pages.networkView.scanNeedOneMethod')}
+                </p>
+              )}
+              <div style={{ marginTop: 'var(--spacing-md)' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    marginBlockEnd: 'var(--spacing-xs)',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    fontSize: 'var(--font-size-sm)'
+                  }}
+                >
+                  {t('pages.networkView.offlineReleaseLabel')}
+                </label>
+                <p
+                  style={{
+                    margin: '0 0 var(--spacing-sm)',
+                    fontSize: 'var(--font-size-xs)',
+                    color: 'var(--text-tertiary)',
+                    maxWidth: '520px',
+                    lineHeight: 1.45
+                  }}
+                >
+                  {t('pages.networkView.offlineReleaseHelp')}
+                </p>
+                <select
+                  value={offlineReleaseAfterMs === null ? '' : String(offlineReleaseAfterMs)}
+                  onChange={(e) =>
+                    setOfflineReleaseAfterMs(e.target.value === '' ? null : Number(e.target.value))
+                  }
+                  style={{
+                    padding: 'var(--spacing-xs) var(--spacing-sm)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-primary)',
+                    color: 'var(--text-primary)',
+                    minWidth: 'min(100%, 280px)'
+                  }}
+                >
+                  {OFFLINE_RELEASE_OPTIONS.map((opt) => (
+                    <option key={opt.ms === null ? 'never' : String(opt.ms)} value={opt.ms === null ? '' : String(opt.ms)}>
+                      {t(opt.labelKey)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginTop: 'var(--spacing-md)' }}>
+                <button
+                  type="button"
+                  onClick={handleSaveScanPreferences}
+                  disabled={savingScanPrefs || (!scanUsePing && !scanUseTcp)}
+                  className="btn-secondary btn-small"
+                >
+                  {savingScanPrefs ? t('common.loading') : t('pages.networkView.scanSavePreferences')}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
