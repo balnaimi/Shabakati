@@ -1,5 +1,5 @@
 ---
-description: Bump app semver (major.minor.patch) whenever project code or behavior changes; push after changes
+description: Bump app semver (major.minor.patch) whenever project code or behavior changes
 alwaysApply: true
 ---
 
@@ -20,6 +20,6 @@ alwaysApply: true
 
 الواجهة تعرض الإصدار من `web/src/constants.js` المستورد من جذر `package.json`؛ لا تضع رقماً ثابتاً في مكان آخر.
 
-## الدفع إلى Git
+## Git
 
-بعد **كل** تعديل يشمل رفع إصدار (أو أي تعديل مرتبط بنفس المهمة)، نفّذ من جذر المستودع: `git add` للملفات المعنية، ثم `commit` برسالة واضحة، ثم **`git push`** إلى الفرع الحالي (ما لم يطلب المستخدم خلاف ذلك).
+يمكن تنفيذ `git add` و`git commit` محلياً عند الحاجة. **لا تنفّذ `git push`** ما لم يطلب المستخدم ذلك صراحةً — الدفع يدوي من جهة المستخدم.
