@@ -105,3 +105,14 @@ export function buildIPFromNetwork(networkId, lastOctet) {
   return parts.join('.');
 }
 
+/**
+ * Whether ip is in [rangeStart, rangeEnd] inclusive.
+ */
+export function isIPInInclusiveRange(ip, rangeStart, rangeEnd) {
+  if (!isValidIP(ip) || !isValidIP(rangeStart) || !isValidIP(rangeEnd)) {
+    return false;
+  }
+  const n = ipToNumber(ip);
+  return n >= ipToNumber(rangeStart) && n <= ipToNumber(rangeEnd);
+}
+

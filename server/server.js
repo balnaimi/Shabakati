@@ -9,7 +9,7 @@ import { dbFunctions } from './database.js';
 import db from './database.js';
 import { checkHost } from './hostChecker.js';
 import { scanNetwork, summarizeDetectionMethods } from './networkScanner.js';
-import { getNetworkCIDR, isIPInNetwork, calculateIPRange } from './networkUtils.js';
+import { getNetworkCIDR, isIPInNetwork, calculateIPRange, normalizeOptionalDhcpRange } from './networkUtils.js';
 import { initializeAutoScans, startAutoScan, stopAutoScan } from './autoScanService.js';
 import { ALLOWED_AUTO_SCAN_INTERVAL_SET, ALLOWED_OFFLINE_RELEASE_SET } from './networkPolicies.js';
 import { purgeStaleOfflineHostsForNetwork, startOfflineReleaseTicker } from './offlineReleaseService.js';
@@ -724,11 +724,20 @@ app.post('/api/networks', requireAdmin, asyncHandler((req, res) => {
     apiThrow(400, nameValidation.apiDef);
   }
 
+  const dhcp = normalizeOptionalDhcpRange(
+    req.body.dhcp_range_start,
+    req.body.dhcp_range_end,
+    networkId.trim(),
+    parseInt(subnet, 10)
+  );
+
   const network = {
     name: nameValidation.sanitized,
     networkId: networkId.trim(),
     subnet: parseInt(subnet),
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    dhcp_range_start: dhcp.start,
+    dhcp_range_end: dhcp.end
   };
 
   const newNetwork = dbFunctions.addNetwork(network);
@@ -794,6 +803,19 @@ app.put('/api/networks/:id', requireAdmin, asyncHandler(async (req, res) => {
     }
   }
 
+  let dhcpStartPatch = undefined;
+  let dhcpEndPatch = undefined;
+  if (req.body.dhcp_range_start !== undefined || req.body.dhcp_range_end !== undefined) {
+    const normalized = normalizeOptionalDhcpRange(
+      req.body.dhcp_range_start,
+      req.body.dhcp_range_end,
+      resolvedNetworkId,
+      resolvedSubnet
+    );
+    dhcpStartPatch = normalized.start;
+    dhcpEndPatch = normalized.end;
+  }
+
   const network = {
     name: resolvedName,
     networkId: resolvedNetworkId,
@@ -801,7 +823,9 @@ app.put('/api/networks/:id', requireAdmin, asyncHandler(async (req, res) => {
     lastScanned: lastScanned !== undefined ? lastScanned : existingNetwork.last_scanned,
     scan_use_ping: scan_use_ping !== undefined ? (scan_use_ping ? 1 : 0) : undefined,
     scan_use_tcp: scan_use_tcp !== undefined ? (scan_use_tcp ? 1 : 0) : undefined,
-    offline_release_after_ms: offline_release_patch
+    offline_release_after_ms: offline_release_patch,
+    dhcp_range_start: dhcpStartPatch,
+    dhcp_range_end: dhcpEndPatch
   };
 
   const updatedNetwork = dbFunctions.updateNetwork(id, network);

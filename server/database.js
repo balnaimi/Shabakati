@@ -104,6 +104,13 @@ try {
 } catch (e) {}
 
 try {
+  db.exec('ALTER TABLE networks ADD COLUMN dhcp_range_start TEXT');
+} catch (e) {}
+try {
+  db.exec('ALTER TABLE networks ADD COLUMN dhcp_range_end TEXT');
+} catch (e) {}
+
+try {
   db.exec(`
     UPDATE hosts
     SET offline_since = COALESCE(last_checked, created_at)
@@ -681,15 +688,17 @@ export const dbFunctions = {
   // Add new network
   addNetwork(network) {
     const stmt = db.prepare(`
-      INSERT INTO networks (name, network_id, subnet, created_at, last_scanned)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO networks (name, network_id, subnet, created_at, last_scanned, dhcp_range_start, dhcp_range_end)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       network.name,
       network.networkId,
       network.subnet,
       network.createdAt || new Date().toISOString(),
-      network.lastScanned || null
+      network.lastScanned || null,
+      network.dhcp_range_start ?? null,
+      network.dhcp_range_end ?? null
     );
     return this.getNetworkById(result.lastInsertRowid);
   },
@@ -716,12 +725,38 @@ export const dbFunctions = {
           : parseInt(network.offline_release_after_ms, 10);
     }
 
+    let dhcpRangeStart = existing.dhcp_range_start ?? null;
+    let dhcpRangeEnd = existing.dhcp_range_end ?? null;
+    if (network.dhcp_range_start !== undefined) {
+      dhcpRangeStart =
+        network.dhcp_range_start === null || network.dhcp_range_start === ''
+          ? null
+          : network.dhcp_range_start;
+    }
+    if (network.dhcp_range_end !== undefined) {
+      dhcpRangeEnd =
+        network.dhcp_range_end === null || network.dhcp_range_end === ''
+          ? null
+          : network.dhcp_range_end;
+    }
+
     const stmt = db.prepare(`
       UPDATE networks 
-      SET name = ?, network_id = ?, subnet = ?, last_scanned = ?, scan_use_ping = ?, scan_use_tcp = ?, offline_release_after_ms = ?
+      SET name = ?, network_id = ?, subnet = ?, last_scanned = ?, scan_use_ping = ?, scan_use_tcp = ?, offline_release_after_ms = ?, dhcp_range_start = ?, dhcp_range_end = ?
       WHERE id = ?
     `);
-    stmt.run(name, networkId, subnet, lastScanned, scanUsePing, scanUseTcp, offlineReleaseAfterMs, id);
+    stmt.run(
+      name,
+      networkId,
+      subnet,
+      lastScanned,
+      scanUsePing,
+      scanUseTcp,
+      offlineReleaseAfterMs,
+      dhcpRangeStart,
+      dhcpRangeEnd,
+      id
+    );
     return this.getNetworkById(id);
   },
 

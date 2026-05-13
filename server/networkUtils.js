@@ -74,6 +74,43 @@ export function isIPInNetwork(ip, networkId, subnet) {
 }
 
 /**
+ * Whether ip is in [rangeStart, rangeEnd] inclusive (valid IPv4 only).
+ */
+export function isIPInInclusiveRange(ip, rangeStart, rangeEnd) {
+  if (!isValidIP(ip) || !isValidIP(rangeStart) || !isValidIP(rangeEnd)) {
+    return false;
+  }
+  const n = ipToNumber(ip);
+  return n >= ipToNumber(rangeStart) && n <= ipToNumber(rangeEnd);
+}
+
+/**
+ * Parse optional DHCP pool range; both empty clears. Validates order and usable addresses in subnet.
+ * @returns {{ start: string|null, end: string|null }}
+ */
+export function normalizeOptionalDhcpRange(startRaw, endRaw, networkId, subnet) {
+  const s = startRaw === undefined || startRaw === null ? '' : String(startRaw).trim();
+  const e = endRaw === undefined || endRaw === null ? '' : String(endRaw).trim();
+  if (!s && !e) {
+    return { start: null, end: null };
+  }
+  if (!s || !e) {
+    apiThrow(400, Err.dhcpRangeBothRequired);
+  }
+  if (!isValidIP(s) || !isValidIP(e)) {
+    apiThrow(400, Err.invalidIPAddress);
+  }
+  if (ipToNumber(s) > ipToNumber(e)) {
+    apiThrow(400, Err.dhcpRangeOrder);
+  }
+  const { start: firstUsable, end: lastUsable } = calculateIPRange(networkId, subnet);
+  if (ipToNumber(s) < ipToNumber(firstUsable) || ipToNumber(e) > ipToNumber(lastUsable)) {
+    apiThrow(400, Err.dhcpRangeNotInNetwork);
+  }
+  return { start: s, end: e };
+}
+
+/**
  * Calculate IP range based on Network ID and Subnet
  * @param {string} networkId - Network ID (example: 192.168.1.0)
  * @param {number} subnet - Subnet mask (example: 24)

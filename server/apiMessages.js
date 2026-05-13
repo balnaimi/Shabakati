@@ -72,6 +72,18 @@ export const Err = {
     'OFFLINE_RELEASE_NOT_ALLOWED',
     'offline_release_after_ms value is not allowed'
   ),
+  dhcpRangeBothRequired: def(
+    'DHCP_RANGE_BOTH_REQUIRED',
+    'DHCP range requires both dhcp_range_start and dhcp_range_end (or leave both empty)'
+  ),
+  dhcpRangeOrder: def(
+    'DHCP_RANGE_ORDER',
+    'DHCP range start must be less than or equal to end'
+  ),
+  dhcpRangeNotInNetwork: def(
+    'DHCP_RANGE_NOT_IN_NETWORK',
+    'DHCP range must fall within the network usable addresses'
+  ),
   hostIdRequired: def('HOST_ID_REQUIRED', 'hostId is required'),
   groupNameRequired: def('GROUP_NAME_REQUIRED', 'Group name is required'),
   groupNameEmpty: def('GROUP_NAME_EMPTY', 'Group name cannot be empty'),

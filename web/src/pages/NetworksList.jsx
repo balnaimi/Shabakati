@@ -17,6 +17,7 @@ import {
   AlertIcon
 } from '../components/Icons'
 import { formatClientError, toastApiError } from '../utils/formatClientError'
+import { isValidIP } from '../utils/networkUtils'
 
 function NetworksList() {
   const navigate = useNavigate()
@@ -29,7 +30,13 @@ function NetworksList() {
   const [error, setError] = useState(null)
   const [editingNetworkId, setEditingNetworkId] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [formData, setFormData] = useState({ name: '', networkId: '', subnet: '' })
+  const [formData, setFormData] = useState({
+    name: '',
+    networkId: '',
+    subnet: '',
+    dhcpRangeStart: '',
+    dhcpRangeEnd: ''
+  })
 
   useEffect(() => {
     fetchNetworks()
@@ -74,7 +81,9 @@ function NetworksList() {
     setFormData({
       name: network.name,
       networkId: network.network_id,
-      subnet: network.subnet.toString()
+      subnet: network.subnet.toString(),
+      dhcpRangeStart: network.dhcp_range_start || '',
+      dhcpRangeEnd: network.dhcp_range_end || ''
     })
     setShowAddForm(true)
   }
@@ -101,7 +110,7 @@ function NetworksList() {
           <button onClick={() => {
             setShowAddForm(true)
             setEditingNetworkId(null)
-            setFormData({ name: '', networkId: '', subnet: '' })
+            setFormData({ name: '', networkId: '', subnet: '', dhcpRangeStart: '', dhcpRangeEnd: '' })
           }} className="btn-success">
             <PlusIcon size={18} />
             <span>{t('pages.networksList.addNetwork')}</span>
@@ -117,12 +126,12 @@ function NetworksList() {
           onClose={() => {
             setShowAddForm(false)
             setEditingNetworkId(null)
-            setFormData({ name: '', networkId: '', subnet: '' })
+            setFormData({ name: '', networkId: '', subnet: '', dhcpRangeStart: '', dhcpRangeEnd: '' })
           }}
           onSuccess={() => {
             setShowAddForm(false)
             setEditingNetworkId(null)
-            setFormData({ name: '', networkId: '', subnet: '' })
+            setFormData({ name: '', networkId: '', subnet: '', dhcpRangeStart: '', dhcpRangeEnd: '' })
             fetchNetworks()
           }}
           apiPost={apiPost}
@@ -219,21 +228,41 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
       return
     }
 
+    const dhcpStart = formData.dhcpRangeStart.trim()
+    const dhcpEnd = formData.dhcpRangeEnd.trim()
+    if ((dhcpStart && !dhcpEnd) || (!dhcpStart && dhcpEnd)) {
+      setError(t('forms.dhcpRangeBothOrNone'))
+      return
+    }
+    if (dhcpStart && dhcpEnd) {
+      if (!isValidIP(dhcpStart) || !isValidIP(dhcpEnd)) {
+        setError(t('forms.dhcpRangeInvalidIp'))
+        return
+      }
+    }
+
     try {
       setError(null)
       setSubmitting(true)
       
+      const dhcpPayload =
+        dhcpStart && dhcpEnd
+          ? { dhcp_range_start: dhcpStart, dhcp_range_end: dhcpEnd }
+          : { dhcp_range_start: null, dhcp_range_end: null }
+
       if (networkId) {
         await apiPut(`/networks/${networkId}`, {
           name: formData.name.trim(),
           networkId: formData.networkId.trim(),
-          subnet: parseInt(formData.subnet)
+          subnet: parseInt(formData.subnet),
+          ...dhcpPayload
         })
       } else {
         await apiPost('/networks', {
           name: formData.name.trim(),
           networkId: formData.networkId.trim(),
-          subnet: parseInt(formData.subnet)
+          subnet: parseInt(formData.subnet),
+          ...dhcpPayload
         })
       }
       
@@ -299,6 +328,35 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
             onChange={(e) => setFormData({ ...formData, subnet: e.target.value })}
             placeholder="24"
           />
+        </div>
+
+        <div className="form-group">
+          <label>{t('forms.dhcpRange')}</label>
+          <p style={{ margin: '0 0 var(--spacing-sm) 0', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+            {t('forms.dhcpRangeHelp')}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
+            <div>
+              <label style={{ fontSize: 'var(--font-size-sm)' }}>{t('forms.dhcpRangeStart')}</label>
+              <input
+                type="text"
+                value={formData.dhcpRangeStart}
+                onChange={(e) => setFormData({ ...formData, dhcpRangeStart: e.target.value })}
+                placeholder="192.168.1.100"
+                style={{ fontFamily: 'monospace' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 'var(--font-size-sm)' }}>{t('forms.dhcpRangeEnd')}</label>
+              <input
+                type="text"
+                value={formData.dhcpRangeEnd}
+                onChange={(e) => setFormData({ ...formData, dhcpRangeEnd: e.target.value })}
+                placeholder="192.168.1.200"
+                style={{ fontFamily: 'monospace' }}
+              />
+            </div>
+          </div>
         </div>
 
         {error && (

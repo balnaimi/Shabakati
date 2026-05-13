@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiGet, apiPost, apiDelete, apiPut } from '../utils/api'
-import { calculateIPRange, getLastOctet } from '../utils/networkUtils'
+import { calculateIPRange, getLastOctet, isIPInInclusiveRange } from '../utils/networkUtils'
 import { getDescription, parseSystemDiscoveryTcpPort } from '../utils/descriptionUtils'
 import { useAuth } from '../contexts/AuthContext'
 import { useTags } from '../hooks/useTags'
@@ -260,7 +260,9 @@ function NetworkView() {
         subnet: network.subnet,
         scan_use_ping: scanUsePing,
         scan_use_tcp: scanUseTcp,
-        offline_release_after_ms: offlineReleaseAfterMs
+        offline_release_after_ms: offlineReleaseAfterMs,
+        dhcp_range_start: network.dhcp_range_start ?? null,
+        dhcp_range_end: network.dhcp_range_end ?? null
       })
       await fetchNetwork()
       toast.success(t('pages.networkView.scanPreferencesSaved'))
@@ -603,6 +605,52 @@ function NetworkView() {
     return host.status === 'online' ? 'online' : 'offline'
   }
 
+  const dhcpRangeStart = network?.dhcp_range_start?.trim?.() || null
+  const dhcpRangeEnd = network?.dhcp_range_end?.trim?.() || null
+  const hasDhcpRange = Boolean(
+    dhcpRangeStart &&
+      dhcpRangeEnd &&
+      isIPInInclusiveRange(dhcpRangeStart, dhcpRangeStart, dhcpRangeEnd)
+  )
+
+  const ipCellColors = (ip, status) => {
+    const inDhcpPool =
+      hasDhcpRange && isIPInInclusiveRange(ip, dhcpRangeStart, dhcpRangeEnd)
+    if (status === 'online') {
+      return {
+        bgColor: 'var(--success-light)',
+        borderColor: 'var(--success)',
+        color: 'var(--success)'
+      }
+    }
+    if (status === 'offline' && inDhcpPool) {
+      return {
+        bgColor: 'var(--dhcp-pool-light)',
+        borderColor: 'var(--dhcp-pool)',
+        color: 'var(--dhcp-pool)'
+      }
+    }
+    if (status === 'offline') {
+      return {
+        bgColor: 'var(--danger-light)',
+        borderColor: 'var(--danger)',
+        color: 'var(--danger)'
+      }
+    }
+    if (inDhcpPool) {
+      return {
+        bgColor: 'var(--dhcp-pool-light)',
+        borderColor: 'var(--dhcp-pool)',
+        color: 'var(--dhcp-pool)'
+      }
+    }
+    return {
+      bgColor: 'var(--bg-primary)',
+      borderColor: 'var(--border-color)',
+      color: 'var(--text-primary)'
+    }
+  }
+
   const groupIPsByThirdOctet = (networkId, subnet, allIPs) => {
     const networkParts = networkId.split('.').map(Number)
     const networkNum = (networkParts[0] << 24) + (networkParts[1] << 16) + (networkParts[2] << 8) + networkParts[3]
@@ -695,6 +743,23 @@ function NetworkView() {
           <p style={{ margin: 0 }}>
             <strong>{t('pages.networkView.range')}:</strong> {range.start} - {range.end} ({range.count} {t('pages.networkView.addresses')})
           </p>
+          {network.dhcp_range_start && network.dhcp_range_end && (
+            <p style={{ margin: 0 }}>
+              <strong>{t('pages.networkView.dhcpPool')}:</strong>{' '}
+              <code
+                style={{
+                  fontFamily: 'monospace',
+                  backgroundColor: 'var(--dhcp-pool-light)',
+                  color: 'var(--dhcp-pool)',
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--dhcp-pool)'
+                }}
+              >
+                {network.dhcp_range_start} – {network.dhcp_range_end}
+              </code>
+            </p>
+          )}
           {network.last_scanned && (
             <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
               <strong>{t('pages.networksList.lastScanned')}:</strong> {new Date(network.last_scanned).toLocaleString()}
@@ -1408,6 +1473,33 @@ function NetworkView() {
             />
           ) : (
             <>
+              {hasDhcpRange && (
+                <p
+                  style={{
+                    margin: 0,
+                    marginBlockEnd: 'var(--spacing-md)',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-sm)',
+                    flexWrap: 'wrap'
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: 'var(--dhcp-pool-light)',
+                      border: '2px solid var(--dhcp-pool)',
+                      flexShrink: 0
+                    }}
+                    aria-hidden
+                  />
+                  {t('pages.networkView.dhcpPoolLegend')}
+                </p>
+              )}
               {(() => {
                 const ipGroups = groupIPsByThirdOctet(network.network_id, network.subnet, displayRange)
                 const sortedOctets = Object.keys(ipGroups).map(Number).sort((a, b) => a - b)
@@ -1428,25 +1520,29 @@ function NetworkView() {
                               const status = getIPStatus(ip)
                               const lastOctet = getLastOctet(ip)
                               const host = hosts.find(h => h.ip === ip)
-                              
-                              let bgColor = 'var(--bg-primary)'
-                              let borderColor = 'var(--border-color)'
-                              let color = 'var(--text-primary)'
-                              
-                              if (status === 'online') {
-                                bgColor = 'var(--success-light)'
-                                borderColor = 'var(--success)'
-                                color = 'var(--success)'
-                              } else if (status === 'offline') {
-                                bgColor = 'var(--danger-light)'
-                                borderColor = 'var(--danger)'
-                                color = 'var(--danger)'
-                              }
+                              const inDhcpPool =
+                                hasDhcpRange &&
+                                isIPInInclusiveRange(ip, dhcpRangeStart, dhcpRangeEnd)
+                              const { bgColor, borderColor, color } = ipCellColors(ip, status)
+                              const emptyTitle = inDhcpPool
+                                ? t('pages.networkView.dhcpPoolIp', { ip })
+                                : t('pages.networkView.ipAvailable', { ip })
                               
                               return (
                                 <div
                                   key={ip}
-                                  title={host ? t('pages.networkView.deviceInfo', { name: host.name, ip: ip, status: host.status === 'online' ? t('common.online') : t('common.offline') }) : t('pages.networkView.ipAvailable', { ip: ip })}
+                                  title={
+                                    host
+                                      ? t('pages.networkView.deviceInfo', {
+                                          name: host.name,
+                                          ip,
+                                          status:
+                                            host.status === 'online'
+                                              ? t('common.online')
+                                              : t('common.offline')
+                                        })
+                                      : emptyTitle
+                                  }
                                   style={{
                                     width: '40px',
                                     height: '40px',

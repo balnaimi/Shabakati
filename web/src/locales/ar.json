@@ -245,7 +245,10 @@
       "onlineDevices": "الأجهزة المتصلة",
       "offlineDevices": "الأجهزة غير المتصلة",
       "totalDevices": "إجمالي الأجهزة",
-      "availableIPs": "IPs المتاحة"
+      "availableIPs": "IPs المتاحة",
+      "dhcpPool": "نطاق DHCP",
+      "dhcpPoolLegend": "الخلية البنفسجية: نطاق عناوين DHCP (غير مستخدم أو أُفرِغ بعد انقطاع الجهاز). الأخضر: جهاز متصل الآن على ذلك العنوان.",
+      "dhcpPoolIp": "نطاق DHCP — قد يُعاد تعيين هذا العنوان عند التفرغ: {{ip}}"
     },
     "tagsManagement": {
       "title": "إدارة الوسوم",
@@ -354,7 +357,13 @@
     "subnet": "Subnet",
     "networkNameRequired": "اسم الشبكة مطلوب",
     "networkIdRequired": "معرف الشبكة مطلوب",
-    "subnetRequired": "Subnet مطلوب"
+    "subnetRequired": "Subnet مطلوب",
+    "dhcpRange": "نطاق عناوين DHCP (اختياري)",
+    "dhcpRangeHelp": "العناوين ضمن هذا النطاق تُعرض بلون مميز عندما تكون غير مستخدمة أو عندما يكون الجهاز غير متصل. الجهاز المتصل يظهر بالأخضر كالعادة. اترك الحقلين فارغين إن لم يكن لديك تجمع DHCP على هذه الشبكة.",
+    "dhcpRangeStart": "أول عنوان",
+    "dhcpRangeEnd": "آخر عنوان",
+    "dhcpRangeBothOrNone": "أدخل أول وآخر عنوان DHCP معاً، أو اترك الحقلين فارغين.",
+    "dhcpRangeInvalidIp": "نطاق DHCP يجب أن يحتوي على عناوين IPv4 صحيحة."
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -412,6 +421,9 @@
     "INVALID_NETWORK_NAME": "اسم شبكة غير صالح.",
     "SUBNET_BETWEEN_0_AND_32": "يجب أن يكون subnet بين 0 و 32.",
     "OFFLINE_RELEASE_NOT_ALLOWED": "قيمة تحرير بعد انقطاع الجهاز غير مسموحة.",
+    "DHCP_RANGE_BOTH_REQUIRED": "نطاق DHCP يحتاج عنوان بداية ونهاية معاً، أو اترك الحقلين فارغين.",
+    "DHCP_RANGE_ORDER": "أول عنوان في نطاق DHCP يجب أن يكون أصغر أو يساوي الأخير.",
+    "DHCP_RANGE_NOT_IN_NETWORK": "نطاق DHCP يجب أن يقع ضمن العناوين الصالحة لهذه الشبكة.",
     "HOST_ID_REQUIRED": "معرف الجهاز مطلوب.",
     "GROUP_NAME_REQUIRED": "اسم المجموعة مطلوب.",
     "GROUP_NAME_EMPTY": "اسم المجموعة لا يمكن أن يكون فارغاً.",

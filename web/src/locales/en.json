@@ -245,7 +245,10 @@
       "onlineDevices": "Online Devices",
       "offlineDevices": "Offline Devices",
       "totalDevices": "Total Devices",
-      "availableIPs": "Available IPs"
+      "availableIPs": "Available IPs",
+      "dhcpPool": "DHCP pool",
+      "dhcpPoolLegend": "Shaded cells: DHCP address range (free or released). Green: device currently online on that IP.",
+      "dhcpPoolIp": "DHCP pool — address may be assigned when free: {{ip}}"
     },
     "tagsManagement": {
       "title": "Tags Management",
@@ -354,7 +357,13 @@
     "subnet": "Subnet",
     "networkNameRequired": "Network name is required",
     "networkIdRequired": "Network ID is required",
-    "subnetRequired": "Subnet is required"
+    "subnetRequired": "Subnet is required",
+    "dhcpRange": "DHCP address range (optional)",
+    "dhcpRangeHelp": "IPs in this range are shown in a separate color when not in use or when the device is offline. Online devices are still shown in green. Leave both fields empty if you do not use a DHCP pool on this VLAN.",
+    "dhcpRangeStart": "First IP",
+    "dhcpRangeEnd": "Last IP",
+    "dhcpRangeBothOrNone": "Enter both the first and last DHCP IP, or leave both empty.",
+    "dhcpRangeInvalidIp": "DHCP range must contain valid IPv4 addresses."
   },
   "auth": {
     "login": "Login",
@@ -412,6 +421,9 @@
     "INVALID_NETWORK_NAME": "Invalid network name.",
     "SUBNET_BETWEEN_0_AND_32": "Subnet must be between 0 and 32.",
     "OFFLINE_RELEASE_NOT_ALLOWED": "This offline-release value is not allowed.",
+    "DHCP_RANGE_BOTH_REQUIRED": "DHCP range needs both start and end addresses, or leave both empty.",
+    "DHCP_RANGE_ORDER": "The first DHCP address must be less than or equal to the last.",
+    "DHCP_RANGE_NOT_IN_NETWORK": "The DHCP range must lie within this network’s usable addresses.",
     "HOST_ID_REQUIRED": "hostId is required.",
     "GROUP_NAME_REQUIRED": "Group name is required.",
     "GROUP_NAME_EMPTY": "Group name cannot be empty.",
