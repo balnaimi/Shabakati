@@ -27,11 +27,11 @@ export const Err = {
   setupAlreadyComplete: def('SETUP_ALREADY_COMPLETE', 'Setup is already complete'),
   visitorPasswordMinLength: def(
     'VISITOR_PASSWORD_MIN_LENGTH',
-    'Visitor password must be at least 3 characters'
+    'Visitor password must be at least 6 characters'
   ),
   adminPasswordMinLength: def(
     'ADMIN_PASSWORD_MIN_LENGTH',
-    'Admin password must be at least 3 characters'
+    'Admin password must be at least 6 characters'
   ),
   currentAndNewPasswordRequired: def(
     'CURRENT_AND_NEW_PASSWORD_REQUIRED',
@@ -39,7 +39,7 @@ export const Err = {
   ),
   newPasswordMinLength: def(
     'NEW_PASSWORD_MIN_LENGTH',
-    'New password must be at least 3 characters'
+    'New password must be at least 6 characters'
   ),
   currentPasswordIncorrect: def('CURRENT_PASSWORD_INCORRECT', 'Current password is incorrect'),
   failedUpdatePassword: def('FAILED_UPDATE_PASSWORD', 'Failed to update password'),

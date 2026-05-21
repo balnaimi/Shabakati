@@ -1,10 +1,12 @@
 {
   "name": "network-dashboard",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
     "dev": "npm --prefix web run dev",
     "build": "npm --prefix web run build",
-    "preview": "npm --prefix web run preview"
+    "preview": "npm --prefix web run preview",
+    "test:api": "node server/scripts/smoke-test.mjs",
+    "test:api:ci": "node server/scripts/smoke-test.mjs http://127.0.0.1:3099"
   }
 }

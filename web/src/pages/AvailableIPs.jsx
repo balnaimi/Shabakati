@@ -163,13 +163,29 @@ function AvailableIPs() {
           ) : selectedNetworkId && (
             <>
               {rangeIsLarge && rangeInfo && (
-                <p style={{ color: 'var(--text-secondary)', marginBlockEnd: 'var(--spacing-md)' }}>
-                  {t('pages.availableIPs.rangeOnly', {
-                    count: rangeInfo.count,
-                    start: rangeInfo.start,
-                    end: rangeInfo.end
-                  })}
-                </p>
+                <div
+                  className="card"
+                  style={{
+                    marginBlockEnd: 'var(--spacing-md)',
+                    padding: 'var(--spacing-md)',
+                    backgroundColor: 'var(--bg-tertiary)'
+                  }}
+                >
+                  <p style={{ margin: '0 0 var(--spacing-md) 0', color: 'var(--text-secondary)' }}>
+                    {t('pages.availableIPs.rangeOnly', {
+                      count: rangeInfo.count,
+                      start: rangeInfo.start,
+                      end: rangeInfo.end
+                    })}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => navigate(`/networks/${selectedNetworkId}`)}
+                  >
+                    {t('pages.availableIPs.openNetworkMap')}
+                  </button>
+                </div>
               )}
               {rangeInfo && rangeInfo.count === 0 && (
                 <p style={{ color: 'var(--text-secondary)' }}>{t('pages.availableIPs.noAvailableInRange')}</p>

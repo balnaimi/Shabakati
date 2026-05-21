@@ -4,8 +4,10 @@ import { getNetworkCIDR, isIPInNetwork } from './networkUtils.js';
 import logger from './logger.js';
 import { purgeStaleOfflineHostsForNetwork } from './offlineReleaseService.js';
 import { buildNetworkScanHostDescription } from './discoveryDescription.js';
+import { invalidateDataCaches } from './cacheInvalidation.js';
 
 let scanIntervals = new Map(); // Store intervals for each network
+const scanInFlight = new Set(); // Prevent overlapping scans per network
 
 /**
  * Start auto scan for a network
@@ -50,6 +52,11 @@ export function stopAutoScan(networkId) {
  * Perform auto scan for a network
  */
 async function performAutoScan(networkId) {
+  if (scanInFlight.has(networkId)) {
+    logger.info(`[AutoScan] Skipping network ${networkId} — scan already in progress`);
+    return;
+  }
+  scanInFlight.add(networkId);
   try {
     const network = dbFunctions.getNetworkById(networkId);
     if (!network || !network.auto_scan_enabled) {
@@ -122,14 +129,15 @@ async function performAutoScan(networkId) {
       
       // Check if device was online but now offline
       if (!isOnline && host.status === 'online') {
-        // Device was online but now offline
         disconnectedCount++;
-        
-        // Track as disconnected
+        dbFunctions.clearAutoScanResultsForHost(networkId, host.id, 'disconnected');
         dbFunctions.addAutoScanResult(networkId, 'disconnected', host.id);
       }
-      
-      // Update host status
+
+      if (isOnline) {
+        dbFunctions.clearAutoScanResultsForHost(networkId, host.id, 'disconnected');
+      }
+
       const newStatus = isOnline ? 'online' : 'offline';
       if (host.status !== newStatus) {
         try {
@@ -167,8 +175,11 @@ async function performAutoScan(networkId) {
     logger.info(`[AutoScan] Scan completed for network ${networkId}: ${newDevicesCount} new devices, ${disconnectedCount} disconnected`);
 
     purgeStaleOfflineHostsForNetwork(networkId);
+    invalidateDataCaches();
   } catch (error) {
     logger.error(`[AutoScan] Error scanning network ${networkId}:`, { error: error.message });
+  } finally {
+    scanInFlight.delete(networkId);
   }
 }
 

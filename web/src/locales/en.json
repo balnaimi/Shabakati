@@ -149,7 +149,8 @@
       "noAvailableInRange": "No usable addresses in this network range.",
       "noAvailableIPs": "No available addresses",
       "noAvailableIPsDescription": "All addresses in this network range are in use.",
-      "availableCount": "{{count}} available"
+      "availableCount": "{{count}} available",
+      "openNetworkMap": "Open full address map on network page"
     },
     "networkView": {
       "title": "View Network",
@@ -289,9 +290,9 @@
       "adminPasswordPlaceholder": "For editing and management",
       "createPasswords": "Create Passwords",
       "creating": "Creating...",
-      "visitorPasswordMinLength": "Visitor password must be at least 3 characters",
+      "visitorPasswordMinLength": "Visitor password must be at least 6 characters",
       "visitorPasswordMismatch": "Visitor passwords do not match",
-      "adminPasswordMinLength": "Admin password must be at least 3 characters",
+      "adminPasswordMinLength": "Admin password must be at least 6 characters",
       "adminPasswordMismatch": "Admin passwords do not match",
       "setupFailed": "Failed to create passwords",
       "setupError": "An error occurred while creating passwords"
@@ -304,7 +305,7 @@
       "changeButton": "Change Password",
       "changing": "Changing...",
       "allFieldsRequired": "All fields are required",
-      "passwordMinLength": "New password must be at least 3 characters",
+      "passwordMinLength": "New password must be at least 6 characters",
       "passwordMismatch": "New passwords do not match",
       "success": "Password changed successfully",
       "error": "An error occurred while changing password"
@@ -316,7 +317,7 @@
       "changeButton": "Change Password",
       "changing": "Changing...",
       "allFieldsRequired": "All fields are required",
-      "passwordMinLength": "New password must be at least 3 characters",
+      "passwordMinLength": "New password must be at least 6 characters",
       "passwordMismatch": "New passwords do not match",
       "success": "Visitor password changed successfully",
       "error": "An error occurred while changing visitor password"
@@ -404,10 +405,10 @@
     "ADMIN_PASSWORD_REQUIRED": "Admin password is required.",
     "INCORRECT_ADMIN_PASSWORD": "Incorrect admin password.",
     "SETUP_ALREADY_COMPLETE": "Setup is already complete.",
-    "VISITOR_PASSWORD_MIN_LENGTH": "Visitor password must be at least 3 characters.",
-    "ADMIN_PASSWORD_MIN_LENGTH": "Admin password must be at least 3 characters.",
+    "VISITOR_PASSWORD_MIN_LENGTH": "Visitor password must be at least 6 characters.",
+    "ADMIN_PASSWORD_MIN_LENGTH": "Admin password must be at least 6 characters.",
     "CURRENT_AND_NEW_PASSWORD_REQUIRED": "Current password and new password are required.",
-    "NEW_PASSWORD_MIN_LENGTH": "New password must be at least 3 characters.",
+    "NEW_PASSWORD_MIN_LENGTH": "New password must be at least 6 characters.",
     "CURRENT_PASSWORD_INCORRECT": "Current password is incorrect.",
     "FAILED_UPDATE_PASSWORD": "Could not update password.",
     "NEW_PASSWORD_REQUIRED": "New password is required.",

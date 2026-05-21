@@ -34,7 +34,7 @@ function Setup() {
     e.preventDefault();
     setError('');
 
-    if (!visitorPassword || visitorPassword.length < 3) {
+    if (!visitorPassword || visitorPassword.length < 6) {
       setError(t('pages.setup.visitorPasswordMinLength'));
       return;
     }
@@ -44,7 +44,7 @@ function Setup() {
       return;
     }
 
-    if (!adminPassword || adminPassword.length < 3) {
+    if (!adminPassword || adminPassword.length < 6) {
       setError(t('pages.setup.adminPasswordMinLength'));
       return;
     }

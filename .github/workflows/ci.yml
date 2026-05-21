@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install server dependencies
+        run: npm install --prefix server
+
+      - name: Install web dependencies
+        run: npm install --prefix web
+
+      - name: Build web
+        run: npm run build
+
+      - name: Start API (isolated DB)
+        run: |
+          rm -f /tmp/shabakati-ci.db
+          DATABASE_PATH=/tmp/shabakati-ci.db NODE_ENV=development PORT=3099 node server/server.js &
+          sleep 4
+
+      - name: API smoke tests
+        run: npm run test:api:ci

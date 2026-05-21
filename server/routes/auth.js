@@ -8,6 +8,7 @@ import { asyncHandler, apiThrow, jsonInternalError } from '../errorHandler.js';
 import { Err, Msg } from '../apiMessages.js';
 import cache from '../cache.js';
 import { loginLimiter, adminLoginLimiter, setupLimiter } from '../rateLimiters.js';
+import { MIN_PASSWORD_LENGTH, isPasswordLongEnough } from '../passwordPolicy.js';
 
 const router = Router();
 
@@ -152,11 +153,11 @@ router.post(
       apiThrow(400, Err.setupAlreadyComplete);
     }
 
-    if (!visitorPassword || visitorPassword.length < 3) {
+    if (!isPasswordLongEnough(visitorPassword)) {
       apiThrow(400, Err.visitorPasswordMinLength);
     }
 
-    if (!adminPassword || adminPassword.length < 3) {
+    if (!isPasswordLongEnough(adminPassword)) {
       apiThrow(400, Err.adminPasswordMinLength);
     }
 
@@ -190,7 +191,7 @@ router.post(
       apiThrow(400, Err.currentAndNewPasswordRequired);
     }
 
-    if (newPassword.length < 3) {
+    if (!isPasswordLongEnough(newPassword)) {
       apiThrow(400, Err.newPasswordMinLength);
     }
 
@@ -223,7 +224,7 @@ router.post(
       apiThrow(400, Err.newPasswordRequired);
     }
 
-    if (newPassword.length < 3) {
+    if (!isPasswordLongEnough(newPassword)) {
       apiThrow(400, Err.newPasswordMinLength);
     }
 

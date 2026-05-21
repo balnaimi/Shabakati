@@ -25,6 +25,7 @@ import {
   jsonInternalError
 } from './errorHandler.js';
 import cache from './cache.js';
+import { invalidateDataCaches } from './cacheInvalidation.js';
 import {
   isValidIP,
   validateHostName,
@@ -120,10 +121,15 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRouter);
 
+// Health check (no auth — used by Docker / load balancers)
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
 // Routes
 
 // Get all hosts (with pagination support)
-app.get('/api/hosts', (req, res) => {
+app.get('/api/hosts', requireVisitor, (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || null; // null means fetch all
@@ -183,6 +189,7 @@ app.post('/api/hosts/:id/check-status', requireAdmin, async (req, res) => {
       packetLoss: checkResult.packetLoss
     });
 
+    invalidateDataCaches();
     res.json(updatedHost);
   } catch (error) {
     res.status(500).json(jsonInternalError(error));
@@ -199,6 +206,7 @@ app.patch('/api/hosts/:id/toggle-status', requireAdmin, (req, res) => {
       return res.status(404).json(jsonError(Err.hostNotFound));
     }
 
+    invalidateDataCaches();
     res.json(host);
   } catch (error) {
     res.status(500).json(jsonInternalError(error));
@@ -206,7 +214,7 @@ app.patch('/api/hosts/:id/toggle-status', requireAdmin, (req, res) => {
 });
 
 // Get single host
-app.get('/api/hosts/:id', (req, res) => {
+app.get('/api/hosts/:id', requireVisitor, (req, res) => {
   try {
     const host = dbFunctions.getHostById(parseInt(req.params.id));
     if (!host) {
@@ -273,7 +281,7 @@ app.post('/api/hosts', requireAdmin, asyncHandler(async (req, res) => {
   };
 
   const host = dbFunctions.addHost(newHost);
-  cache.delete('stats'); // Invalidate stats cache
+  invalidateDataCaches();
   logger.info('Host added', { hostId: host.id, ip: host.ip, name: host.name });
   res.status(201).json(host);
 }));
@@ -353,16 +361,25 @@ app.put('/api/hosts/:id', requireAdmin, asyncHandler((req, res) => {
     apiThrow(404, Err.hostNotFound);
   }
 
+  const trimmedIp = ip.trim();
+  if (trimmedIp !== existingHost.ip) {
+    const dup = dbFunctions.getHostByIp(trimmedIp);
+    if (dup && dup.id !== id) {
+      const other = dbFunctions.getHostById(dup.id);
+      apiThrow(400, errHostAlreadyExists(other?.name || 'Host', trimmedIp));
+    }
+  }
+
   // Ensure tagIds is an array
   const tagIdsArray = Array.isArray(tagIds) ? tagIds : (tagIds ? [tagIds] : []);
 
   const updatedHost = dbFunctions.updateHost(id, {
     name: nameValidation.sanitized,
-    ip: ip.trim(),
+    ip: trimmedIp,
     description: descValidation.sanitized,
     url: urlValidation.sanitized,
     tagIds: tagIdsArray,
-    status: status || 'online',
+    status: status !== undefined && status !== null && status !== '' ? status : existingHost.status,
     lastChecked: req.body.lastChecked !== undefined ? req.body.lastChecked : existingHost.lastChecked || null,
     pingLatency: req.body.pingLatency !== undefined ? req.body.pingLatency : existingHost.pingLatency || null,
     packetLoss: req.body.packetLoss !== undefined ? req.body.packetLoss : existingHost.packetLoss || null
@@ -372,6 +389,7 @@ app.put('/api/hosts/:id', requireAdmin, asyncHandler((req, res) => {
     apiThrow(404, Err.hostNotFound);
   }
 
+  invalidateDataCaches();
   logger.info('Host updated', { hostId: id, ip: updatedHost.ip });
   res.json(updatedHost);
 }));
@@ -386,6 +404,7 @@ app.delete('/api/hosts/:id', requireAdmin, (req, res) => {
       return res.status(404).json(jsonError(Err.hostNotFound));
     }
 
+    invalidateDataCaches();
     res.json({ message: Msg.hostDeleted });
   } catch (error) {
     res.status(500).json(jsonInternalError(error));
@@ -396,7 +415,7 @@ app.delete('/api/hosts/:id', requireAdmin, (req, res) => {
 // ========== Tags API ==========
 
 // Get all tags (with caching)
-app.get('/api/tags', (req, res) => {
+app.get('/api/tags', requireVisitor, (req, res) => {
   try {
     const cacheKey = 'tags';
     let tags = cache.get(cacheKey);
@@ -413,7 +432,7 @@ app.get('/api/tags', (req, res) => {
 });
 
 // Get single tag
-app.get('/api/tags/:id', (req, res) => {
+app.get('/api/tags/:id', requireVisitor, (req, res) => {
   try {
     const tag = dbFunctions.getTagById(parseInt(req.params.id));
     if (!tag) {
@@ -516,7 +535,7 @@ app.delete('/api/tags/:id', requireAdmin, (req, res) => {
 });
 
 // Get host status history
-app.get('/api/hosts/:id/history', (req, res) => {
+app.get('/api/hosts/:id/history', requireVisitor, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const limit = parseInt(req.query.limit) || 100;
@@ -528,7 +547,7 @@ app.get('/api/hosts/:id/history', (req, res) => {
 });
 
 // Export data (JSON)
-app.get('/api/export', (req, res) => {
+app.get('/api/export', requireVisitor, (req, res) => {
   try {
     const hosts = dbFunctions.getAllHosts();
     const tags = dbFunctions.getAllTags();
@@ -544,20 +563,33 @@ app.post('/api/import', requireAdmin, async (req, res) => {
     const { hosts, tags } = req.body;
     let imported = 0;
     
+    const tagNameToId = new Map();
     if (tags && Array.isArray(tags)) {
       for (const tag of tags) {
+        if (!tag?.name) continue;
         try {
-          dbFunctions.addTag({ name: tag.name, color: tag.color });
+          const added = dbFunctions.addTag({ name: tag.name, color: tag.color || '#4a9eff' });
+          tagNameToId.set(tag.name, added.id);
         } catch (e) {
-          // Ignore if already exists
+          const existing = dbFunctions.getAllTags().find((t) => t.name === tag.name);
+          if (existing) tagNameToId.set(tag.name, existing.id);
         }
       }
     }
-    
+    for (const t of dbFunctions.getAllTags()) {
+      tagNameToId.set(t.name, t.id);
+    }
+
     if (hosts && Array.isArray(hosts)) {
       for (const host of hosts) {
         try {
-          const tagIds = host.tags ? host.tags.map(t => typeof t === 'object' ? t.id : t).filter(Boolean) : [];
+          const tagIds = (host.tags || [])
+            .map((t) => {
+              if (typeof t === 'object' && t?.name) return tagNameToId.get(t.name);
+              if (typeof t === 'string') return tagNameToId.get(t);
+              return null;
+            })
+            .filter(Boolean);
           dbFunctions.addHost({
             name: host.name,
             ip: host.ip,
@@ -574,6 +606,7 @@ app.post('/api/import', requireAdmin, async (req, res) => {
       }
     }
     
+    invalidateDataCaches();
     res.json({ message: importedHostsCount(imported) });
   } catch (error) {
     res.status(500).json(jsonInternalError(error));
@@ -581,7 +614,7 @@ app.post('/api/import', requireAdmin, async (req, res) => {
 });
 
 // Statistics (with caching)
-app.get('/api/stats', (req, res) => {
+app.get('/api/stats', requireVisitor, (req, res) => {
   try {
     const cacheKey = 'stats';
     let stats = cache.get(cacheKey);
@@ -669,7 +702,7 @@ app.post('/api/network/scan', requireAdmin, async (req, res) => {
 // ========== Networks API ==========
 
 // Get all networks (with caching)
-app.get('/api/networks', (req, res) => {
+app.get('/api/networks', requireVisitor, (req, res) => {
   try {
     const cacheKey = 'networks';
     let networks = cache.get(cacheKey);
@@ -686,7 +719,7 @@ app.get('/api/networks', (req, res) => {
 });
 
 // Get single network
-app.get('/api/networks/:id', (req, res) => {
+app.get('/api/networks/:id', requireVisitor, (req, res) => {
   try {
     const network = dbFunctions.getNetworkById(parseInt(req.params.id));
     if (!network) {
@@ -901,7 +934,7 @@ app.delete('/api/networks/:id', requireAdmin, (req, res) => {
 });
 
 // Get hosts associated with network (automatic linking)
-app.get('/api/networks/:id/hosts', (req, res) => {
+app.get('/api/networks/:id/hosts', requireVisitor, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const network = dbFunctions.getNetworkById(id);
@@ -1059,7 +1092,11 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
       const isOnline = discoveredIPs.has(host.ip);
       const newStatus = isOnline ? 'online' : 'offline';
       const activeHost = activeHosts.find(h => h.ip === host.ip);
-      
+
+      if (isOnline) {
+        dbFunctions.clearAutoScanResultsForHost(id, host.id, 'disconnected');
+      }
+
       try {
         // Get tagIds
         const hostTags = dbFunctions.getHostTags(host.id);
@@ -1087,6 +1124,7 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
     logger.info(`[Scan] Updated status for ${updatedCount} existing hosts`);
 
     purgeStaleOfflineHostsForNetwork(id);
+    invalidateDataCaches();
 
     res.json({
       success: true,
@@ -1134,8 +1172,8 @@ app.post('/api/networks/:id/auto-scan', requireAdmin, asyncHandler(async (req, r
   }
   
   const updatedNetwork = dbFunctions.getNetworkById(id);
-  cache.delete('networks');
-  
+  invalidateDataCaches();
+
   logger.info(`Auto scan ${enabled ? 'enabled' : 'disabled'} for network ${id}`);
   res.json(updatedNetwork);
 }));
@@ -1263,7 +1301,7 @@ app.delete('/api/data/all', requireAdmin, asyncHandler((req, res) => {
 // ========== Favorites API ==========
 
 // Get all favorites (with caching)
-app.get('/api/favorites', (req, res) => {
+app.get('/api/favorites', requireVisitor, (req, res) => {
   try {
     const cacheKey = 'favorites';
     let favorites = cache.get(cacheKey);
@@ -1281,7 +1319,7 @@ app.get('/api/favorites', (req, res) => {
 });
 
 // Get favorite by ID
-app.get('/api/favorites/:id', (req, res) => {
+app.get('/api/favorites/:id', requireVisitor, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const favorite = dbFunctions.getFavoriteById(id);
@@ -1420,7 +1458,7 @@ app.delete('/api/favorites/:id', requireAdmin, (req, res) => {
 // ========== Groups API ==========
 
 // Get all groups (with caching)
-app.get('/api/groups', (req, res) => {
+app.get('/api/groups', requireVisitor, (req, res) => {
   try {
     const cacheKey = 'groups';
     let groups = cache.get(cacheKey);
@@ -1438,7 +1476,7 @@ app.get('/api/groups', (req, res) => {
 });
 
 // Get group by ID
-app.get('/api/groups/:id', (req, res) => {
+app.get('/api/groups/:id', requireVisitor, (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const group = dbFunctions.getGroupById(id);

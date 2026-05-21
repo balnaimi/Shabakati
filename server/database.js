@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync } from 'fs';
-import { Err } from './apiMessages.js';
+import { Err, errHostAlreadyExists } from './apiMessages.js';
 import { apiThrow } from './errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -200,6 +200,15 @@ try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_hosts_ip ON hosts(ip)');
 } catch (e) {}
 
+// One device per IP — remove legacy duplicates then enforce uniqueness
+try {
+  db.exec(`
+    DELETE FROM hosts
+    WHERE id NOT IN (SELECT MIN(id) FROM hosts GROUP BY ip)
+  `);
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_hosts_ip_unique ON hosts(ip)');
+} catch (e) {}
+
 // Index on status for fast filtering
 try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_hosts_status ON hosts(status)');
@@ -354,6 +363,12 @@ export const dbFunctions = {
     });
   },
 
+  getHostByIp(ip) {
+    if (!ip || typeof ip !== 'string') return null;
+    const stmt = db.prepare('SELECT id FROM hosts WHERE ip = ?');
+    return stmt.get(ip.trim());
+  },
+
   // Get single host
   getHostById(id) {
     const stmt = db.prepare('SELECT * FROM hosts WHERE id = ?');
@@ -377,6 +392,12 @@ export const dbFunctions = {
 
   // Add new host
   addHost(host) {
+    const ip = (host.ip || '').trim();
+    const dup = this.getHostByIp(ip);
+    if (dup) {
+      const existing = this.getHostById(dup.id);
+      apiThrow(400, errHostAlreadyExists(existing?.name || 'Host', ip));
+    }
     const status = host.status || 'online';
     const offlineSinceInit =
       status === 'offline'
@@ -807,6 +828,19 @@ export const dbFunctions = {
     query += ' ORDER BY discovered_at DESC';
     const stmt = db.prepare(query);
     return stmt.all(...params);
+  },
+
+  clearAutoScanResultsForHost(networkId, hostId, scanType = null) {
+    if (scanType) {
+      const stmt = db.prepare(
+        'DELETE FROM auto_scan_results WHERE network_id = ? AND host_id = ? AND scan_type = ?'
+      );
+      return stmt.run(networkId, hostId, scanType);
+    }
+    const stmt = db.prepare(
+      'DELETE FROM auto_scan_results WHERE network_id = ? AND host_id = ?'
+    );
+    return stmt.run(networkId, hostId);
   },
 
   // Clear auto scan results for network

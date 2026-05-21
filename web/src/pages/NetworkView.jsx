@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiGet, apiPost, apiDelete, apiPut } from '../utils/api'
-import { calculateIPRange, getLastOctet, isIPInInclusiveRange } from '../utils/networkUtils'
+import { calculateIPRange, getLastOctet, isIPInInclusiveRange, isValidIP } from '../utils/networkUtils'
 import { getDescription, parseSystemDiscoveryTcpPort } from '../utils/descriptionUtils'
 import { useAuth } from '../contexts/AuthContext'
 import { useTags } from '../hooks/useTags'
@@ -236,11 +236,11 @@ function NetworkView() {
 
   const handleAutoScanIntervalChange = async (ms) => {
     setAutoScanInterval(ms)
-    if (!network || !autoScanEnabled) return
+    if (!network || !isAdmin) return
     try {
       setLoadingAutoScan(true)
       await apiPost(`/networks/${id}/auto-scan`, {
-        enabled: true,
+        enabled: autoScanEnabled,
         interval: ms
       })
       await fetchNetwork()
@@ -615,7 +615,10 @@ function NetworkView() {
   const hasDhcpRange = Boolean(
     dhcpRangeStart &&
       dhcpRangeEnd &&
-      isIPInInclusiveRange(dhcpRangeStart, dhcpRangeStart, dhcpRangeEnd)
+      isValidIP(dhcpRangeStart) &&
+      isValidIP(dhcpRangeEnd) &&
+      isIPInInclusiveRange(dhcpRangeStart, dhcpRangeStart, dhcpRangeEnd) &&
+      isIPInInclusiveRange(dhcpRangeEnd, dhcpRangeStart, dhcpRangeEnd)
   )
 
   const ipCellColors = (ip, status) => {
@@ -820,7 +823,7 @@ function NetworkView() {
               <strong>{t('pages.networkView.range')}:</strong> {range.start} - {range.end} ({range.count}{' '}
               {t('pages.networkView.addresses')})
             </p>
-            {network.dhcp_range_start && network.dhcp_range_end && (
+            {hasDhcpRange && (
               <p
                 style={{
                   margin: 0,
@@ -845,7 +848,7 @@ function NetworkView() {
                     unicodeBidi: 'isolate'
                   }}
                 >
-                  {network.dhcp_range_start} – {network.dhcp_range_end}
+                  {dhcpRangeStart} – {dhcpRangeEnd}
                 </code>
               </p>
             )}

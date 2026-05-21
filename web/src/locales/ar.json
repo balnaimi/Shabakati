@@ -149,7 +149,8 @@
       "noAvailableInRange": "لا يوجد عنوان فارغ ضمن النطاق المعروض لهذه الشبكة.",
       "noAvailableIPs": "لا توجد عناوين فارغة",
       "noAvailableIPsDescription": "كل العناوين في هذه الشبكة تبدو مستخدمة.",
-      "availableCount": "{{count}} عنوان متاح"
+      "availableCount": "{{count}} عنوان متاح",
+      "openNetworkMap": "عرض خريطة العناوين الكاملة في صفحة الشبكة"
     },
     "networkView": {
       "title": "عرض الشبكة",
@@ -289,9 +290,9 @@
       "adminPasswordPlaceholder": "للتعديل والإدارة",
       "createPasswords": "إنشاء كلمتي المرور",
       "creating": "جاري الإنشاء...",
-      "visitorPasswordMinLength": "كلمة مرور الزوار يجب أن تكون 3 أحرف على الأقل",
+      "visitorPasswordMinLength": "كلمة مرور الزوار يجب أن تكون 6 أحرف على الأقل",
       "visitorPasswordMismatch": "كلمات مرور الزوار غير متطابقة",
-      "adminPasswordMinLength": "كلمة مرور المسؤول يجب أن تكون 3 أحرف على الأقل",
+      "adminPasswordMinLength": "كلمة مرور المسؤول يجب أن تكون 6 أحرف على الأقل",
       "adminPasswordMismatch": "كلمات مرور المسؤول غير متطابقة",
       "setupFailed": "فشل إنشاء كلمتي المرور",
       "setupError": "حدث خطأ أثناء إنشاء كلمتي المرور"
@@ -304,7 +305,7 @@
       "changeButton": "تغيير كلمة المرور",
       "changing": "جاري التغيير...",
       "allFieldsRequired": "جميع الحقول مطلوبة",
-      "passwordMinLength": "كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل",
+      "passwordMinLength": "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل",
       "passwordMismatch": "كلمات المرور الجديدة غير متطابقة",
       "success": "تم تغيير كلمة المرور بنجاح",
       "error": "حدث خطأ أثناء تغيير كلمة المرور"
@@ -316,7 +317,7 @@
       "changeButton": "تغيير كلمة المرور",
       "changing": "جاري التغيير...",
       "allFieldsRequired": "جميع الحقول مطلوبة",
-      "passwordMinLength": "كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل",
+      "passwordMinLength": "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل",
       "passwordMismatch": "كلمات المرور الجديدة غير متطابقة",
       "success": "تم تغيير كلمة مرور الزوار بنجاح",
       "error": "حدث خطأ أثناء تغيير كلمة مرور الزوار"
@@ -404,10 +405,10 @@
     "ADMIN_PASSWORD_REQUIRED": "كلمة مرور المسؤول مطلوبة.",
     "INCORRECT_ADMIN_PASSWORD": "كلمة مرور المسؤول غير صحيحة.",
     "SETUP_ALREADY_COMPLETE": "الإعداد مكتمل مسبقاً.",
-    "VISITOR_PASSWORD_MIN_LENGTH": "كلمة مرور الزائر يجب أن تكون 3 أحرف على الأقل.",
-    "ADMIN_PASSWORD_MIN_LENGTH": "كلمة مرور المسؤول يجب أن تكون 3 أحرف على الأقل.",
+    "VISITOR_PASSWORD_MIN_LENGTH": "كلمة مرور الزائر يجب أن تكون 6 أحرف على الأقل.",
+    "ADMIN_PASSWORD_MIN_LENGTH": "كلمة مرور المسؤول يجب أن تكون 6 أحرف على الأقل.",
     "CURRENT_AND_NEW_PASSWORD_REQUIRED": "كلمة المرور الحالية والجديدة مطلوبتان.",
-    "NEW_PASSWORD_MIN_LENGTH": "كلمة المرور الجديدة يجب أن تكون 3 أحرف على الأقل.",
+    "NEW_PASSWORD_MIN_LENGTH": "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل.",
     "CURRENT_PASSWORD_INCORRECT": "كلمة المرور الحالية غير صحيحة.",
     "FAILED_UPDATE_PASSWORD": "تعذر تحديث كلمة المرور.",
     "NEW_PASSWORD_REQUIRED": "كلمة المرور الجديدة مطلوبة.",

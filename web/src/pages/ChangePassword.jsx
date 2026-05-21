@@ -36,7 +36,7 @@ function ChangePassword() {
       return
     }
 
-    if (newPassword.length < 3) {
+    if (newPassword.length < 6) {
       setError(t('pages.changePassword.passwordMinLength'))
       return
     }

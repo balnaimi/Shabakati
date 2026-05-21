@@ -1,6 +1,6 @@
 import { dbFunctions } from './database.js';
 import { isIPInNetwork } from './networkUtils.js';
-import cache from './cache.js';
+import { invalidateDataCaches } from './cacheInvalidation.js';
 import logger from './logger.js';
 
 /**
@@ -41,10 +41,7 @@ export function purgeStaleOfflineHostsForNetwork(networkId) {
   }
 
   logger.info(`[OfflineRelease] Removed ${toDelete.length} stale offline host(s) from network ${networkId}`);
-  cache.delete('stats');
-  cache.delete('networks');
-  cache.delete('favorites');
-  cache.delete('tags');
+  invalidateDataCaches();
 
   return toDelete.length;
 }
