@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import IpAddress from '../components/IpAddress'
 import { useToast } from '../components/Toast'
 import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import { 
@@ -163,14 +164,13 @@ function NetworksList() {
                   <NetworkIcon size={20} />
                   {network.name}
                 </h3>
-                <p style={{ 
+                <IpAddress as="p" style={{
                   margin: 0,
                   color: 'var(--text-secondary)',
-                  fontSize: 'var(--font-size-sm)',
-                  fontFamily: 'monospace'
+                  fontSize: 'var(--font-size-sm)'
                 }}>
                   {network.network_id}/{network.subnet}
-                </p>
+                </IpAddress>
                 {network.last_scanned && (
                   <p style={{ 
                     margin: 0,
@@ -314,7 +314,7 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
             value={formData.networkId}
             onChange={(e) => setFormData({ ...formData, networkId: e.target.value })}
             placeholder="192.168.1.0"
-            style={{ fontFamily: 'monospace' }}
+            className="ip-address"
           />
         </div>
 
@@ -343,7 +343,7 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
                 value={formData.dhcpRangeStart}
                 onChange={(e) => setFormData({ ...formData, dhcpRangeStart: e.target.value })}
                 placeholder="192.168.1.100"
-                style={{ fontFamily: 'monospace' }}
+                className="ip-address"
               />
             </div>
             <div>
@@ -353,7 +353,7 @@ function AddNetworkForm({ networkId, formData, setFormData, onClose, onSuccess, 
                 value={formData.dhcpRangeEnd}
                 onChange={(e) => setFormData({ ...formData, dhcpRangeEnd: e.target.value })}
                 placeholder="192.168.1.200"
-                style={{ fontFamily: 'monospace' }}
+                className="ip-address"
               />
             </div>
           </div>

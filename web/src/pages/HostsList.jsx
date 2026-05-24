@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import IpAddress from '../components/IpAddress'
 import { useToast } from '../components/Toast'
 import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import { 
@@ -146,14 +147,13 @@ function HostsList() {
                   }}>
                     {network.networkName}
                   </h3>
-                  <p style={{ 
+                  <IpAddress as="p" style={{ 
                     margin: 0, 
                     color: 'var(--text-secondary)',
-                    fontSize: 'var(--font-size-sm)',
-                    fontFamily: 'monospace'
+                    fontSize: 'var(--font-size-sm)'
                   }}>
                     {network.networkCIDR}
-                  </p>
+                  </IpAddress>
                   <div style={{ 
                     marginBlockStart: 'var(--spacing-md)', 
                     display: 'flex', 

@@ -52,6 +52,9 @@ Desktop.ini
 # Test / coverage
 coverage/
 .nyc_output/
+web/e2e/.auth/
+playwright-report/
+test-results/
 
 # Optional tooling caches
 .cache/

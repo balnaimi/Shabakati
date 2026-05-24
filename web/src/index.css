@@ -166,11 +166,19 @@
 }
 
 html {
-  font-size: 16px;
   font-family: var(--font-sans);
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+/* Zain Latin reads slightly smaller — gentle bump for English only */
+html[lang="ar"] {
+  font-size: 16px;
+}
+
+html[lang="en"] {
+  font-size: 17px;
 }
 
 body {
@@ -194,6 +202,20 @@ body {
 
 [dir="ltr"] {
   direction: ltr;
+}
+
+/* IP addresses & network notation */
+.ip-address,
+input.ip-address,
+textarea.ip-address {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', 'Liberation Mono', monospace;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Nav: full labels on desktop, short on mobile */
+.nav-link-label-short {
+  display: none;
 }
 
 /* Inline icons scale with text */
@@ -1242,6 +1264,14 @@ table tbody tr:last-child td {
     flex: 1;
     justify-content: center;
     min-width: 0;
+  }
+
+  .nav-link-label-full {
+    display: none;
+  }
+
+  .nav-link-label-short {
+    display: inline;
   }
 }
 

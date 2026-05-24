@@ -5,6 +5,7 @@ import { useTranslation } from '../hooks/useTranslation'
 import { calculateIPRange, getLastOctet, getNetworkDhcpRange, filterStaticAvailableIps } from '../utils/networkUtils'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import IpAddress from '../components/IpAddress'
 import { NetworkIcon, AlertIcon } from '../components/Icons'
 import { formatClientError } from '../utils/formatClientError'
 import { useAuth } from '../contexts/AuthContext'
@@ -152,7 +153,7 @@ function AvailableIPs() {
                 <option value="">{t('pages.availableIPs.chooseNetwork')}</option>
                 {networks.map(network => (
                   <option key={network.id} value={network.id}>
-                    {network.name} ({network.network_id}/{network.subnet})
+                    {network.name} (<IpAddress as="span">{network.network_id}/{network.subnet}</IpAddress>)
                   </option>
                 ))}
               </select>
@@ -221,8 +222,8 @@ function AvailableIPs() {
                         const groupIPs = ipGroups[thirdOctet]
                         return (
                           <div key={thirdOctet} style={{ marginBlockEnd: 'var(--spacing-xl)' }}>
-                            <h3 style={{ marginBlockEnd: 'var(--spacing-md)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'monospace' }}>
-                              {networkParts[0]}.{networkParts[1]}.{thirdOctet}.x
+                            <h3 style={{ marginBlockEnd: 'var(--spacing-md)', fontWeight: 'var(--font-weight-semibold)' }}>
+                              <IpAddress as="span">{networkParts[0]}.{networkParts[1]}.{thirdOctet}.x</IpAddress>
                             </h3>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', gap: 'var(--spacing-xs)' }}>
                               {groupIPs.map((ip) => (

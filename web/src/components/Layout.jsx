@@ -19,9 +19,24 @@ function Layout({ children }) {
   }
 
   const navLinks = [
-    { path: '/', label: t('navigation.home'), icon: HomeIcon },
-    { path: '/hosts', label: t('navigation.viewNetworks'), icon: NetworkIcon },
-    { path: '/available-ips', label: t('navigation.getAvailableIP'), icon: LinkIcon }
+    {
+      path: '/',
+      label: t('navigation.home'),
+      shortLabel: t('navigation.homeShort'),
+      icon: HomeIcon
+    },
+    {
+      path: '/hosts',
+      label: t('navigation.viewNetworks'),
+      shortLabel: t('navigation.viewNetworksShort'),
+      icon: NetworkIcon
+    },
+    {
+      path: '/available-ips',
+      label: t('navigation.getAvailableIP'),
+      shortLabel: t('navigation.getAvailableIPShort'),
+      icon: LinkIcon
+    }
   ]
 
   if (location.pathname === '/login') {
@@ -32,8 +47,8 @@ function Layout({ children }) {
     <div className="app">
       <nav className="navbar">
         <div className="navbar-content">
-          <div className="navbar-brand">
-            <div className="navbar-logo">
+          <div className="navbar-brand" title={t('app.name')}>
+            <div className="navbar-logo" title={t('app.name')}>
               <LogoIcon size={20} />
             </div>
             <div className="navbar-brand-text">
@@ -50,11 +65,15 @@ function Layout({ children }) {
                 return (
                   <button
                     key={link.path}
+                    type="button"
                     onClick={() => navigate(link.path)}
                     className={`nav-link ${active ? 'active' : ''}`}
+                    title={link.label}
+                    aria-label={link.label}
                   >
-                    <Icon size={18} />
-                    <span>{link.label}</span>
+                    <Icon size={18} aria-hidden />
+                    <span className="nav-link-label-full">{link.label}</span>
+                    <span className="nav-link-label-short">{link.shortLabel}</span>
                   </button>
                 )
               })}

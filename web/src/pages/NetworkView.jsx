@@ -8,6 +8,7 @@ import { useTags } from '../hooks/useTags'
 import { useTranslation } from '../hooks/useTranslation'
 import { useLanguage } from '../contexts/LanguageContext'
 import LoadingSpinner from '../components/LoadingSpinner'
+import IpAddress from '../components/IpAddress'
 import EmptyState from '../components/EmptyState'
 import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
@@ -772,16 +773,15 @@ function NetworkView() {
             <span>{t('pages.networkView.networkDetailsTitle')}</span>
             {!networkInfoExpanded && (
               <code
+                className="ip-address"
                 dir="ltr"
                 translate="no"
                 style={{
-                  fontFamily: 'monospace',
                   fontSize: 'var(--font-size-sm)',
                   fontWeight: 'normal',
                   backgroundColor: 'var(--bg-tertiary)',
                   padding: '2px 8px',
-                  borderRadius: 'var(--radius-sm)',
-                  unicodeBidi: 'isolate'
+                  borderRadius: 'var(--radius-sm)'
                 }}
               >
                 {network.network_id}/{network.subnet}
@@ -803,14 +803,13 @@ function NetworkView() {
             <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
               <strong>{t('forms.networkId')}:</strong>
               <code
+                className="ip-address"
                 dir="ltr"
                 translate="no"
                 style={{
-                  fontFamily: 'monospace',
                   backgroundColor: 'var(--bg-tertiary)',
                   padding: '2px 8px',
-                  borderRadius: 'var(--radius-sm)',
-                  unicodeBidi: 'isolate'
+                  borderRadius: 'var(--radius-sm)'
                 }}
               >
                 {network.network_id}
@@ -820,7 +819,8 @@ function NetworkView() {
               <strong>{t('forms.subnet')}:</strong> /{network.subnet}
             </p>
             <p style={{ margin: 0 }}>
-              <strong>{t('pages.networkView.range')}:</strong> {range.start} - {range.end} ({range.count}{' '}
+              <strong>{t('pages.networkView.range')}:</strong>{' '}
+              <IpAddress as="span">{range.start} - {range.end}</IpAddress> ({range.count}{' '}
               {t('pages.networkView.addresses')})
             </p>
             {hasDhcpRange && (
@@ -836,16 +836,15 @@ function NetworkView() {
                 <strong>{t('pages.networkView.dhcpPool')}</strong>
                 {isRTL ? '\u200e : ' : ': '}
                 <code
+                  className="ip-address"
                   dir="ltr"
                   translate="no"
                   style={{
-                    fontFamily: 'monospace',
                     backgroundColor: 'var(--dhcp-pool-light)',
                     color: 'var(--dhcp-pool)',
                     padding: '2px 8px',
                     borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--dhcp-pool)',
-                    unicodeBidi: 'isolate'
+                    border: '1px solid var(--dhcp-pool)'
                   }}
                 >
                   {dhcpRangeStart} – {dhcpRangeEnd}
@@ -953,13 +952,13 @@ function NetworkView() {
                       {t('pages.networkView.scanMethodTcpHelp')}
                     </span>
                     <span
+                      className="ip-address"
                       style={{
                         display: 'block',
                         fontSize: 'var(--font-size-xs)',
                         color: 'var(--text-tertiary)',
                         fontWeight: 'normal',
                         marginTop: '6px',
-                        fontFamily: 'monospace',
                         lineHeight: 1.45,
                         wordBreak: 'break-word'
                       }}
@@ -1189,7 +1188,7 @@ function NetworkView() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
                           <div style={{ flex: 1 }}>
                             <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)', fontSize: 'var(--font-size-base)' }}>{host.name}</h3>
-                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{host.ip}</p>
+                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{host.ip}</IpAddress></p>
                           </div>
                           <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
                             {host.status === 'online' ? t('common.online') : t('common.offline')}
@@ -1291,7 +1290,7 @@ function NetworkView() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
                           <div style={{ flex: 1 }}>
                             <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host?.name || t('common.unknown')}</h3>
-                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{result.host?.ip || t('common.unknown')}</p>
+                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{result.host?.ip || t('common.unknown')}</IpAddress></p>
                             <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
                               {new Date(result.discovered_at).toLocaleString()}
                             </p>
@@ -1376,7 +1375,7 @@ function NetworkView() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
                           <div style={{ flex: 1 }}>
                             <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host?.name || t('common.unknown')}</h3>
-                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', fontFamily: 'monospace' }}>{result.host?.ip || t('common.unknown')}</p>
+                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{result.host?.ip || t('common.unknown')}</IpAddress></p>
                             <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
                               {new Date(result.discovered_at).toLocaleString()}
                             </p>
@@ -1547,7 +1546,7 @@ function NetworkView() {
                           </td>
                         )}
                         <td><strong>{host.name}</strong></td>
-                        <td style={{ fontFamily: 'monospace' }}>{host.ip}</td>
+                        <td><IpAddress>{host.ip}</IpAddress></td>
                         <td>
                           <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
                             {host.status === 'online' ? (
@@ -1689,8 +1688,8 @@ function NetworkView() {
                       
                       return (
                         <div key={thirdOctet} style={{ marginBlockEnd: 'var(--spacing-xl)' }}>
-                          <h3 style={{ marginBlockEnd: 'var(--spacing-md)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'monospace' }}>
-                            {networkParts[0]}.{networkParts[1]}.{thirdOctet}.x
+                          <h3 style={{ marginBlockEnd: 'var(--spacing-md)', fontWeight: 'var(--font-weight-semibold)' }}>
+                            <IpAddress as="span">{networkParts[0]}.{networkParts[1]}.{thirdOctet}.x</IpAddress>
                           </h3>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', gap: 'var(--spacing-xs)' }}>
                             {groupIPs.map((ip) => {
@@ -1818,7 +1817,7 @@ function NetworkView() {
                 borderRadius: 'var(--radius-md)'
               }}>
                 <p style={{ margin: 0 }}><strong>{t('common.name')}:</strong> {hosts.find(h => h.id === editingHostId).name}</p>
-                <p style={{ margin: 0 }}><strong>{t('common.ip')}:</strong> {hosts.find(h => h.id === editingHostId).ip}</p>
+                <p style={{ margin: 0 }}><strong>{t('common.ip')}:</strong> <IpAddress as="span">{hosts.find(h => h.id === editingHostId).ip}</IpAddress></p>
               </div>
             ) : null}
             

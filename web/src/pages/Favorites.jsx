@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import IpAddress from '../components/IpAddress'
 import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import { 
   PlusIcon, 
@@ -565,8 +566,8 @@ function Favorites() {
                               {net.newDevices.map((result) => (
                                 <div key={result.id} className="card" style={{ padding: 'var(--spacing-sm)' }}>
                                   <div style={{ fontWeight: 'var(--font-weight-medium)' }}>{result.host?.name || t('common.unknown')}</div>
-                                  <div style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-                                    {result.host?.ip}
+                                  <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                                    <IpAddress>{result.host?.ip}</IpAddress>
                                   </div>
                                   <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBlockStart: 'var(--spacing-xs)' }}>
                                     {new Date(result.discovered_at).toLocaleString()}
@@ -593,8 +594,8 @@ function Favorites() {
                               {net.disconnected.map((result) => (
                                 <div key={result.id} className="card" style={{ padding: 'var(--spacing-sm)' }}>
                                   <div style={{ fontWeight: 'var(--font-weight-medium)' }}>{result.host?.name || t('common.unknown')}</div>
-                                  <div style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-                                    {result.host?.ip}
+                                  <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                                    <IpAddress>{result.host?.ip}</IpAddress>
                                   </div>
                                   <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBlockStart: 'var(--spacing-xs)' }}>
                                     {new Date(result.discovered_at).toLocaleString()}
@@ -738,7 +739,7 @@ function Favorites() {
                               color: 'var(--text-secondary)', 
                               fontSize: 'var(--font-size-sm)' 
                             }}>
-                              {favorite.host.ip}
+                              <IpAddress>{favorite.host.ip}</IpAddress>
                             </p>
                           </div>
                           <span className={`status-badge ${favorite.host.status === 'online' ? 'status-online' : 'status-offline'}`}>
@@ -866,7 +867,7 @@ function Favorites() {
                   <option value="">{t('pages.favorites.addFavoriteModal.selectDevice')}</option>
                   {availableHosts.map(host => (
                     <option key={host.id} value={host.id}>
-                      {host.name} ({host.ip}) - {host.status === 'online' ? t('common.online') : t('common.offline')}
+                      {host.name} ({'\u200e'}{host.ip}) - {host.status === 'online' ? t('common.online') : t('common.offline')}
                     </option>
                   ))}
                 </select>
@@ -940,7 +941,7 @@ function Favorites() {
               borderRadius: 'var(--radius-md)'
             }}>
               <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                <strong>{t('pages.favorites.editFavoriteModal.device')}:</strong> {editingFavorite.host.name} ({editingFavorite.host.ip})
+                <strong>{t('pages.favorites.editFavoriteModal.device')}:</strong> {editingFavorite.host.name} (<IpAddress as="span">{editingFavorite.host.ip}</IpAddress>)
               </p>
             </div>
 

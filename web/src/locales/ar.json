@@ -62,8 +62,11 @@
   },
   "navigation": {
     "home": "الصفحة الرئيسية",
+    "homeShort": "الرئيسية",
     "viewNetworks": "عرض الشبكات",
+    "viewNetworksShort": "الشبكات",
     "getAvailableIP": "عناوين متاحة في الشبكة",
+    "getAvailableIPShort": "عناوين متاحة",
     "manageNetworks": "إدارة الشبكات",
     "manageTags": "إدارة الوسوم",
     "manageGroups": "إدارة المجموعات"

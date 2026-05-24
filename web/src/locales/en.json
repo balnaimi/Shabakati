@@ -62,8 +62,11 @@
   },
   "navigation": {
     "home": "Home",
+    "homeShort": "Home",
     "viewNetworks": "View Networks",
+    "viewNetworksShort": "Networks",
     "getAvailableIP": "Free addresses on your networks",
+    "getAvailableIPShort": "Available IPs",
     "manageNetworks": "Manage Networks",
     "manageTags": "Manage Tags",
     "manageGroups": "Manage Groups"
