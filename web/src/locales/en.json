@@ -150,7 +150,8 @@
       "noAvailableIPs": "No available addresses",
       "noAvailableIPsDescription": "All addresses in this network range are in use.",
       "availableCount": "{{count}} available",
-      "openNetworkMap": "Open full address map on network page"
+      "openNetworkMap": "Open full address map on network page",
+      "dhcpExcluded": "DHCP pool addresses are hidden — reserved for automatic assignment, not static use."
     },
     "networkView": {
       "title": "View Network",

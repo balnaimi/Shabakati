@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiGet } from '../utils/api'
 import { useTranslation } from '../hooks/useTranslation'
-import { calculateIPRange, getLastOctet } from '../utils/networkUtils'
+import { calculateIPRange, getLastOctet, getNetworkDhcpRange, filterStaticAvailableIps } from '../utils/networkUtils'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
 import { NetworkIcon, AlertIcon } from '../components/Icons'
@@ -95,7 +95,8 @@ function AvailableIPs() {
       const largeRange = !range || range.length === 0
       setRangeIsLarge(largeRange && count > 0)
       if (range && range.length > 0) {
-        const available = range.filter(ip => !usedIPs.has(ip))
+        const dhcpRange = getNetworkDhcpRange(network)
+        const available = filterStaticAvailableIps(range, usedIPs, dhcpRange)
         setAvailableIPs(available)
       } else {
         setAvailableIPs([])
@@ -210,6 +211,11 @@ function AvailableIPs() {
                     <div style={{ marginBlockStart: 'var(--spacing-lg)' }}>
                       <p style={{ color: 'var(--text-secondary)', marginBlockEnd: 'var(--spacing-md)', fontSize: 'var(--font-size-sm)' }}>
                         {t('pages.availableIPs.availableCount', { count: availableIPs.length })}
+                        {getNetworkDhcpRange(network) && (
+                          <span style={{ display: 'block', marginBlockStart: 'var(--spacing-xs)' }}>
+                            {t('pages.availableIPs.dhcpExcluded')}
+                          </span>
+                        )}
                       </p>
                       {sortedOctets.map((thirdOctet) => {
                         const groupIPs = ipGroups[thirdOctet]

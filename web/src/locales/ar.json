@@ -150,7 +150,8 @@
       "noAvailableIPs": "لا توجد عناوين فارغة",
       "noAvailableIPsDescription": "كل العناوين في هذه الشبكة تبدو مستخدمة.",
       "availableCount": "{{count}} عنوان متاح",
-      "openNetworkMap": "عرض خريطة العناوين الكاملة في صفحة الشبكة"
+      "openNetworkMap": "عرض خريطة العناوين الكاملة في صفحة الشبكة",
+      "dhcpExcluded": "عناوين نطاق DHCP غير معروضة — مخصّصة للتوزيع التلقائي وليست للتثبيت اليدوي."
     },
     "networkView": {
       "title": "عرض الشبكة",

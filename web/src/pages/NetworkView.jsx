@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiGet, apiPost, apiDelete, apiPut } from '../utils/api'
-import { calculateIPRange, getLastOctet, isIPInInclusiveRange, isValidIP } from '../utils/networkUtils'
+import { calculateIPRange, getLastOctet, isIPInInclusiveRange, isValidIP, filterStaticAvailableIps } from '../utils/networkUtils'
 import { getDescription, parseSystemDiscoveryTcpPort } from '../utils/descriptionUtils'
 import { useAuth } from '../contexts/AuthContext'
 import { useTags } from '../hooks/useTags'
@@ -1783,7 +1783,7 @@ function NetworkView() {
                   <p style={{ margin: 0 }}><OnlineIcon size={16} style={{ color: 'var(--success)' }} /> {t('pages.networkView.onlineDevices')}: <strong>{hosts.filter(h => h.status === 'online').length}</strong></p>
                   <p style={{ margin: 0 }}><OfflineIcon size={16} style={{ color: 'var(--danger)' }} /> {t('pages.networkView.offlineDevices')}: <strong>{hosts.filter(h => h.status === 'offline').length}</strong></p>
                   <p style={{ margin: 0 }}><DeviceIcon size={16} /> {t('pages.networkView.totalDevices')}: <strong>{hosts.length}</strong></p>
-                  <p style={{ margin: 0 }}>{t('pages.networkView.availableIPs')}: <strong>{displayRange.length - hosts.length}</strong></p>
+                  <p style={{ margin: 0 }}>{t('pages.networkView.availableIPs')}: <strong>{filterStaticAvailableIps(displayRange, hosts.map(h => h.ip), hasDhcpRange ? { start: dhcpRangeStart, end: dhcpRangeEnd } : null).length}</strong></p>
                 </div>
               </div>
             </>
