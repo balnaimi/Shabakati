@@ -153,7 +153,7 @@ function AvailableIPs() {
                 <option value="">{t('pages.availableIPs.chooseNetwork')}</option>
                 {networks.map(network => (
                   <option key={network.id} value={network.id}>
-                    {network.name} (<IpAddress as="span">{network.network_id}/{network.subnet}</IpAddress>)
+                    {network.name} ({'\u200e'}{network.network_id}/{network.subnet})
                   </option>
                 ))}
               </select>

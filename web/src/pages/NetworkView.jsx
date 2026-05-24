@@ -749,7 +749,7 @@ function NetworkView() {
             display: 'flex',
             alignItems: 'center',
             gap: 'var(--spacing-sm)',
-            justifyContent: 'flex-start',
+            justifyContent: 'start',
             fontWeight: 'var(--font-weight-semibold)',
             fontSize: 'var(--font-size-base)',
             color: 'var(--text-primary)',
@@ -766,26 +766,16 @@ function NetworkView() {
               alignItems: 'center',
               gap: 'var(--spacing-sm)',
               flexWrap: 'wrap',
-              justifyContent: 'flex-start',
-              minWidth: 0
+              justifyContent: 'start',
+              minWidth: 0,
+              textAlign: 'start'
             }}
           >
             <span>{t('pages.networkView.networkDetailsTitle')}</span>
             {!networkInfoExpanded && (
-              <code
-                className="ip-address"
-                dir="ltr"
-                translate="no"
-                style={{
-                  fontSize: 'var(--font-size-sm)',
-                  fontWeight: 'normal',
-                  backgroundColor: 'var(--bg-tertiary)',
-                  padding: '2px 8px',
-                  borderRadius: 'var(--radius-sm)'
-                }}
-              >
+              <IpAddress className="ip-badge">
                 {network.network_id}/{network.subnet}
-              </code>
+              </IpAddress>
             )}
           </span>
           {networkInfoExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
@@ -800,20 +790,9 @@ function NetworkView() {
               borderTop: '1px solid var(--border-color-light)'
             }}
           >
-            <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+            <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap', textAlign: 'start' }}>
               <strong>{t('forms.networkId')}:</strong>
-              <code
-                className="ip-address"
-                dir="ltr"
-                translate="no"
-                style={{
-                  backgroundColor: 'var(--bg-tertiary)',
-                  padding: '2px 8px',
-                  borderRadius: 'var(--radius-sm)'
-                }}
-              >
-                {network.network_id}
-              </code>
+              <IpAddress className="ip-badge">{network.network_id}</IpAddress>
             </p>
             <p style={{ margin: 0 }}>
               <strong>{t('forms.subnet')}:</strong> /{network.subnet}
@@ -835,20 +814,9 @@ function NetworkView() {
               >
                 <strong>{t('pages.networkView.dhcpPool')}</strong>
                 {isRTL ? '\u200e : ' : ': '}
-                <code
-                  className="ip-address"
-                  dir="ltr"
-                  translate="no"
-                  style={{
-                    backgroundColor: 'var(--dhcp-pool-light)',
-                    color: 'var(--dhcp-pool)',
-                    padding: '2px 8px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--dhcp-pool)'
-                  }}
-                >
+                <IpAddress className="ip-badge ip-badge-dhcp">
                   {dhcpRangeStart} – {dhcpRangeEnd}
-                </code>
+                </IpAddress>
               </p>
             )}
             {network.last_scanned && (
@@ -878,7 +846,7 @@ function NetworkView() {
               display: 'flex',
               alignItems: 'center',
               gap: 'var(--spacing-sm)',
-              justifyContent: 'flex-start',
+              justifyContent: 'start',
               fontWeight: 'var(--font-weight-semibold)',
               fontSize: 'var(--font-size-base)',
               color: 'var(--text-primary)',
@@ -1153,7 +1121,7 @@ function NetworkView() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 'var(--spacing-sm)',
-                    justifyContent: 'flex-start',
+                    justifyContent: 'start',
                     fontWeight: 'var(--font-weight-semibold)',
                     fontSize: 'var(--font-size-lg)',
                     color: 'var(--success)',
@@ -1243,7 +1211,7 @@ function NetworkView() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 'var(--spacing-sm)',
-                    justifyContent: 'flex-start',
+                    justifyContent: 'start',
                     fontWeight: 'var(--font-weight-semibold)',
                     fontSize: 'var(--font-size-lg)',
                     color: 'var(--success)',
@@ -1328,7 +1296,7 @@ function NetworkView() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 'var(--spacing-sm)',
-                    justifyContent: 'flex-start',
+                    justifyContent: 'start',
                     fontWeight: 'var(--font-weight-semibold)',
                     fontSize: 'var(--font-size-lg)',
                     color: 'var(--danger)',

@@ -164,11 +164,7 @@ function NetworksList() {
                   <NetworkIcon size={20} />
                   {network.name}
                 </h3>
-                <IpAddress as="p" style={{
-                  margin: 0,
-                  color: 'var(--text-secondary)',
-                  fontSize: 'var(--font-size-sm)'
-                }}>
+                <IpAddress as="p">
                   {network.network_id}/{network.subnet}
                 </IpAddress>
                 {network.last_scanned && (

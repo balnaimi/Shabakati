@@ -41,6 +41,16 @@ test('English uses 17px root, Arabic uses 16px', async ({ page }) => {
   expect(arSize).toBe('16px')
 })
 
+test('IP lines align to inline-start in Arabic', async ({ page }) => {
+  await seedSession(page, 'ar')
+  await page.goto('/hosts')
+  const line = page.locator('.tag-item .ip-line').first()
+  await expect(line).toBeVisible({ timeout: 15_000 })
+  const align = await line.evaluate((el) => getComputedStyle(el).textAlign)
+  expect(['start', 'right']).toContain(align)
+  await expect(line.locator('.ip-address')).toHaveAttribute('dir', 'ltr')
+})
+
 test('IP addresses render LTR', async ({ page }) => {
   await seedSession(page, 'ar')
   await page.goto('/hosts')

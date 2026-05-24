@@ -213,6 +213,35 @@ textarea.ip-address {
   unicode-bidi: isolate;
 }
 
+.ip-address {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.ip-line {
+  text-align: start;
+}
+
+.tag-item .ip-line {
+  margin-block-start: var(--spacing-xs);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.ip-badge {
+  font-size: var(--font-size-sm);
+  font-weight: normal;
+  background-color: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.ip-badge-dhcp {
+  background-color: var(--dhcp-pool-light);
+  color: var(--dhcp-pool);
+  border: 1px solid var(--dhcp-pool);
+}
+
 /* Nav: full labels on desktop, short on mobile */
 .nav-link-label-short {
   display: none;
@@ -850,7 +879,7 @@ table tbody tr:last-child td {
 .card-footer {
   display: flex;
   gap: var(--spacing-sm);
-  justify-content: flex-end;
+  justify-content: end;
   padding-block-start: var(--spacing-md);
   border-block-start: 1px solid var(--border-color-light);
 }

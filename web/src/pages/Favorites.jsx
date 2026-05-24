@@ -465,7 +465,7 @@ function Favorites() {
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flex: '1 1 auto', textAlign: 'start' }}>
             <ScanIcon size={22} />
-            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'start', gap: '2px' }}>
               <span>{t('pages.favorites.monitoringTitle')}</span>
               <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 'normal', color: 'var(--text-tertiary)' }}>
                 {t('pages.favorites.monitoringHint')}
@@ -525,7 +525,7 @@ function Favorites() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 'var(--spacing-sm)',
-                        justifyContent: 'flex-start',
+                        justifyContent: 'start',
                         fontWeight: 'var(--font-weight-semibold)'
                       }}
                     >
@@ -566,7 +566,7 @@ function Favorites() {
                               {net.newDevices.map((result) => (
                                 <div key={result.id} className="card" style={{ padding: 'var(--spacing-sm)' }}>
                                   <div style={{ fontWeight: 'var(--font-weight-medium)' }}>{result.host?.name || t('common.unknown')}</div>
-                                  <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                                  <div className="ip-line" style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
                                     <IpAddress>{result.host?.ip}</IpAddress>
                                   </div>
                                   <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBlockStart: 'var(--spacing-xs)' }}>
@@ -594,7 +594,7 @@ function Favorites() {
                               {net.disconnected.map((result) => (
                                 <div key={result.id} className="card" style={{ padding: 'var(--spacing-sm)' }}>
                                   <div style={{ fontWeight: 'var(--font-weight-medium)' }}>{result.host?.name || t('common.unknown')}</div>
-                                  <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                                  <div className="ip-line" style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
                                     <IpAddress>{result.host?.ip}</IpAddress>
                                   </div>
                                   <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBlockStart: 'var(--spacing-xs)' }}>
@@ -721,7 +721,7 @@ function Favorites() {
                         <div style={{ 
                           display: 'flex', 
                           justifyContent: 'space-between', 
-                          alignItems: 'flex-start', 
+                          alignItems: 'start', 
                           marginBlockEnd: 'var(--spacing-sm)' 
                         }}>
                           <div style={{ flex: 1 }}>
@@ -734,8 +734,7 @@ function Favorites() {
                             }}>
                               {favorite.customName || favorite.host.name}
                             </h3>
-                            <p style={{ 
-                              margin: 0, 
+                            <p className="ip-line" style={{ 
                               color: 'var(--text-secondary)', 
                               fontSize: 'var(--font-size-sm)' 
                             }}>
@@ -867,7 +866,7 @@ function Favorites() {
                   <option value="">{t('pages.favorites.addFavoriteModal.selectDevice')}</option>
                   {availableHosts.map(host => (
                     <option key={host.id} value={host.id}>
-                      {host.name} ({'\u200e'}{host.ip}) - {host.status === 'online' ? t('common.online') : t('common.offline')}
+                      {host.name} ({host.ip}) - {host.status === 'online' ? t('common.online') : t('common.offline')}
                     </option>
                   ))}
                 </select>

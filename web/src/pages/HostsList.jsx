@@ -147,13 +147,9 @@ function HostsList() {
                   }}>
                     {network.networkName}
                   </h3>
-                  <IpAddress as="p" style={{ 
-                    margin: 0, 
-                    color: 'var(--text-secondary)',
-                    fontSize: 'var(--font-size-sm)'
-                  }}>
-                    {network.networkCIDR}
-                  </IpAddress>
+                <IpAddress as="p">
+                  {network.networkCIDR}
+                </IpAddress>
                   <div style={{ 
                     marginBlockStart: 'var(--spacing-md)', 
                     display: 'flex', 
