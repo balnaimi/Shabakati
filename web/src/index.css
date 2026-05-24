@@ -31,6 +31,9 @@
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.75;
 
+  --font-sans-en: 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
+  --font-sans-ar: 'Tajawal', sans-serif;
+
   /* Light theme — soft cream palette */
   --bg-primary: #faf8f4;
   --bg-secondary: #f3efe8;
@@ -164,6 +167,7 @@
 
 html {
   font-size: 16px;
+  font-family: var(--font-sans-en);
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
 }
@@ -171,10 +175,16 @@ html {
 /* Inter reads smaller than Tajawal at the same rem — slight bump for English UI */
 html[lang="en"] {
   font-size: 18px;
+  font-family: var(--font-sans-en);
+}
+
+html[lang="ar"] {
+  font-size: 16px;
+  font-family: var(--font-sans-ar);
 }
 
 body {
-  font-family: 'Inter', 'Roboto', system-ui, -apple-system, 'Tajawal', sans-serif;
+  font-family: inherit;
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
   color: var(--text-primary);
@@ -194,17 +204,6 @@ body {
 
 [dir="ltr"] {
   direction: ltr;
-}
-
-/* Font family based on language */
-[lang="ar"] {
-  font-family: 'Tajawal', sans-serif;
-  letter-spacing: 0;
-}
-
-[lang="en"] {
-  font-family: 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
-  letter-spacing: 0;
 }
 
 /* Inline icons scale with text so they don't dwarf English labels */
