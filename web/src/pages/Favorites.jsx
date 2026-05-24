@@ -413,20 +413,20 @@ function Favorites() {
             className="stat-item stat-item-clickable"
             onClick={() => navigate('/networks')}
           >
-            <p>{t('pages.favorites.totalNetworks')}</p>
-            <p>{stats.totalNetworks}</p>
+            <p className="stat-label">{t('pages.favorites.totalNetworks')}</p>
+            <p className="stat-value">{stats.totalNetworks}</p>
           </button>
           <div className="stat-item">
-            <p>{t('pages.favorites.totalHosts')}</p>
-            <p>{stats.totalHosts}</p>
+            <p className="stat-label">{t('pages.favorites.totalHosts')}</p>
+            <p className="stat-value">{stats.totalHosts}</p>
           </div>
-          <div className="stat-item">
-            <p>{t('pages.favorites.onlineHosts')}</p>
-            <p style={{ color: 'var(--success)' }}>{stats.onlineHosts}</p>
+          <div className="stat-item stat-item-success">
+            <p className="stat-label">{t('pages.favorites.onlineHosts')}</p>
+            <p className="stat-value">{stats.onlineHosts}</p>
           </div>
-          <div className="stat-item">
-            <p>{t('pages.favorites.offlineHosts')}</p>
-            <p style={{ color: 'var(--danger)' }}>{stats.offlineHosts}</p>
+          <div className="stat-item stat-item-danger">
+            <p className="stat-label">{t('pages.favorites.offlineHosts')}</p>
+            <p className="stat-value">{stats.offlineHosts}</p>
           </div>
         </div>
       </div>
