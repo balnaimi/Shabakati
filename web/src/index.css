@@ -168,8 +168,13 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Inter reads smaller than Tajawal at the same rem — slight bump for English UI */
+html[lang="en"] {
+  font-size: 18px;
+}
+
 body {
-  font-family: 'Tajawal', 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', 'Roboto', system-ui, -apple-system, 'Tajawal', sans-serif;
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
   color: var(--text-primary);
@@ -199,7 +204,31 @@ body {
 
 [lang="en"] {
   font-family: 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
+}
+
+/* Inline icons scale with text so they don't dwarf English labels */
+button svg,
+.nav-link svg,
+.dropdown-item svg,
+.btn svg {
+  width: 1.125em;
+  height: 1.125em;
+  flex-shrink: 0;
+}
+
+html[lang="en"] button,
+html[lang="en"] .nav-link,
+html[lang="en"] .dropdown-item {
+  font-size: var(--font-size-base);
+}
+
+html[lang="en"] .language-toggle {
+  font-size: var(--font-size-base);
+}
+
+html[lang="en"] .btn-small {
+  font-size: var(--font-size-sm);
 }
 
 /* ============================================

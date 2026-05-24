@@ -3,13 +3,13 @@ import { createContext, useContext, useState, useEffect } from 'react'
 const LanguageContext = createContext()
 
 export function LanguageProvider({ children }) {
-  // Get initial language from localStorage or default to Arabic
+  // Get initial language from localStorage or default to English
   const getInitialLanguage = () => {
     const savedLanguage = localStorage.getItem('language')
     if (savedLanguage && (savedLanguage === 'ar' || savedLanguage === 'en')) {
       return savedLanguage
     }
-    return 'ar' // Default to Arabic
+    return 'en' // Default to English
   }
 
   const [language, setLanguage] = useState(getInitialLanguage)
