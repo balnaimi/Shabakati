@@ -1,6 +1,8 @@
 # Multi-stage build for production
 FROM node:24-alpine AS builder
 
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+
 # Set working directory
 WORKDIR /app
 
@@ -19,6 +21,8 @@ RUN cd web && npm run build
 
 # Production stage
 FROM node:24-alpine
+
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 WORKDIR /app
 
