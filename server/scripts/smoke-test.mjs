@@ -56,6 +56,15 @@ async function main() {
   try {
     const { data } = await req('GET', '/api/auth/check-setup', { expectStatus: 200 });
     if (data.setupRequired) {
+      try {
+        await req('POST', '/api/auth/setup', {
+          body: { visitorPassword: 'ab', adminPassword: 'adm1234' },
+          expectStatus: 400
+        });
+        ok('POST /api/auth/setup rejects short password');
+      } catch (e) {
+        fail('setup password policy', e.message);
+      }
       await req('POST', '/api/auth/setup', {
         body: { visitorPassword: 'vis1234', adminPassword: 'adm1234' },
         expectStatus: 200
@@ -305,6 +314,35 @@ async function main() {
       ok('PUT /api/hosts/:id');
     } catch (e) {
       fail('PUT /api/hosts/:id', e.message);
+    }
+
+    try {
+      const { data: other } = await req('POST', '/api/hosts', {
+        token: adminToken,
+        body: {
+          name: 'Other Host',
+          ip: '192.168.99.51',
+          description: '',
+          url: '',
+          status: 'offline'
+        },
+        expectStatus: 201
+      });
+      await req('PUT', `/api/hosts/${other.id}`, {
+        token: adminToken,
+        body: {
+          name: 'Other Host',
+          ip: '192.168.99.50',
+          description: '',
+          url: '',
+          status: 'offline'
+        },
+        expectStatus: 400
+      });
+      await req('DELETE', `/api/hosts/${other.id}`, { token: adminToken, expectStatus: 200 });
+      ok('PUT /api/hosts/:id rejects duplicate IP');
+    } catch (e) {
+      fail('PUT duplicate IP', e.message);
     }
 
     try {
