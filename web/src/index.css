@@ -830,10 +830,16 @@ table tbody tr:last-child td {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.monitoring-meta {
+  white-space: nowrap;
 }
 
 .status-online {

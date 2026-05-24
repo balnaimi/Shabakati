@@ -473,6 +473,7 @@ function Favorites() {
             </span>
           </span>
           <span
+            className="monitoring-meta"
             style={{
               fontSize: 'var(--font-size-sm)',
               fontWeight: 'normal',
@@ -531,7 +532,7 @@ function Favorites() {
                     >
                       <NetworkIcon size={18} />
                       <span style={{ textAlign: 'start' }}>{net.networkName}</span>
-                      <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'normal', color: 'var(--text-secondary)' }}>
+                      <span className="monitoring-meta" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'normal', color: 'var(--text-secondary)' }}>
                         {t('pages.favorites.monitoringNetworkCounts', {
                           newCount: net.newDevices.length,
                           discCount: net.disconnected.length
