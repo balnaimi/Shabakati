@@ -31,8 +31,7 @@
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.75;
 
-  --font-sans-en: 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
-  --font-sans-ar: 'Tajawal', sans-serif;
+  --font-sans: 'Zain', sans-serif;
 
   /* Light theme — soft cream palette */
   --bg-primary: #faf8f4;
@@ -167,20 +166,9 @@
 
 html {
   font-size: 16px;
-  font-family: var(--font-sans-en);
+  font-family: var(--font-sans);
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
-}
-
-/* Inter reads smaller than Tajawal at the same rem — slight bump for English UI */
-html[lang="en"] {
-  font-size: 18px;
-  font-family: var(--font-sans-en);
-}
-
-html[lang="ar"] {
-  font-size: 16px;
-  font-family: var(--font-sans-ar);
 }
 
 body {
@@ -206,7 +194,7 @@ body {
   direction: ltr;
 }
 
-/* Inline icons scale with text so they don't dwarf English labels */
+/* Inline icons scale with text */
 button svg,
 .nav-link svg,
 .dropdown-item svg,
@@ -214,20 +202,6 @@ button svg,
   width: 1.125em;
   height: 1.125em;
   flex-shrink: 0;
-}
-
-html[lang="en"] button,
-html[lang="en"] .nav-link,
-html[lang="en"] .dropdown-item {
-  font-size: var(--font-size-base);
-}
-
-html[lang="en"] .language-toggle {
-  font-size: var(--font-size-base);
-}
-
-html[lang="en"] .btn-small {
-  font-size: var(--font-size-sm);
 }
 
 /* ============================================
