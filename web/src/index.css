@@ -198,7 +198,7 @@ body {
 
 /* Font family based on language */
 [lang="ar"] {
-  font-family: 'Tajawal', 'Cairo', sans-serif;
+  font-family: 'Tajawal', sans-serif;
   letter-spacing: 0;
 }
 
