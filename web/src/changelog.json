@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.8.5",
+    "date": "2026-05-21",
+    "en": [
+      "Dates display as day/month/year instead of US month/day/year"
+    ],
+    "ar": [
+      "عرض التواريخ بصيغة يوم/شهر/سنة بدلاً من شهر/يوم/سنة"
+    ]
+  },
+  {
     "version": "1.8.4",
     "date": "2026-05-21",
     "en": [

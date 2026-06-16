@@ -12,6 +12,7 @@ import {
 } from '../../components/Icons'
 import { formatDiscoveryCell, formatDeviceIntel } from './utils'
 import { HOST_PAGE_SIZE } from './constants'
+import { formatDateTime } from '../../utils/dateFormat'
 
 export default function HostsTableSection({
   hosts,
@@ -267,7 +268,7 @@ export default function HostsTableSection({
                       ) : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)}
                     </td>
                     <td style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
-                      {host.lastChecked || host.last_checked ? new Date(host.lastChecked || host.last_checked).toLocaleString() : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)}
+                      {host.lastChecked || host.last_checked ? formatDateTime(host.lastChecked || host.last_checked, language) : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 'var(--spacing-xs)', flexWrap: 'wrap' }}>

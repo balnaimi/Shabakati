@@ -10,6 +10,7 @@ import {
   CheckIcon
 } from '../../components/Icons'
 import { formatDeviceIntel } from './utils'
+import { formatDateTime } from '../../utils/dateFormat'
 
 export default function DiscoveryPanels({
   visibleNewHosts,
@@ -183,7 +184,7 @@ export default function DiscoveryPanels({
                         <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host ? getHostDisplayName(result.host) : t('common.unknown')}</h3>
                         <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{result.host?.ip || t('common.unknown')}</IpAddress></p>
                         <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                          {new Date(result.discovered_at).toLocaleString()}
+                          {formatDateTime(result.discovered_at, language)}
                         </p>
                       </div>
                       <span className={`status-badge ${result.host?.status === 'online' ? 'status-online' : 'status-offline'}`}>
@@ -260,7 +261,7 @@ export default function DiscoveryPanels({
                         <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host ? getHostDisplayName(result.host) : t('common.unknown')}</h3>
                         <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{result.host?.ip || t('common.unknown')}</IpAddress></p>
                         <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                          {new Date(result.discovered_at).toLocaleString()}
+                          {formatDateTime(result.discovered_at, language)}
                         </p>
                       </div>
                       <span className="status-badge status-offline">{t('common.offline')}</span>

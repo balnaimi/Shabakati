@@ -27,11 +27,12 @@ import {
 } from '../components/Icons'
 import OnboardingBanner from '../components/OnboardingBanner'
 import { formatClientError } from '../utils/formatClientError'
+import { formatDateTime } from '../utils/dateFormat'
 
 function Favorites() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const { confirm, confirmDialogSlot } = useConfirmDialog()
   const [favorites, setFavorites] = useState([])
   const [groups, setGroups] = useState([])
@@ -576,7 +577,7 @@ function Favorites() {
                                     <IpAddress>{result.host?.ip}</IpAddress>
                                   </div>
                                   <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBlockStart: 'var(--spacing-xs)' }}>
-                                    {new Date(result.discovered_at).toLocaleString()}
+                                    {formatDateTime(result.discovered_at, language)}
                                   </div>
                                 </div>
                               ))}
@@ -604,7 +605,7 @@ function Favorites() {
                                     <IpAddress>{result.host?.ip}</IpAddress>
                                   </div>
                                   <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBlockStart: 'var(--spacing-xs)' }}>
-                                    {new Date(result.discovered_at).toLocaleString()}
+                                    {formatDateTime(result.discovered_at, language)}
                                   </div>
                                 </div>
                               ))}

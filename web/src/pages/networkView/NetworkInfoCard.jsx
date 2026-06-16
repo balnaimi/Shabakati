@@ -1,5 +1,6 @@
 import IpAddress from '../../components/IpAddress'
 import { NetworkIcon, ChevronDownIcon, ChevronUpIcon } from '../../components/Icons'
+import { formatDateTime } from '../../utils/dateFormat'
 
 export default function NetworkInfoCard({
   network,
@@ -10,6 +11,7 @@ export default function NetworkInfoCard({
   dhcpRangeStart,
   dhcpRangeEnd,
   isRTL,
+  language,
   t
 }) {
   return (
@@ -102,7 +104,7 @@ export default function NetworkInfoCard({
           {network.last_scanned && (
             <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
               <strong>{t('pages.networksList.lastScanned')}:</strong>{' '}
-              {new Date(network.last_scanned).toLocaleString()}
+              {formatDateTime(network.last_scanned, language)}
             </p>
           )}
         </div>

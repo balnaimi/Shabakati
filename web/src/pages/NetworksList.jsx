@@ -19,11 +19,12 @@ import {
 } from '../components/Icons'
 import { formatClientError, toastApiError } from '../utils/formatClientError'
 import { isValidIP } from '../utils/networkUtils'
+import { formatDateTime } from '../utils/dateFormat'
 
 function NetworksList() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const toast = useToast()
   const { confirm, confirmDialogSlot } = useConfirmDialog()
   const [networks, setNetworks] = useState([])
@@ -174,7 +175,7 @@ function NetworksList() {
                     fontSize: 'var(--font-size-xs)', 
                     color: 'var(--text-tertiary)' 
                   }}>
-                    {t('pages.networksList.lastScanned')}: {new Date(network.last_scanned).toLocaleString()}
+                    {t('pages.networksList.lastScanned')}: {formatDateTime(network.last_scanned, language)}
                   </p>
                 )}
               </div>

@@ -48,6 +48,7 @@ function NetworkView() {
         dhcpRangeStart={nv.dhcpRangeStart}
         dhcpRangeEnd={nv.dhcpRangeEnd}
         isRTL={nv.isRTL}
+        language={nv.language}
         t={nv.t}
       />
 

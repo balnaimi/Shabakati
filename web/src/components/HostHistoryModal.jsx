@@ -5,9 +5,10 @@ import { useTranslation } from '../hooks/useTranslation'
 import LoadingSpinner from './LoadingSpinner'
 import IpAddress from './IpAddress'
 import { formatClientError } from '../utils/formatClientError'
+import { formatDateTime } from '../utils/dateFormat'
 
 function HostHistoryModal({ host, onClose }) {
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -68,7 +69,7 @@ function HostHistoryModal({ host, onClose }) {
                       {row.status === 'online' ? t('common.online') : t('common.offline')}
                     </span>
                   </td>
-                  <td>{new Date(row.checked_at).toLocaleString()}</td>
+                  <td>{formatDateTime(row.checked_at, language)}</td>
                   <td>{row.ping_latency != null ? `${row.ping_latency} ms` : '—'}</td>
                 </tr>
               ))}

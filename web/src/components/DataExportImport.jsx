@@ -5,10 +5,11 @@ import { useTranslation } from '../hooks/useTranslation'
 import { useToast } from './Toast'
 import { DownloadIcon, UploadIcon } from './Icons'
 import { toastApiError } from '../utils/formatClientError'
+import { formatDateTime } from '../utils/dateFormat'
 
 function DataExportImport({ onImported }) {
   const { isAdmin } = useAuth()
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const toast = useToast()
   const fileRef = useRef(null)
   const [backups, setBackups] = useState([])
@@ -100,7 +101,7 @@ function DataExportImport({ onImported }) {
       />
       {isAdmin && lastBackup && (
         <p className="backup-status-hint" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', margin: 0 }}>
-          {t('backup.lastRun', { date: new Date(lastBackup.createdAt).toLocaleString() })}
+          {t('backup.lastRun', { date: formatDateTime(lastBackup.createdAt, language) })}
         </p>
       )}
     </div>

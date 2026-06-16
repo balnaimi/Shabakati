@@ -5,6 +5,7 @@ import { useTranslation } from '../hooks/useTranslation'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { AlertIcon, CheckIcon, InfoIcon } from '../components/Icons'
 import { formatClientError } from '../utils/formatClientError'
+import { formatDateTime } from '../utils/dateFormat'
 
 function formatBytes(bytes) {
   if (!bytes) return '0 B'
@@ -29,7 +30,7 @@ function StatusBadge({ ok, label }) {
 
 function SystemHealth() {
   const { isAdmin } = useAuth()
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const [health, setHealth] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -161,7 +162,7 @@ function SystemHealth() {
                     {health.scans.lastScans.map((row) => (
                       <tr key={row.networkId}>
                         <td>{row.networkName}</td>
-                        <td>{row.lastScanned ? new Date(row.lastScanned).toLocaleString() : '—'}</td>
+                        <td>{row.lastScanned ? formatDateTime(row.lastScanned, language) : '—'}</td>
                         <td>{row.autoScanEnabled ? t('common.yes') : t('common.no')}</td>
                       </tr>
                     ))}

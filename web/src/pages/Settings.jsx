@@ -4,6 +4,7 @@ import { useTranslation } from '../hooks/useTranslation'
 import { useLanguage } from '../contexts/LanguageContext'
 import { apiGet } from '../utils/api'
 import { APP_VERSION, AUTO_SCAN_NOTIF_KEY } from '../constants'
+import { formatDateTime } from '../utils/dateFormat'
 import LoadingSpinner from '../components/LoadingSpinner'
 import DataExportImport from '../components/DataExportImport'
 import WebhookSettings from '../components/WebhookSettings'
@@ -95,7 +96,7 @@ function Settings() {
           {health?.timestamp && (
             <div>
               <dt>{t('settings.serverTime')}</dt>
-              <dd>{new Date(health.timestamp).toLocaleString()}</dd>
+              <dd>{formatDateTime(health.timestamp, language)}</dd>
             </div>
           )}
         </dl>
