@@ -1,6 +1,5 @@
 /**
  * TCP ports probed during network discovery scans.
- * Single source used by networkScanner.js.
  */
 export const COMMON_TCP_SCAN_PORTS = Object.freeze([
   22, 80, 443, 21, 25, 53, 110, 143, 993, 995,

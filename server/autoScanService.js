@@ -1,6 +1,6 @@
 import { dbFunctions } from './database.js';
 import { scanNetwork } from './networkScanner.js';
-import { getNetworkCIDR, isIPInNetwork } from './networkUtils.js';
+import { getNetworkCIDR, filterHostsInNetwork } from './networkUtils.js';
 import logger from './logger.js';
 import { purgeStaleOfflineHostsForNetwork } from './offlineReleaseService.js';
 import { buildNetworkScanHostDescription } from './discoveryDescription.js';
@@ -82,9 +82,7 @@ async function performAutoScan(networkId) {
     
     // Get all existing hosts for this network
     const allHosts = dbFunctions.getAllHosts();
-    const networkHosts = allHosts.filter(host => 
-      isIPInNetwork(host.ip, network.network_id, network.subnet)
-    );
+    const networkHosts = filterHostsInNetwork(allHosts, network);
     
     const discoveredIPs = new Set(activeHosts.map(h => h.ip));
     const existingIPs = new Set(networkHosts.map(h => h.ip));

@@ -33,7 +33,7 @@ import {
   ChevronUpIcon,
   ChartIcon
 } from '../components/Icons'
-import { COMMON_TCP_SCAN_PORTS } from '../../../server/scanTcpPorts.js'
+import { COMMON_TCP_SCAN_PORTS } from '@shared/scanTcpPorts.js'
 import { formatClientError, toastApiError } from '../utils/formatClientError'
 
 const DAY_MS = 24 * 60 * 60 * 1000

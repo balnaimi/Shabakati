@@ -4,7 +4,7 @@ import { promisify } from 'util';
 import ping from 'ping';
 import { dbFunctions } from './database.js';
 import logger from './logger.js';
-import { COMMON_TCP_SCAN_PORTS } from './scanTcpPorts.js';
+import { COMMON_TCP_SCAN_PORTS } from '../shared/scanTcpPorts.js';
 import { Err } from './apiMessages.js';
 import { apiThrow } from './errorHandler.js';
 import {

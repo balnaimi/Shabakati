@@ -8,6 +8,7 @@ import {
   getNetworkCIDR,
   isIPInNetwork,
   calculateIPRange,
+  getLastOctet,
   filterStaticAvailableIps
 } from '../../shared/networkCore.js';
 
@@ -40,6 +41,11 @@ ok('calculateIPRange /24', () => {
   assert.equal(r.start, '192.168.1.1');
   assert.equal(r.end, '192.168.1.254');
   assert.equal(r.count, 254);
+});
+
+ok('getLastOctet returns null for invalid IP', () => {
+  assert.equal(getLastOctet('bad'), null);
+  assert.equal(getLastOctet('192.168.1.10'), 10);
 });
 
 ok('filterStaticAvailableIps excludes DHCP', () => {

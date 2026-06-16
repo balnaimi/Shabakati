@@ -36,32 +36,40 @@ export function isIPInNetwork(ip, networkId, subnet) {
   return (ipToNumber(ip) & mask) === (ipToNumber(networkId) & mask)
 }
 
+export function isIPInInclusiveRange(ip, rangeStart, rangeEnd) {
+  if (!isValidIP(ip) || !isValidIP(rangeStart) || !isValidIP(rangeEnd)) {
+    return false
+  }
+  const n = ipToNumber(ip)
+  return n >= ipToNumber(rangeStart) && n <= ipToNumber(rangeEnd)
+}
+
 export function calculateIPRange(networkId, subnet) {
   if (!isValidIP(networkId) || subnet < 0 || subnet > 32) {
     throw new Error('Invalid network ID or subnet')
   }
 
+  const networkNum = ipToNumber(networkId)
   const hostBits = 32 - subnet
   const hostCount = Math.pow(2, hostBits) - 2
   const mask = hostBits === 32 ? 0xffffffff : (0xffffffff << hostBits) >>> 0
-  const networkBase = ipToNumber(networkId) & mask
-  const broadcast = networkBase | (~mask >>> 0)
+  const networkBase = networkNum & mask
   const start = numberToIP(networkBase + 1)
-  const end = numberToIP(broadcast - 1)
+  const end = numberToIP(networkBase + hostCount)
 
-  const maxList = 4096
-  let range = []
-  if (hostCount > 0 && hostCount <= maxList) {
-    for (let i = networkBase + 1; i < broadcast; i++) {
-      range.push(numberToIP(i))
+  const range = []
+  if (subnet >= 22 && hostCount > 0 && hostCount <= 1022) {
+    for (let i = 1; i <= hostCount; i++) {
+      range.push(numberToIP(networkBase + i))
     }
   }
 
-  return { start, end, count: Math.max(0, hostCount), range }
+  return { start, end, count: hostCount, range }
 }
 
 export function getLastOctet(ip) {
-  return parseInt(ip.split('.').pop(), 10)
+  if (!isValidIP(ip)) return null
+  return parseInt(ip.split('.')[3], 10)
 }
 
 export function filterStaticAvailableIps(range, usedIPs, dhcpRange = null) {
@@ -78,4 +86,11 @@ export function filterStaticAvailableIps(range, usedIPs, dhcpRange = null) {
     })
   }
   return available
+}
+
+/** Filter hosts belonging to a network record from the DB. */
+export function filterHostsInNetwork(hosts, network) {
+  return hosts.filter((host) =>
+    isIPInNetwork(host.ip, network.network_id, network.subnet)
+  )
 }

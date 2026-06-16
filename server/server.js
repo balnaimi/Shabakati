@@ -9,7 +9,7 @@ import { dbFunctions } from './database.js';
 import db from './database.js';
 import { checkHost } from './hostChecker.js';
 import { scanNetwork, summarizeDetectionMethods } from './networkScanner.js';
-import { getNetworkCIDR, isIPInNetwork, calculateIPRange, normalizeOptionalDhcpRange } from './networkUtils.js';
+import { getNetworkCIDR, isIPInNetwork, normalizeOptionalDhcpRange, filterHostsInNetwork } from './networkUtils.js';
 import { initializeAutoScans, startAutoScan, stopAutoScan } from './autoScanService.js';
 import { ALLOWED_AUTO_SCAN_INTERVAL_SET, ALLOWED_OFFLINE_RELEASE_SET } from './networkPolicies.js';
 import { purgeStaleOfflineHostsForNetwork, startOfflineReleaseTicker } from './offlineReleaseService.js';
@@ -637,9 +637,7 @@ app.get('/api/stats', requireVisitor, (req, res) => {
       // Calculate statistics for each network
       const networksWithStats = networks.map(network => {
         // Filter hosts whose IP is within network range
-        const networkHosts = allHosts.filter(host => 
-          isIPInNetwork(host.ip, network.network_id, network.subnet)
-        );
+        const networkHosts = filterHostsInNetwork(allHosts, network);
         
         const networkOnlineHosts = networkHosts.filter(h => h.status === 'online').length;
         const networkOfflineHosts = networkHosts.filter(h => h.status === 'offline').length;
@@ -882,9 +880,7 @@ app.delete('/api/networks/:id/hosts', requireAdmin, (req, res) => {
     
     // Get all hosts associated with the network
     const allHosts = dbFunctions.getAllHosts();
-    const networkHosts = allHosts.filter(host => 
-      isIPInNetwork(host.ip, network.network_id, network.subnet)
-    );
+    const networkHosts = filterHostsInNetwork(allHosts, network);
     
     let deletedCount = 0;
     networkHosts.forEach(host => {
@@ -914,14 +910,12 @@ app.delete('/api/networks/:id', requireAdmin, (req, res) => {
     
     // Delete all hosts associated with the network
     const allHosts = dbFunctions.getAllHosts();
-    const networkHosts = allHosts.filter(host => 
-      isIPInNetwork(host.ip, network.network_id, network.subnet)
-    );
+    const networkHosts = filterHostsInNetwork(allHosts, network);
     
-    let deletedHostsCount = 0;
+    let hostsRemoved = 0;
     networkHosts.forEach(host => {
       dbFunctions.deleteHost(host.id);
-      deletedHostsCount++;
+      hostsRemoved++;
     });
     
     // Delete the network
@@ -929,8 +923,8 @@ app.delete('/api/networks/:id', requireAdmin, (req, res) => {
     
     res.json({ 
       success: true, 
-      message: `Deleted network and ${deletedHostsCount} host(s)`,
-      deletedHostsCount 
+      message: `Deleted network and ${hostsRemoved} host(s)`,
+      deletedHostsCount: hostsRemoved
     });
   } catch (error) {
     logger.error('Error in DELETE /api/networks/:id:', { error: error.message, networkId: id });
@@ -949,9 +943,7 @@ app.get('/api/networks/:id/hosts', requireVisitor, (req, res) => {
 
     // Get all hosts and filter based on IP range
     const allHosts = dbFunctions.getAllHosts();
-    const networkHosts = allHosts.filter(host => 
-      isIPInNetwork(host.ip, network.network_id, network.subnet)
-    );
+    const networkHosts = filterHostsInNetwork(allHosts, network);
 
     res.json(networkHosts);
   } catch (error) {
@@ -1007,10 +999,8 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
       return res.status(404).json(jsonError(Err.networkNotFound));
     }
 
-    const { timeout, addHosts, language = 'ar' } = req.body;
-    const userLanguage = (language === 'en' || language === 'ar') ? language : 'ar';
+    const { timeout } = req.body;
     const scanTimeout = timeout || 2;
-    const shouldAddHosts = addHosts === true;
 
     let usePing = true;
     let useTcpPorts = true;
@@ -1032,7 +1022,7 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
 
     // Calculate CIDR notation
     const cidr = getNetworkCIDR(network.network_id, network.subnet);
-    logger.info(`[Scan] Starting scan for network ${id}: ${cidr}, timeout: ${scanTimeout}s, addHosts: ${shouldAddHosts}, scanOptions: ${JSON.stringify(scanOptions)}`);
+    logger.info(`[Scan] Starting scan for network ${id}: ${cidr}, timeout: ${scanTimeout}s, scanOptions: ${JSON.stringify(scanOptions)}`);
     
     // Scan network
     const activeHosts = await scanNetwork(cidr, scanTimeout, scanOptions);
@@ -1088,9 +1078,7 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
     }
 
     // Update status for all hosts associated with the network
-    const allNetworkHosts = dbFunctions.getAllHosts().filter(host => 
-      isIPInNetwork(host.ip, network.network_id, network.subnet)
-    );
+    const allNetworkHosts = filterHostsInNetwork(dbFunctions.getAllHosts(), network);
     
     let updatedCount = 0;
     for (const host of allNetworkHosts) {
