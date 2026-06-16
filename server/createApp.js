@@ -15,7 +15,7 @@ import dataRouter from './routes/data.js';
 import { errorHandler, notFoundHandler, jsonError } from './errorHandler.js';
 import { Err } from './apiMessages.js';
 import logger from './logger.js';
-import pkg from '../package.json' with { type: 'json' };
+import pkg from './package.json' with { type: 'json' };
 
 export const APP_VERSION = pkg.version;
 

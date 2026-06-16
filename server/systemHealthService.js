@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'fs'
 import { dbFunctions, DATABASE_FILE_PATH } from './database.js'
-import pkg from '../package.json' with { type: 'json' }
+import pkg from './package.json' with { type: 'json' }
 
 function checkNetRawCapability() {
   try {
