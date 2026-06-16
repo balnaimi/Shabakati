@@ -1,8 +1,21 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+export const DEFAULT_JWT_SECRET = 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_JWT_SECRET;
 const JWT_EXPIRATION = '24h'; // 24 hours
+
+export function assertJwtSecretForProduction() {
+  if (process.env.NODE_ENV !== 'production') return;
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_JWT_SECRET) {
+    console.error('FATAL: Set a strong JWT_SECRET in production (see .env.example).');
+    process.exit(1);
+  }
+}
+
+export function getJwtSecret() {
+  return JWT_SECRET;
+}
 
 /**
  * Hash password using bcrypt

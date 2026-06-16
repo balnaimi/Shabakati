@@ -1,5 +1,4 @@
 import { Component } from 'react'
-import { useTranslation } from '../hooks/useTranslation'
 
 /**
  * Error boundary for catching errors in React subtrees.
@@ -31,20 +30,13 @@ class ErrorBoundary extends Component {
 }
 
 function ErrorDisplay({ onReload }) {
-  const { t } = useTranslation()
   return (
     <div className="container">
       <div className="empty-state">
-        <h2>
-          {t('messages.error.unexpected')}
-        </h2>
-        <p>
-          {t('messages.error.refreshPage')}
-        </p>
-        <button
-          onClick={onReload}
-        >
-          {t('messages.error.refreshButton')}
+        <h2>Something went wrong</h2>
+        <p>Please refresh the page and try again.</p>
+        <button type="button" onClick={onReload}>
+          Refresh
         </button>
       </div>
     </div>

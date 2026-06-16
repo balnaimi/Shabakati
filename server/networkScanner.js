@@ -7,6 +7,12 @@ import logger from './logger.js';
 import { COMMON_TCP_SCAN_PORTS } from './scanTcpPorts.js';
 import { Err } from './apiMessages.js';
 import { apiThrow } from './errorHandler.js';
+import {
+  startScanProgress,
+  updateScanProgress,
+  finishScanProgress,
+  failScanProgress
+} from './scanProgress.js';
 
 const dnsLookup = promisify(lookup);
 const dnsReverse = promisify(reverse);
@@ -64,6 +70,10 @@ export async function scanNetwork(networkRange, timeout = 2, options = {}) {
     }
 
     logger.info(`Starting scan of ${ipRange.length} IP addresses...`);
+
+    if (options.networkId) {
+      startScanProgress(options.networkId, ipRange.length);
+    }
 
     // Scan all addresses in parallel (optimized - larger batch size and faster)
     // Increased batch size for better performance (200 instead of 100)
@@ -138,6 +148,10 @@ export async function scanNetwork(networkRange, timeout = 2, options = {}) {
       if (active.length > 0) {
         logger.debug(`Found ${active.length} active hosts in this batch`);
       }
+
+      if (options.networkId) {
+        updateScanProgress(options.networkId, Math.min(i + batch.length, ipRange.length), activeHosts.length);
+      }
     }
 
     logger.info(`Found ${activeHosts.length} active hosts`);
@@ -211,11 +225,14 @@ export async function scanNetwork(networkRange, timeout = 2, options = {}) {
       const existingCount = hostsWithNames.filter(h => h.isExisting).length;
       logger.info(`Got ${foundNames} names from ${activeHosts.length} hosts`);
       logger.info(`Found ${existingCount} previously added devices`);
+      if (options.networkId) finishScanProgress(options.networkId, hostsWithNames.length);
       return hostsWithNames;
     }
-    
+
+    if (options.networkId) finishScanProgress(options.networkId, activeHosts.length);
     return activeHosts;
   } catch (error) {
+    if (options.networkId) failScanProgress(options.networkId);
     logger.error('Error scanning network:', error);
     throw error;
   }

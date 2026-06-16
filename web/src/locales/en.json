@@ -63,13 +63,62 @@
   "navigation": {
     "home": "Home",
     "homeShort": "Home",
+    "dashboard": "Network overview",
+    "dashboardShort": "Overview",
     "viewNetworks": "View Networks",
     "viewNetworksShort": "Networks",
     "getAvailableIP": "Free addresses on your networks",
     "getAvailableIPShort": "Available IPs",
-    "manageNetworks": "Manage Networks",
-    "manageTags": "Manage Tags",
+    "manageNetworks": "Manage networks",
+    "manageNetworksShort": "Manage",
+    "manageTags": "Tags",
+    "manageTagsShort": "Tags",
+    "uptime": "Uptime",
+    "uptimeShort": "Uptime",
     "manageGroups": "Manage Groups"
+  },
+  "search": {
+    "placeholder": "Search devices…",
+    "noResults": "No devices found"
+  },
+  "onboarding": {
+    "title": "Welcome to Shabakati",
+    "description": "Get started in three steps:",
+    "step1": "Add your first network (CIDR + name)",
+    "step2": "Run a scan to discover devices",
+    "step3": "Pin favorites for quick access from home",
+    "addNetwork": "Add a network",
+    "scanLater": "Open networks",
+    "dismiss": "Dismiss"
+  },
+  "dataTransfer": {
+    "export": "Export JSON",
+    "import": "Import JSON",
+    "exportSuccess": "Backup downloaded",
+    "importSuccess": "Data imported successfully"
+  },
+  "webhook": {
+    "title": "Alert webhook",
+    "help": "POST JSON on auto-scan alerts (new/disconnected devices). Works with Home Assistant, Telegram bots, etc.",
+    "urlLabel": "Webhook URL",
+    "envLocked": "Configured via WEBHOOK_URL environment variable.",
+    "saved": "Webhook URL saved"
+  },
+  "history": {
+    "title": "Status history — {{name}}",
+    "uptime24h": "24h uptime",
+    "checkedAt": "Checked at",
+    "latency": "Latency",
+    "empty": "No history recorded yet.",
+    "view": "History"
+  },
+  "scanProgress": {
+    "scanning": "Scanning… {{pct}}% · {{found}} found",
+    "done": "Scan complete · {{found}} active",
+    "error": "Scan failed"
+  },
+  "a11y": {
+    "skipToContent": "Skip to main content"
   },
   "pages": {
     "favorites": {
@@ -134,6 +183,14 @@
       "hosts": "Hosts",
       "online": "Online",
       "offline": "Offline"
+    },
+    "uptime": {
+      "title": "Uptime dashboard",
+      "subtitle": "24-hour availability from status checks",
+      "avgUptime": "Average uptime",
+      "trackedHosts": "Tracked devices",
+      "uptime24h": "24h uptime",
+      "noHosts": "No devices yet"
     },
     "networksList": {
       "title": "Manage Networks",
@@ -257,6 +314,11 @@
       "totalDevices": "Total Devices",
       "availableIPs": "Available IPs",
       "dhcpPool": "DHCP pool",
+      "uptime24h": "Uptime (24h)",
+      "viewHistory": "History",
+      "pageOf": "Page {{page}} / {{total}}",
+      "prevPage": "Previous",
+      "nextPage": "Next",
       "dhcpPoolLegend": "Purple tile: automatic address pool — not in use, or free again after the device went offline. Green tile: a device is online on that address now.",
       "dhcpPoolIp": "This address is in the automatic pool; another device may get it later: {{ip}}"
     },

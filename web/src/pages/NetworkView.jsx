@@ -10,7 +10,8 @@ import { useLanguage } from '../contexts/LanguageContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 import IpAddress from '../components/IpAddress'
 import EmptyState from '../components/EmptyState'
-import Modal from '../components/Modal'
+import ScanProgressBar from '../components/ScanProgressBar'
+import HostHistoryModal from '../components/HostHistoryModal'
 import { useToast } from '../components/Toast'
 import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import {
@@ -29,7 +30,8 @@ import {
   NetworkIcon,
   ChevronLeftIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  ChartIcon
 } from '../components/Icons'
 import { COMMON_TCP_SCAN_PORTS } from '../../../server/scanTcpPorts.js'
 import { formatClientError, toastApiError } from '../utils/formatClientError'
@@ -49,6 +51,7 @@ const OFFLINE_RELEASE_OPTIONS = [
 const ALLOWED_OFFLINE_MS_SET = new Set(
   OFFLINE_RELEASE_OPTIONS.filter((o) => o.ms !== null).map((o) => o.ms)
 )
+const HOST_PAGE_SIZE = 50
 
 function NetworkView() {
   const navigate = useNavigate()
@@ -58,6 +61,9 @@ function NetworkView() {
   const [hosts, setHosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)
+  const [scanProgress, setScanProgress] = useState(null)
+  const [historyHost, setHistoryHost] = useState(null)
+  const [tablePage, setTablePage] = useState(1)
   const [error, setError] = useState(null)
   const [ipRange, setIpRange] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -302,9 +308,24 @@ function NetworkView() {
       toast.warning(t('pages.networkView.scanNeedOneMethod'))
       return
     }
+    let poll = null
     try {
       setError(null)
       setScanning(true)
+      setScanProgress({ status: 'running', scanned: 0, total: 0, found: 0 })
+
+      poll = setInterval(async () => {
+        try {
+          const p = await apiGet(`/networks/${id}/scan/progress`)
+          setScanProgress(p)
+          if (p.status === 'done' || p.status === 'error' || p.status === 'idle') {
+            clearInterval(poll)
+            poll = null
+          }
+        } catch {
+          /* ignore poll errors */
+        }
+      }, 600)
       
       const hostsBeforeScan = [...hosts]
       const existingIPs = new Set(hostsBeforeScan.map(h => h.ip))
@@ -364,6 +385,7 @@ function NetworkView() {
       setError(formatClientError(err, t))
       toastApiError(toast, t, err)
     } finally {
+      if (poll) clearInterval(poll)
       setScanning(false)
     }
   }
@@ -590,6 +612,16 @@ function NetworkView() {
       }
     })
   }, [hosts, searchQuery, statusFilter, tagFilter, sortBy, sortOrder])
+
+  useEffect(() => {
+    setTablePage(1)
+  }, [searchQuery, statusFilter, tagFilter, sortBy, sortOrder])
+
+  const totalTablePages = Math.max(1, Math.ceil(filteredHosts.length / HOST_PAGE_SIZE))
+  const paginatedHosts = useMemo(() => {
+    const start = (tablePage - 1) * HOST_PAGE_SIZE
+    return filteredHosts.slice(start, start + HOST_PAGE_SIZE)
+  }, [filteredHosts, tablePage])
 
   const toggleSelectAllFiltered = () => {
     const fids = filteredHosts.map((h) => h.id)
@@ -1006,7 +1038,6 @@ function NetworkView() {
         </div>
       )}
 
-      {/* Controls */}
       {isAdmin && (
         <div className="controls">
           <button onClick={handleScan} disabled={scanning || (!scanUsePing && !scanUseTcp)} className="btn-primary">
@@ -1022,6 +1053,9 @@ function NetworkView() {
               </>
             )}
           </button>
+          {(scanning || scanProgress?.status === 'running') && (
+            <ScanProgressBar progress={scanProgress} />
+          )}
           
           {/* Auto scan */}
           <div style={{ 
@@ -1492,17 +1526,18 @@ function NetworkView() {
                       <th onClick={() => { if (sortBy === 'status') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('status'); setSortOrder('asc') } }}>
                         {t('common.status')} {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                       </th>
+                      <th>{t('pages.networkView.uptime24h')}</th>
                       <th>{t('pages.networkView.discoveryMethod')}</th>
                       <th>{t('common.description')}</th>
                       <th>{t('common.tags')}</th>
                       <th onClick={() => { if (sortBy === 'lastChecked') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('lastChecked'); setSortOrder('asc') } }}>
                         {t('pages.networksList.lastScanned')} {sortBy === 'lastChecked' && (sortOrder === 'asc' ? '↑' : '↓')}
                       </th>
-                      {userType !== 'visitor' && <th>{t('common.actions')}</th>}
+                      <th>{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredHosts.map(host => (
+                    {paginatedHosts.map(host => (
                       <tr key={host.id}>
                         {userType !== 'visitor' && (
                           <td>
@@ -1523,6 +1558,9 @@ function NetworkView() {
                               <><OfflineIcon size={12} /> {t('common.offline')}</>
                             )}
                           </span>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          {(host.uptimePercentage ?? 100).toFixed(1)}%
                         </td>
                         <td style={{ fontSize: 'var(--font-size-sm)', whiteSpace: 'nowrap' }}>
                           {formatDiscoveryCell(host)}
@@ -1561,9 +1599,13 @@ function NetworkView() {
                         <td style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
                           {host.lastChecked || host.last_checked ? new Date(host.lastChecked || host.last_checked).toLocaleString() : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)}
                         </td>
-                        {userType !== 'visitor' && (
-                          <td>
-                            <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
+                        <td>
+                          <div style={{ display: 'flex', gap: 'var(--spacing-xs)', flexWrap: 'wrap' }}>
+                            <button type="button" onClick={() => setHistoryHost(host)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.viewHistory')}>
+                              <ChartIcon size={14} />
+                            </button>
+                            {userType !== 'visitor' && (
+                              <>
                               {isHostFavorite(host.id) ? (
                                 <button onClick={() => handleRemoveFromFavorites(host.id)} className="btn-warning btn-small btn-icon" title={t('pages.networkView.removeFromFavorites')}>
                                   <StarIcon size={14} filled />
@@ -1583,14 +1625,26 @@ function NetworkView() {
                                   </button>
                                 </>
                               )}
-                            </div>
-                          </td>
-                        )}
+                              </>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              {filteredHosts.length > HOST_PAGE_SIZE && (
+                <div className="table-pagination">
+                  <button type="button" className="btn-secondary btn-small" disabled={tablePage <= 1} onClick={() => setTablePage((p) => p - 1)}>
+                    {t('pages.networkView.prevPage')}
+                  </button>
+                  <span>{t('pages.networkView.pageOf', { page: tablePage, total: totalTablePages })}</span>
+                  <button type="button" className="btn-secondary btn-small" disabled={tablePage >= totalTablePages} onClick={() => setTablePage((p) => p + 1)}>
+                    {t('pages.networkView.nextPage')}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1866,6 +1920,9 @@ function NetworkView() {
         )}
       </Modal>
       {confirmDialogSlot}
+      {historyHost && (
+        <HostHistoryModal host={historyHost} onClose={() => setHistoryHost(null)} />
+      )}
     </div>
   )
 }

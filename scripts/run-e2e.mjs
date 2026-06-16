@@ -45,6 +45,13 @@ try {
     /* fresh */
   }
 
+  try {
+    const { execSync } = await import('node:child_process')
+    execSync(`fuser -k ${PORT}/tcp 2>/dev/null || true`, { stdio: 'ignore' })
+  } catch {
+    /* optional */
+  }
+
   server = spawn(
     'node',
     ['server.js'],
@@ -54,7 +61,8 @@ try {
         ...process.env,
         NODE_ENV: 'production',
         PORT,
-        DATABASE_PATH: DB
+        DATABASE_PATH: DB,
+        JWT_SECRET: process.env.JWT_SECRET || 'e2e-test-jwt-secret-not-for-production'
       },
       stdio: ['ignore', 'pipe', 'pipe']
     }

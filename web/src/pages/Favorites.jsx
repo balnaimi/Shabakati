@@ -26,7 +26,7 @@ import {
   AlertIcon,
   ScanIcon
 } from '../components/Icons'
-import { formatClientError } from '../utils/formatClientError'
+import OnboardingBanner from '../components/OnboardingBanner'
 
 function Favorites() {
   const navigate = useNavigate()
@@ -51,6 +51,7 @@ function Favorites() {
   const [editingGroup, setEditingGroup] = useState(null)
   const [collapsedGroups, setCollapsedGroups] = useState({})
   const [scanOverview, setScanOverview] = useState([])
+  const [showOnboarding, setShowOnboarding] = useState(true)
   const [monitoringExpanded, setMonitoringExpanded] = useState(false)
   const [expandedMonitoringNetworkId, setExpandedMonitoringNetworkId] = useState(null)
   
@@ -431,6 +432,10 @@ function Favorites() {
           </div>
         </div>
       </div>
+
+      {stats.totalNetworks === 0 && showOnboarding && (
+        <OnboardingBanner onDismiss={() => setShowOnboarding(false)} />
+      )}
 
       <section
         className="card"

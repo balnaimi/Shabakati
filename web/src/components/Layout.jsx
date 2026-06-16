@@ -2,9 +2,10 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import AuthButton from './AuthButton'
 import ThemeToggle from './ThemeToggle'
 import LanguageToggle from './LanguageToggle'
+import GlobalSearch from './GlobalSearch'
 import { useTranslation } from '../hooks/useTranslation'
 import { APP_VERSION } from '../constants'
-import { HomeIcon, NetworkIcon, LogoIcon, LinkIcon } from './Icons'
+import { HomeIcon, NetworkIcon, LogoIcon, LinkIcon, TagIcon, ChartIcon, SettingsIcon } from './Icons'
 
 function Layout({ children }) {
   const navigate = useNavigate()
@@ -19,32 +20,21 @@ function Layout({ children }) {
   }
 
   const navLinks = [
-    {
-      path: '/',
-      label: t('navigation.home'),
-      shortLabel: t('navigation.homeShort'),
-      icon: HomeIcon
-    },
-    {
-      path: '/hosts',
-      label: t('navigation.viewNetworks'),
-      shortLabel: t('navigation.viewNetworksShort'),
-      icon: NetworkIcon
-    },
-    {
-      path: '/available-ips',
-      label: t('navigation.getAvailableIP'),
-      shortLabel: t('navigation.getAvailableIPShort'),
-      icon: LinkIcon
-    }
+    { path: '/', label: t('navigation.home'), shortLabel: t('navigation.homeShort'), icon: HomeIcon },
+    { path: '/hosts', label: t('navigation.dashboard'), shortLabel: t('navigation.dashboardShort'), icon: NetworkIcon },
+    { path: '/networks', label: t('navigation.manageNetworks'), shortLabel: t('navigation.manageNetworksShort'), icon: SettingsIcon },
+    { path: '/available-ips', label: t('navigation.getAvailableIP'), shortLabel: t('navigation.getAvailableIPShort'), icon: LinkIcon },
+    { path: '/uptime', label: t('navigation.uptime'), shortLabel: t('navigation.uptimeShort'), icon: ChartIcon },
+    { path: '/tags', label: t('navigation.manageTags'), shortLabel: t('navigation.manageTagsShort'), icon: TagIcon }
   ]
 
-  if (location.pathname === '/login') {
+  if (location.pathname === '/login' || location.pathname === '/setup') {
     return <>{children}</>
   }
 
   return (
     <div className="app">
+      <a href="#main-content" className="skip-link">{t('a11y.skipToContent')}</a>
       <nav className="navbar">
         <div className="navbar-content">
           <div className="navbar-brand" title={t('app.name')}>
@@ -56,8 +46,9 @@ function Layout({ children }) {
               <span className="navbar-version">{t('app.version', { version: APP_VERSION })}</span>
             </div>
           </div>
-          
+
           <div className="navbar-menu">
+            <GlobalSearch />
             <div className="navbar-links">
               {navLinks.map(link => {
                 const Icon = link.icon
@@ -79,7 +70,7 @@ function Layout({ children }) {
               })}
             </div>
           </div>
-          
+
           <div className="navbar-actions">
             <LanguageToggle />
             <ThemeToggle />
@@ -87,7 +78,7 @@ function Layout({ children }) {
           </div>
         </div>
       </nav>
-      {children}
+      <main id="main-content">{children}</main>
     </div>
   )
 }

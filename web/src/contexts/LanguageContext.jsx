@@ -12,7 +12,14 @@ export function LanguageProvider({ children }) {
     return 'en' // Default to English
   }
 
-  const [language, setLanguage] = useState(getInitialLanguage)
+  const [language, setLanguage] = useState(() => getInitialLanguage())
+
+  useEffect(() => {
+    const saved = localStorage.getItem('language')
+    if (saved === 'ar' || saved === 'en') {
+      setLanguage(saved)
+    }
+  }, [])
 
   useEffect(() => {
     // Update HTML lang and dir attributes

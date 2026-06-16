@@ -28,8 +28,11 @@ jobs:
       - name: Start API (isolated DB)
         run: |
           rm -f /tmp/shabakati-ci.db
-          DATABASE_PATH=/tmp/shabakati-ci.db NODE_ENV=development PORT=3099 node server/server.js &
+          DATABASE_PATH=/tmp/shabakati-ci.db NODE_ENV=development PORT=3099 JWT_SECRET=ci-test-jwt-secret node server/server.js &
           sleep 4
+
+      - name: Unit tests (network core)
+        run: npm run test:unit
 
       - name: API smoke tests
         run: npm run test:api:ci

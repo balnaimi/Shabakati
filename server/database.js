@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync } from 'fs';
+import { runMigrations } from './migrations.js';
 import { Err, errHostAlreadyExists } from './apiMessages.js';
 import { apiThrow } from './errorHandler.js';
 
@@ -305,6 +306,9 @@ try {
 } catch (e) {
   // Column already exists
 }
+
+// Run formal migrations (app_settings, etc.)
+runMigrations(db);
 
 // Database functions
 export const dbFunctions = {
@@ -1198,6 +1202,32 @@ export const dbFunctions = {
     const admin = selectStmt.get(adminId);
     const { password_hash, ...adminWithoutPassword } = admin;
     return adminWithoutPassword;
+  },
+
+  getAppSetting(key) {
+    const row = db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key);
+    return row?.value ?? null;
+  },
+
+  setAppSetting(key, value) {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    `).run(key, value, now);
+    return { key, value, updatedAt: now };
+  },
+
+  getUptimeOverview() {
+    const hosts = dbFunctions.getAllHosts();
+    return hosts.map((h) => ({
+      id: h.id,
+      name: h.name,
+      ip: h.ip,
+      status: h.status,
+      uptimePercentage: h.uptimePercentage ?? 100,
+      lastChecked: h.lastChecked ?? null
+    })).sort((a, b) => a.uptimePercentage - b.uptimePercentage);
   }
 };
 

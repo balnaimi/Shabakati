@@ -63,13 +63,62 @@
   "navigation": {
     "home": "الصفحة الرئيسية",
     "homeShort": "الرئيسية",
+    "dashboard": "نظرة عامة",
+    "dashboardShort": "نظرة",
     "viewNetworks": "عرض الشبكات",
     "viewNetworksShort": "الشبكات",
-    "getAvailableIP": "عناوين متاحة في الشبكة",
-    "getAvailableIPShort": "عناوين متاحة",
+    "getAvailableIP": "عناوين متاحة",
+    "getAvailableIPShort": "عناوين",
     "manageNetworks": "إدارة الشبكات",
-    "manageTags": "إدارة الوسوم",
+    "manageNetworksShort": "إدارة",
+    "manageTags": "الوسوم",
+    "manageTagsShort": "وسوم",
+    "uptime": "التشغيل",
+    "uptimeShort": "تشغيل",
     "manageGroups": "إدارة المجموعات"
+  },
+  "search": {
+    "placeholder": "ابحث عن جهاز…",
+    "noResults": "لا توجد نتائج"
+  },
+  "onboarding": {
+    "title": "مرحباً في شبكتي",
+    "description": "ابدأ بثلاث خطوات:",
+    "step1": "أضف شبكتك الأولى (CIDR + اسم)",
+    "step2": "نفّذ مسحاً لاكتشاف الأجهزة",
+    "step3": "ثبّت المفضلة للوصول السريع",
+    "addNetwork": "إضافة شبكة",
+    "scanLater": "فتح الشبكات",
+    "dismiss": "إخفاء"
+  },
+  "dataTransfer": {
+    "export": "تصدير JSON",
+    "import": "استيراد JSON",
+    "exportSuccess": "تم تنزيل النسخة الاحتياطية",
+    "importSuccess": "تم الاستيراد بنجاح"
+  },
+  "webhook": {
+    "title": "Webhook للتنبيهات",
+    "help": "يرسل JSON عند تنبيهات البحث التلقائي (أجهزة جديدة/منقطعة). يعمل مع Home Assistant وTelegram وغيرها.",
+    "urlLabel": "رابط Webhook",
+    "envLocked": "مُعدّ عبر متغير WEBHOOK_URL في البيئة.",
+    "saved": "تم حفظ الرابط"
+  },
+  "history": {
+    "title": "سجل الحالة — {{name}}",
+    "uptime24h": "تشغيل 24 ساعة",
+    "checkedAt": "وقت الفحص",
+    "latency": "الزمن",
+    "empty": "لا يوجد سجل بعد.",
+    "view": "السجل"
+  },
+  "scanProgress": {
+    "scanning": "جاري المسح… {{pct}}% · {{found}} مكتشف",
+    "done": "اكتمل المسح · {{found}} نشط",
+    "error": "فشل المسح"
+  },
+  "a11y": {
+    "skipToContent": "انتقل إلى المحتوى"
   },
   "pages": {
     "favorites": {
@@ -134,6 +183,14 @@
       "hosts": "الأجهزة",
       "online": "متصل",
       "offline": "غير متصل"
+    },
+    "uptime": {
+      "title": "لوحة التشغيل",
+      "subtitle": "توفر 24 ساعة من فحوصات الحالة",
+      "avgUptime": "متوسط التشغيل",
+      "trackedHosts": "الأجهزة المتتبعة",
+      "uptime24h": "تشغيل 24 س",
+      "noHosts": "لا توجد أجهزة بعد"
     },
     "networksList": {
       "title": "إدارة الشبكات",
@@ -257,6 +314,11 @@
       "totalDevices": "إجمالي الأجهزة",
       "availableIPs": "عدد العناوين الفارغة",
       "dhcpPool": "عناوين التوزيع التلقائي",
+      "uptime24h": "التشغيل (24 س)",
+      "viewHistory": "السجل",
+      "pageOf": "صفحة {{page}} / {{total}}",
+      "prevPage": "السابق",
+      "nextPage": "التالي",
       "dhcpPoolLegend": "المربع البنفسجي: عنوان ضمن نطاق التوزيع التلقائي (غير مستخدم أو أصبح متاحاً بعد انقطاع الجهاز). المربع الأخضر: جهاز متصل الآن على هذا العنوان.",
       "dhcpPoolIp": "هذا العنوان ضمن نطاق التوزيع التلقائي وقد يُستخدم لاحقاً لأي جهاز: {{ip}}"
     },

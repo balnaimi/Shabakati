@@ -5,6 +5,7 @@ import logger from './logger.js';
 import { purgeStaleOfflineHostsForNetwork } from './offlineReleaseService.js';
 import { buildNetworkScanHostDescription } from './discoveryDescription.js';
 import { invalidateDataCaches } from './cacheInvalidation.js';
+import { sendWebhook } from './webhookService.js';
 
 let scanIntervals = new Map(); // Store intervals for each network
 const scanInFlight = new Set(); // Prevent overlapping scans per network
@@ -173,6 +174,15 @@ async function performAutoScan(networkId) {
     });
     
     logger.info(`[AutoScan] Scan completed for network ${networkId}: ${newDevicesCount} new devices, ${disconnectedCount} disconnected`);
+
+    if (newDevicesCount > 0 || disconnectedCount > 0) {
+      sendWebhook('auto_scan_alert', {
+        networkId,
+        networkName: network.name,
+        newDevicesCount,
+        disconnectedCount
+      });
+    }
 
     purgeStaleOfflineHostsForNetwork(networkId);
     invalidateDataCaches();

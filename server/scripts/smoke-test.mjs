@@ -397,8 +397,22 @@ async function main() {
   try {
     await req('GET', '/api/export', { expectStatus: 401 });
     ok('GET /api/export without token → 401');
-    await req('GET', '/api/export', { token: visitorToken, expectStatus: 200 });
+    const { data: exportData } = await req('GET', '/api/export', { token: visitorToken, expectStatus: 200 });
     ok('GET /api/export (authenticated)');
+    await req('GET', '/api/search?q=smoke', { token: visitorToken, expectStatus: 200 });
+    ok('GET /api/search');
+    await req('GET', '/api/uptime', { token: visitorToken, expectStatus: 200 });
+    ok('GET /api/uptime');
+    await req('GET', '/api/metrics', { token: visitorToken, expectStatus: 200 });
+    ok('GET /api/metrics');
+    if (exportData?.hosts?.length) {
+      await req('POST', '/api/import', {
+        token: adminToken,
+        body: { hosts: [], tags: exportData.tags || [] },
+        expectStatus: 200
+      });
+      ok('POST /api/import (empty hosts round-trip)');
+    }
   } catch (e) {
     fail('export', e.message);
   }

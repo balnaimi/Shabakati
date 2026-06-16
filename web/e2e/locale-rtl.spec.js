@@ -6,44 +6,65 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const auth = JSON.parse(fs.readFileSync(path.join(__dirname, '.auth/visitor.json'), 'utf8'))
 
-const ROUTES = ['/', '/hosts', '/available-ips', '/networks']
+const ROUTES = ['/', '/hosts', '/available-ips', '/networks', '/uptime']
 
 async function seedSession(page, language) {
   await page.addInitScript(
     ({ visitorToken, lang }) => {
       localStorage.setItem('visitorToken', visitorToken)
       localStorage.setItem('language', lang)
+      document.documentElement.lang = lang
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+      navigator.serviceWorker?.getRegistrations?.().then((regs) => {
+        regs.forEach((r) => r.unregister())
+      })
     },
     { visitorToken: auth.visitorToken, lang: language }
   )
 }
 
+async function waitForAppShell(page) {
+  await page.locator('.language-toggle').waitFor({ state: 'visible', timeout: 20_000 })
+}
+
+async function gotoAuthenticated(page, route, language) {
+  await seedSession(page, language)
+  await page.goto(route)
+  await waitForAppShell(page)
+}
+
+async function ensureLocale(page, language) {
+  const lang = await page.locator('html').getAttribute('lang')
+  if (lang !== language) {
+    await page.locator('.language-toggle').click()
+  }
+  await expect(page.locator('html')).toHaveAttribute('lang', language, { timeout: 15_000 })
+  await expect(page.locator('html')).toHaveAttribute('dir', language === 'ar' ? 'rtl' : 'ltr')
+}
+
 for (const language of ['en', 'ar']) {
   for (const route of ROUTES) {
     test(`${route} — ${language} lang & direction`, async ({ page }) => {
-      await seedSession(page, language)
-      await page.goto(route)
-      await expect(page.locator('html')).toHaveAttribute('lang', language, { timeout: 15_000 })
-      await expect(page.locator('html')).toHaveAttribute('dir', language === 'ar' ? 'rtl' : 'ltr')
+      await gotoAuthenticated(page, route, language)
+      await ensureLocale(page, language)
     })
   }
 }
 
 test('English uses 17px root, Arabic uses 16px', async ({ page }) => {
-  await seedSession(page, 'en')
-  await page.goto('/')
+  await gotoAuthenticated(page, '/', 'en')
   const enSize = await page.locator('html').evaluate((el) => getComputedStyle(el).fontSize)
   expect(enSize).toBe('17px')
 
-  await seedSession(page, 'ar')
-  await page.goto('/')
+  await gotoAuthenticated(page, '/', 'ar')
+  await ensureLocale(page, 'ar')
   const arSize = await page.locator('html').evaluate((el) => getComputedStyle(el).fontSize)
   expect(arSize).toBe('16px')
 })
 
 test('IP lines align to inline-start in Arabic', async ({ page }) => {
-  await seedSession(page, 'ar')
-  await page.goto('/hosts')
+  await gotoAuthenticated(page, '/hosts', 'ar')
+  await ensureLocale(page, 'ar')
   const line = page.locator('.tag-item .ip-line').first()
   await expect(line).toBeVisible({ timeout: 15_000 })
   const align = await line.evaluate((el) => getComputedStyle(el).textAlign)
@@ -52,8 +73,8 @@ test('IP lines align to inline-start in Arabic', async ({ page }) => {
 })
 
 test('IP addresses render LTR', async ({ page }) => {
-  await seedSession(page, 'ar')
-  await page.goto('/hosts')
+  await gotoAuthenticated(page, '/hosts', 'ar')
+  await ensureLocale(page, 'ar')
   const ip = page.locator('.ip-address').first()
   await expect(ip).toBeVisible({ timeout: 15_000 })
   await expect(ip).toHaveAttribute('dir', 'ltr')
@@ -61,15 +82,14 @@ test('IP addresses render LTR', async ({ page }) => {
 
 test('mobile nav shows short labels', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
-  await seedSession(page, 'ar')
-  await page.goto('/')
+  await gotoAuthenticated(page, '/', 'ar')
+  await ensureLocale(page, 'ar')
   await expect(page.locator('.nav-link-label-short').first()).toBeVisible()
   await expect(page.locator('.nav-link-label-full').first()).toBeHidden()
 })
 
 test('nav buttons expose tooltips', async ({ page }) => {
-  await seedSession(page, 'en')
-  await page.goto('/')
+  await gotoAuthenticated(page, '/', 'en')
   const homeNav = page.locator('.nav-link').first()
   await expect(homeNav).toHaveAttribute('title', /.+/ )
   await expect(homeNav).toHaveAttribute('aria-label', /.+/ )

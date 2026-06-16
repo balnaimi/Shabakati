@@ -15,6 +15,8 @@ import { ALLOWED_AUTO_SCAN_INTERVAL_SET, ALLOWED_OFFLINE_RELEASE_SET } from './n
 import { purgeStaleOfflineHostsForNetwork, startOfflineReleaseTicker } from './offlineReleaseService.js';
 import { requireAdmin, requireVisitor } from './middleware.js';
 import authRouter from './routes/auth.js';
+import extensionsRouter from './routes/extensions.js';
+import { assertJwtSecretForProduction } from './auth.js';
 import logger from './logger.js';
 import {
   errorHandler,
@@ -59,6 +61,8 @@ function resolveFrontendDistPath() {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+assertJwtSecretForProduction();
 
 if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
   app.set('trust proxy', 1);
@@ -120,6 +124,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api', extensionsRouter);
 
 // Health check (no auth — used by Docker / load balancers)
 app.get('/api/health', (req, res) => {
@@ -1023,7 +1028,7 @@ app.post('/api/networks/:id/scan', requireAdmin, async (req, res) => {
       return res.status(400).json(jsonError(Err.enablePingOrTcp));
     }
 
-    const scanOptions = { usePing, useTcpPorts };
+    const scanOptions = { usePing, useTcpPorts, networkId: id };
 
     // Calculate CIDR notation
     const cidr = getNetworkCIDR(network.network_id, network.subnet);

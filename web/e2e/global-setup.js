@@ -45,7 +45,12 @@ export default async function globalSetup() {
       subnet: 24
     },
     adminToken
-  )
+  ).catch(async () => {
+    const nets = await fetch(`${BASE}/api/networks`, {
+      headers: { Authorization: `Bearer ${visitorToken}` }
+    }).then((r) => r.json())
+    if (!Array.isArray(nets) || nets.length === 0) throw new Error('Failed to seed E2E network')
+  })
 
   const authDir = path.join(__dirname, '.auth')
   fs.mkdirSync(authDir, { recursive: true })
