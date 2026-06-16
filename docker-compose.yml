@@ -10,7 +10,7 @@ services:
       - .env
     volumes:
       - network-db-data:/app/data
-      - ./server/logs:/app/logs
+      - ./server/logs:/app/server/logs
 # Ping scans need raw ICMP in Docker (optional; TCP scan still works without it)
     cap_add:
       - NET_RAW

@@ -24,17 +24,20 @@ ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 WORKDIR /app
 
-COPY server/package*.json ./
+COPY server/package*.json ./server/
 
 # Reuse musl-built node_modules from builder — do not run npm ci again here
 # (prebuild download often times out; node-gyp would need build tools again).
-COPY --from=builder /app/server/node_modules ./node_modules
+COPY --from=builder /app/server/node_modules ./server/node_modules
 
 COPY --from=builder /app/web/dist ./dist
 
-COPY server/ ./
+COPY server/ ./server/
+COPY shared/ ./shared/
 
-RUN mkdir -p logs
+RUN mkdir -p server/logs
+
+WORKDIR /app/server
 
 EXPOSE 3001
 
