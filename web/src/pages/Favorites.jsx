@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { API_URL } from '../constants'
 import { apiGet, apiPost, apiPut, apiDelete } from '../utils/api'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
@@ -27,6 +26,7 @@ import {
   ScanIcon
 } from '../components/Icons'
 import OnboardingBanner from '../components/OnboardingBanner'
+import { formatClientError } from '../utils/formatClientError'
 
 function Favorites() {
   const navigate = useNavigate()

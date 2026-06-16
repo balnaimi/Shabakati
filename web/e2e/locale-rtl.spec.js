@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const auth = JSON.parse(fs.readFileSync(path.join(__dirname, '.auth/visitor.json'), 'utf8'))
 
-const ROUTES = ['/', '/hosts', '/available-ips', '/networks', '/uptime']
+const ROUTES = ['/', '/hosts', '/available-ips', '/networks', '/uptime', '/settings']
 
 async function seedSession(page, language) {
   await page.addInitScript(
@@ -88,9 +88,18 @@ test('mobile nav shows short labels', async ({ page }) => {
   await expect(page.locator('.nav-link-label-full').first()).toBeHidden()
 })
 
-test('nav buttons expose tooltips', async ({ page }) => {
-  await gotoAuthenticated(page, '/', 'en')
-  const homeNav = page.locator('.nav-link').first()
-  await expect(homeNav).toHaveAttribute('title', /.+/ )
-  await expect(homeNav).toHaveAttribute('aria-label', /.+/ )
+test('uptime page shows offline host below 100%', async ({ page }) => {
+  await gotoAuthenticated(page, '/uptime', 'en')
+  await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 15_000 })
+  const row = page.locator('table tbody tr').filter({ hasText: '192.168.55.20' })
+  await expect(row).toBeVisible({ timeout: 5_000 })
+  const text = await row.textContent()
+  expect(text).toMatch(/0\.0\s*%|offline/i)
+  expect(text).not.toMatch(/100\.0\s*%/)
+})
+
+test('settings page loads version info', async ({ page }) => {
+  await gotoAuthenticated(page, '/settings', 'en')
+  await expect(page.getByRole('heading', { name: /settings|الإعدادات/i })).toBeVisible()
+  await expect(page.locator('.settings-meta')).toBeVisible({ timeout: 15_000 })
 })

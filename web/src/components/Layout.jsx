@@ -6,6 +6,7 @@ import GlobalSearch from './GlobalSearch'
 import { useTranslation } from '../hooks/useTranslation'
 import { APP_VERSION } from '../constants'
 import { HomeIcon, NetworkIcon, LogoIcon, LinkIcon, TagIcon, ChartIcon, SettingsIcon } from './Icons'
+import AutoScanNotifier from './AutoScanNotifier'
 
 function Layout({ children }) {
   const navigate = useNavigate()
@@ -78,7 +79,10 @@ function Layout({ children }) {
           </div>
         </div>
       </nav>
-      <main id="main-content">{children}</main>
+      <main id="main-content">
+        <AutoScanNotifier />
+        {children}
+      </main>
     </div>
   )
 }

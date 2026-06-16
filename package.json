@@ -1,6 +1,6 @@
 {
   "name": "network-dashboard",
-  "version": "1.5.4",
+  "version": "1.8.3",
   "private": true,
   "scripts": {
     "dev": "npm --prefix web run dev",
@@ -8,7 +8,10 @@
     "preview": "npm --prefix web run preview",
     "test:api": "node server/scripts/smoke-test.mjs",
     "test:api:ci": "node server/scripts/smoke-test.mjs http://127.0.0.1:3099",
-    "test:unit": "node server/scripts/network-core-test.mjs",
+    "test:unit": "node server/scripts/network-core-test.mjs && node server/scripts/host-intel-test.mjs && node server/scripts/uptime-test.mjs",
+    "test:scenarios": "node server/scripts/scenario-test.mjs",
+    "test:all": "node scripts/run-all-tests.mjs",
+    "lint": "npm --prefix web run lint",
     "test:e2e": "node scripts/run-e2e.mjs"
   }
 }

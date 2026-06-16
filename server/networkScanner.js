@@ -13,6 +13,8 @@ import {
   finishScanProgress,
   failScanProgress
 } from './scanProgress.js';
+import { resolveMacAddresses } from './macResolver.js';
+import { enrichHostIntel } from '../shared/hostIntel.js';
 
 const dnsLookup = promisify(lookup);
 const dnsReverse = promisify(reverse);
@@ -129,11 +131,13 @@ export async function scanNetwork(networkRange, timeout = 2, options = {}) {
           : null;
 
         if (pingResult.alive || successfulPort) {
+          const openPorts = portResults.filter((r) => r.isAlive).map((r) => r.port);
           return {
             ip: ip,
             hostname: null,
             time: null,
             port: successfulPort ? successfulPort.port : null,
+            openPorts,
             pingLatency: pingResult.alive ? pingResult.latency : null,
             detectionMethod: detectionMethod
           };
@@ -158,6 +162,12 @@ export async function scanNetwork(networkRange, timeout = 2, options = {}) {
     
     // Now get hostnames in parallel
     if (activeHosts.length > 0) {
+      const macMap = await resolveMacAddresses(activeHosts.map((h) => h.ip));
+      for (const host of activeHosts) {
+        const mac = macMap.get(host.ip) || null;
+        Object.assign(host, enrichHostIntel({ mac, openPorts: host.openPorts || [] }));
+      }
+
       logger.debug(`Getting hostnames from DNS for ${activeHosts.length} hosts...`);
       
       // Get all hosts from database once

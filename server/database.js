@@ -5,6 +5,7 @@ import { mkdirSync } from 'fs';
 import { runMigrations } from './migrations.js';
 import { Err, errHostAlreadyExists } from './apiMessages.js';
 import { apiThrow } from './errorHandler.js';
+import { isIPInNetwork } from '../shared/networkCore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -352,7 +353,7 @@ export const dbFunctions = {
     }
     
     return hosts.map(host => {
-      const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, discovery_method, offline_since, ...rest } = host;
+      const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, discovery_method, offline_since, mac_address, vendor, device_category, ...rest } = host;
       return { 
         ...rest, 
         offline_since: offline_since || null,
@@ -361,8 +362,11 @@ export const dbFunctions = {
         lastChecked: last_checked,
         pingLatency: ping_latency,
         packetLoss: packet_loss,
-        uptimePercentage: uptime_percentage || 100.0,
-        discovery_method: discovery_method || null
+        uptimePercentage: uptime_percentage ?? 100.0,
+        discovery_method: discovery_method || null,
+        mac_address: mac_address || null,
+        vendor: vendor || null,
+        device_category: device_category || null
       };
     });
   },
@@ -378,7 +382,7 @@ export const dbFunctions = {
     const stmt = db.prepare('SELECT * FROM hosts WHERE id = ?');
     const host = stmt.get(id);
     if (!host) return null;
-    const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, discovery_method, offline_since, ...rest } = host;
+    const { created_at, tags, tag, last_checked, ping_latency, packet_loss, uptime_percentage, discovery_method, offline_since, mac_address, vendor, device_category, ...rest } = host;
     // Get tags from host_tags table
     const hostTags = this.getHostTags(id);
     return { 
@@ -389,8 +393,11 @@ export const dbFunctions = {
       lastChecked: last_checked,
       pingLatency: ping_latency,
       packetLoss: packet_loss,
-      uptimePercentage: uptime_percentage || 100.0,
-      discovery_method: discovery_method || null
+      uptimePercentage: uptime_percentage ?? 100.0,
+      discovery_method: discovery_method || null,
+      mac_address: mac_address || null,
+      vendor: vendor || null,
+      device_category: device_category || null
     };
   },
 
@@ -409,8 +416,8 @@ export const dbFunctions = {
         : null;
 
     const stmt = db.prepare(`
-      INSERT INTO hosts (name, ip, description, url, status, tags, created_at, last_checked, ping_latency, packet_loss, discovery_method, offline_since)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO hosts (name, ip, description, url, status, tags, created_at, last_checked, ping_latency, packet_loss, discovery_method, offline_since, mac_address, vendor, device_category)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       host.name,
@@ -424,7 +431,10 @@ export const dbFunctions = {
       host.pingLatency || null,
       host.packetLoss || null,
       host.discoveryMethod || host.discovery_method || null,
-      offlineSinceInit
+      offlineSinceInit,
+      host.mac_address || host.macAddress || null,
+      host.vendor || null,
+      host.device_category || host.deviceCategory || null
     );
     const hostId = result.lastInsertRowid;
     
@@ -437,6 +447,7 @@ export const dbFunctions = {
     if (host.status) {
       this.addStatusHistory(hostId, host.status, host.pingLatency);
     }
+    this.updateUptimePercentage(hostId);
     
     return this.getHostById(hostId);
   },
@@ -452,6 +463,17 @@ export const dbFunctions = {
         ? (host.discoveryMethod !== undefined ? host.discoveryMethod : host.discovery_method)
         : (existing?.discovery_method ?? null);
 
+    const macAddress =
+      host.mac_address !== undefined || host.macAddress !== undefined
+        ? (host.mac_address !== undefined ? host.mac_address : host.macAddress)
+        : (existing?.mac_address ?? null);
+    const vendor =
+      host.vendor !== undefined ? host.vendor : (existing?.vendor ?? null);
+    const deviceCategory =
+      host.device_category !== undefined || host.deviceCategory !== undefined
+        ? (host.device_category !== undefined ? host.device_category : host.deviceCategory)
+        : (existing?.device_category ?? null);
+
     const prevStatus = existing.status;
     const nextStatus = host.status;
     let offlineSince = existing.offline_since ?? null;
@@ -464,7 +486,8 @@ export const dbFunctions = {
     const stmt = db.prepare(`
       UPDATE hosts 
       SET name = ?, ip = ?, description = ?, url = ?, status = ?, tags = ?,
-          last_checked = ?, ping_latency = ?, packet_loss = ?, discovery_method = ?, offline_since = ?
+          last_checked = ?, ping_latency = ?, packet_loss = ?, discovery_method = ?, offline_since = ?,
+          mac_address = ?, vendor = ?, device_category = ?
       WHERE id = ?
     `);
     stmt.run(
@@ -479,6 +502,9 @@ export const dbFunctions = {
       host.packetLoss || null,
       discoveryMethod,
       offlineSince,
+      macAddress,
+      vendor,
+      deviceCategory,
       id
     );
     
@@ -486,6 +512,12 @@ export const dbFunctions = {
     if (host.tagIds !== undefined) {
       const tagIds = Array.isArray(host.tagIds) ? host.tagIds : [];
       this.updateHostTags(id, tagIds);
+    }
+    
+    // Record status sample for uptime when status changes or a new check is recorded
+    const lastCheckedProvided = host.lastChecked !== undefined;
+    if (host.status !== undefined && (prevStatus !== nextStatus || lastCheckedProvided)) {
+      this.addStatusHistory(id, nextStatus, host.pingLatency ?? existing.pingLatency ?? null);
     }
     
     // Update uptime_percentage
@@ -674,11 +706,9 @@ export const dbFunctions = {
     return stmt.all(hostId, limit);
   },
 
-  // Update Uptime percentage (optimized - use more efficient query)
-  updateUptimePercentage(hostId) {
-    // Calculate Uptime percentage from last 24 hours
+  /** @param {number} hostId @param {string|null} [currentStatus] */
+  computeUptimePercentage(hostId, currentStatus = null) {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    // Optimization: use COUNT with CASE instead of COUNT(*) then SUM
     const stmt = db.prepare(`
       SELECT 
         COUNT(*) as total,
@@ -687,11 +717,18 @@ export const dbFunctions = {
       WHERE host_id = ? AND checked_at >= ?
     `);
     const result = stmt.get(hostId, oneDayAgo);
-    
-    const uptimePercentage = result && result.total > 0 
-      ? (result.online / result.total) * 100 
-      : 100.0;
-    
+
+    if (result && result.total > 0) {
+      return (result.online / result.total) * 100;
+    }
+
+    const status = currentStatus ?? db.prepare('SELECT status FROM hosts WHERE id = ?').get(hostId)?.status;
+    return status === 'offline' ? 0 : 100;
+  },
+
+  // Update Uptime percentage (optimized - use more efficient query)
+  updateUptimePercentage(hostId) {
+    const uptimePercentage = this.computeUptimePercentage(hostId);
     const updateStmt = db.prepare('UPDATE hosts SET uptime_percentage = ? WHERE id = ?');
     updateStmt.run(uptimePercentage, hostId);
   },
@@ -1220,16 +1257,27 @@ export const dbFunctions = {
 
   getUptimeOverview() {
     const hosts = dbFunctions.getAllHosts();
-    return hosts.map((h) => ({
-      id: h.id,
-      name: h.name,
-      ip: h.ip,
-      status: h.status,
-      uptimePercentage: h.uptimePercentage ?? 100,
-      lastChecked: h.lastChecked ?? null
-    })).sort((a, b) => a.uptimePercentage - b.uptimePercentage);
+    const networks = dbFunctions.getAllNetworks();
+
+    return hosts.map((h) => {
+      const network = networks.find((n) => isIPInNetwork(h.ip, n.network_id, n.subnet));
+      return {
+        id: h.id,
+        name: h.name,
+        ip: h.ip,
+        status: h.status,
+        uptimePercentage: dbFunctions.computeUptimePercentage(h.id, h.status),
+        lastChecked: h.lastChecked ?? null,
+        vendor: h.vendor || null,
+        device_category: h.device_category || null,
+        networkId: network?.id ?? null,
+        networkName: network?.name ?? null,
+        tags: h.tags || []
+      };
+    }).sort((a, b) => a.uptimePercentage - b.uptimePercentage);
   }
 };
 
 export default db;
+export const DATABASE_FILE_PATH = dbPath;
 

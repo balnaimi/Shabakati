@@ -1,14 +1,32 @@
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { apiGet, apiPost } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from '../hooks/useTranslation'
 import { useToast } from './Toast'
 import { DownloadIcon, UploadIcon } from './Icons'
-import { formatClientError, toastApiError } from '../utils/formatClientError'
+import { toastApiError } from '../utils/formatClientError'
 
 function DataExportImport({ onImported }) {
+  const { isAdmin } = useAuth()
   const { t } = useTranslation()
   const toast = useToast()
   const fileRef = useRef(null)
+  const [backups, setBackups] = useState([])
+  const [backupLoading, setBackupLoading] = useState(false)
+
+  const loadBackups = async () => {
+    if (!isAdmin) return
+    try {
+      const data = await apiGet('/backups')
+      setBackups(data.backups || [])
+    } catch {
+      /* optional */
+    }
+  }
+
+  useEffect(() => {
+    loadBackups()
+  }, [isAdmin])
 
   const handleExport = async () => {
     try {
@@ -42,6 +60,21 @@ function DataExportImport({ onImported }) {
     }
   }
 
+  const handleRunBackup = async () => {
+    try {
+      setBackupLoading(true)
+      await apiPost('/backups/run', {})
+      toast.success(t('backup.runSuccess'))
+      await loadBackups()
+    } catch (err) {
+      toastApiError(toast, t, err)
+    } finally {
+      setBackupLoading(false)
+    }
+  }
+
+  const lastBackup = backups[0]
+
   return (
     <div className="data-transfer">
       <button type="button" className="btn-secondary" onClick={handleExport}>
@@ -52,6 +85,12 @@ function DataExportImport({ onImported }) {
         <UploadIcon size={16} />
         <span>{t('dataTransfer.import')}</span>
       </button>
+      {isAdmin && (
+        <button type="button" className="btn-secondary" onClick={handleRunBackup} disabled={backupLoading}>
+          <DownloadIcon size={16} />
+          <span>{backupLoading ? t('common.loading') : t('backup.runNow')}</span>
+        </button>
+      )}
       <input
         ref={fileRef}
         type="file"
@@ -59,6 +98,11 @@ function DataExportImport({ onImported }) {
         style={{ display: 'none' }}
         onChange={handleImport}
       />
+      {isAdmin && lastBackup && (
+        <p className="backup-status-hint" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', margin: 0 }}>
+          {t('backup.lastRun', { date: new Date(lastBackup.createdAt).toLocaleString() })}
+        </p>
+      )}
     </div>
   )
 }

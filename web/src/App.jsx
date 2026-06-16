@@ -21,6 +21,8 @@ const Setup = lazy(() => import('./pages/Setup'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 const ChangeVisitorPassword = lazy(() => import('./pages/ChangeVisitorPassword'))
 const UptimeDashboard = lazy(() => import('./pages/UptimeDashboard'))
+const Settings = lazy(() => import('./pages/Settings'))
+const SystemHealth = lazy(() => import('./pages/SystemHealth'))
 
 // Protected Route component - requires visitor authentication
 function ProtectedRoute({ children }) {
@@ -81,6 +83,20 @@ function AppRoutes() {
             <ProtectedRoute>
               <Layout>
                 <UptimeDashboard />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Layout>
+                <Settings />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/system-health" element={
+            <ProtectedRoute>
+              <Layout>
+                <SystemHealth />
               </Layout>
             </ProtectedRoute>
           } />

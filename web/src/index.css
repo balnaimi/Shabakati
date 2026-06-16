@@ -890,6 +890,79 @@ table tbody tr:last-child td {
   border-block-start: 1px solid var(--border-color-light);
 }
 
+.card-title {
+  margin: 0 0 var(--spacing-md);
+  font-size: 1.125rem;
+}
+
+.settings-meta {
+  display: grid;
+  gap: var(--spacing-md);
+  margin: 0;
+}
+
+.settings-meta > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: baseline;
+}
+
+.settings-meta dt {
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.settings-meta dd {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+}
+
+.settings-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-md) 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+}
+
+.settings-hint.warning {
+  color: var(--warning-color, #b45309);
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-block-start: var(--spacing-md);
+  cursor: pointer;
+}
+
+.changelog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.changelog-entry ul {
+  margin: var(--spacing-sm) 0 0;
+  padding-inline-start: 1.25rem;
+}
+
+.changelog-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: baseline;
+}
+
+.changelog-header time {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
 .group-header {
   display: flex;
   align-items: center;

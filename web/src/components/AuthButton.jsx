@@ -88,6 +88,11 @@ function AuthButton() {
     setShowMenu(false);
   };
 
+  const handleSettings = () => {
+    navigate('/settings');
+    setShowMenu(false);
+  };
+
   // Determine button text and style
   const getButtonText = () => {
     if (setupRequired) {
@@ -146,6 +151,14 @@ function AuthButton() {
         
         {isAuthenticated && showMenu && (
           <div className="dropdown-menu">
+            <button
+              onClick={handleSettings}
+              className="dropdown-item"
+            >
+              <SettingsIcon size={18} />
+              <span>{t('settings.title')}</span>
+            </button>
+            <div className="dropdown-divider" />
             {isAdmin && (
               <>
                 <button

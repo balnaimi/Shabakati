@@ -19,8 +19,7 @@ import {
   DeviceIcon,
   AlertIcon
 } from '../components/Icons'
-import DataExportImport from '../components/DataExportImport'
-import WebhookSettings from '../components/WebhookSettings'
+import { formatClientError, toastApiError } from '../utils/formatClientError'
 
 function HostsList() {
   const navigate = useNavigate()
@@ -91,7 +90,10 @@ function HostsList() {
         </div>
         {isAdmin && (
           <div className="controls">
-            <DataExportImport onImported={fetchStats} />
+            <button onClick={() => navigate('/settings')} className="btn-secondary">
+              <SettingsIcon size={18} />
+              <span>{t('settings.title')}</span>
+            </button>
             <button onClick={() => navigate('/networks')} className="btn-primary">
               <SettingsIcon size={18} />
               <span>{t('pages.hostsList.manageNetworks')}</span>
@@ -112,12 +114,6 @@ function HostsList() {
         <div className="error-message">
           <AlertIcon size={18} />
           <span>{error}</span>
-        </div>
-      )}
-
-      {isAdmin && (
-        <div style={{ marginBlockEnd: 'var(--spacing-xl)' }}>
-          <WebhookSettings />
         </div>
       )}
 

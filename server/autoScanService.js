@@ -6,6 +6,9 @@ import { purgeStaleOfflineHostsForNetwork } from './offlineReleaseService.js';
 import { buildNetworkScanHostDescription } from './discoveryDescription.js';
 import { invalidateDataCaches } from './cacheInvalidation.js';
 import { sendWebhook } from './webhookService.js';
+import { pushAutoScanAlert } from './alertService.js';
+import { sendAutoScanTelegramAlert } from './telegramService.js';
+import { suggestHostName } from '../shared/suggestHostName.js';
 
 let scanIntervals = new Map(); // Store intervals for each network
 const scanInFlight = new Set(); // Prevent overlapping scans per network
@@ -94,7 +97,13 @@ async function performAutoScan(networkId) {
         try {
           // Save auto-generated description as JSON with both languages
           const newHost = dbFunctions.addHost({
-            name: host.hostname || host.existingName || `Host ${host.ip.split('.').pop()}`,
+            name: suggestHostName({
+              ip: host.ip,
+              vendor: host.vendor,
+              hostname: host.hostname,
+              existingName: host.existingName,
+              deviceCategory: host.deviceCategory
+            }),
             ip: host.ip,
             description: JSON.stringify(
               buildNetworkScanHostDescription(network.name, host.detectionMethod, host.port, {
@@ -108,7 +117,10 @@ async function performAutoScan(networkId) {
             lastChecked: new Date().toISOString(),
             pingLatency: host.pingLatency || null,
             packetLoss: null,
-            discoveryMethod: host.detectionMethod || null
+            discoveryMethod: host.detectionMethod || null,
+            mac_address: host.mac || null,
+            vendor: host.vendor || null,
+            device_category: host.deviceCategory || null
           });
           
           // Track as new device
@@ -138,28 +150,29 @@ async function performAutoScan(networkId) {
       }
 
       const newStatus = isOnline ? 'online' : 'offline';
-      if (host.status !== newStatus) {
-        try {
-          const hostTags = dbFunctions.getHostTags(host.id);
-          const tagIds = hostTags.map(tag => tag.id);
-          
-          dbFunctions.updateHost(host.id, {
-            name: host.name,
-            ip: host.ip,
-            description: host.description || '',
-            url: host.url || '',
-            status: newStatus,
-            tagIds: tagIds,
-            lastChecked: new Date().toISOString(),
-            pingLatency: activeHost?.pingLatency || null,
-            packetLoss: null,
-            discoveryMethod: activeHost?.detectionMethod !== undefined && activeHost?.detectionMethod !== null
-              ? activeHost.detectionMethod
-              : undefined
-          });
-        } catch (error) {
-          logger.error(`[AutoScan] Error updating host ${host.ip}:`, { error: error.message });
-        }
+      try {
+        const hostTags = dbFunctions.getHostTags(host.id);
+        const tagIds = hostTags.map(tag => tag.id);
+
+        dbFunctions.updateHost(host.id, {
+          name: host.name,
+          ip: host.ip,
+          description: host.description || '',
+          url: host.url || '',
+          status: newStatus,
+          tagIds: tagIds,
+          lastChecked: new Date().toISOString(),
+          pingLatency: activeHost?.pingLatency || null,
+          packetLoss: null,
+          discoveryMethod: activeHost?.detectionMethod !== undefined && activeHost?.detectionMethod !== null
+            ? activeHost.detectionMethod
+            : undefined,
+          mac_address: activeHost?.mac || undefined,
+          vendor: activeHost?.vendor || undefined,
+          device_category: activeHost?.deviceCategory || undefined
+        });
+      } catch (error) {
+        logger.error(`[AutoScan] Error updating host ${host.ip}:`, { error: error.message });
       }
     }
     
@@ -174,8 +187,19 @@ async function performAutoScan(networkId) {
     logger.info(`[AutoScan] Scan completed for network ${networkId}: ${newDevicesCount} new devices, ${disconnectedCount} disconnected`);
 
     if (newDevicesCount > 0 || disconnectedCount > 0) {
+      pushAutoScanAlert({
+        networkId,
+        networkName: network.name,
+        newDevicesCount,
+        disconnectedCount
+      });
       sendWebhook('auto_scan_alert', {
         networkId,
+        networkName: network.name,
+        newDevicesCount,
+        disconnectedCount
+      });
+      sendAutoScanTelegramAlert({
         networkName: network.name,
         newDevicesCount,
         disconnectedCount

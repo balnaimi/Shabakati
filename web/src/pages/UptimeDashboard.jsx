@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { apiGet } from '../utils/api'
 import { useTranslation } from '../hooks/useTranslation'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
 import IpAddress from '../components/IpAddress'
 import HostHistoryModal from '../components/HostHistoryModal'
+import { getHostDisplayName } from '../utils/hostDisplay'
 import { formatClientError } from '../utils/formatClientError'
 import { ChartIcon, AlertIcon } from '../components/Icons'
 
@@ -14,6 +15,10 @@ function UptimeDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [historyHost, setHistoryHost] = useState(null)
+  const [networkFilter, setNetworkFilter] = useState('all')
+  const [tagFilter, setTagFilter] = useState('all')
+  const [offlineOnly, setOfflineOnly] = useState(false)
+  const [sortBy, setSortBy] = useState('worst')
 
   useEffect(() => {
     apiGet('/uptime')
@@ -22,10 +27,51 @@ function UptimeDashboard() {
       .finally(() => setLoading(false))
   }, [t])
 
+  const networks = useMemo(() => {
+    const map = new Map()
+    for (const h of hosts) {
+      if (h.networkId != null) {
+        map.set(h.networkId, h.networkName || `#${h.networkId}`)
+      }
+    }
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  }, [hosts])
+
+  const tags = useMemo(() => {
+    const map = new Map()
+    for (const h of hosts) {
+      for (const tag of h.tags || []) {
+        map.set(String(tag.id), tag.name)
+      }
+    }
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  }, [hosts])
+
+  const filtered = useMemo(() => {
+    let list = [...hosts]
+    if (networkFilter !== 'all') {
+      list = list.filter((h) => String(h.networkId) === networkFilter)
+    }
+    if (tagFilter !== 'all') {
+      list = list.filter((h) => (h.tags || []).some((tag) => String(tag.id) === tagFilter))
+    }
+    if (offlineOnly) {
+      list = list.filter((h) => h.status === 'offline')
+    }
+    if (sortBy === 'worst') {
+      list.sort((a, b) => (a.uptimePercentage ?? 100) - (b.uptimePercentage ?? 100))
+    } else if (sortBy === 'best') {
+      list.sort((a, b) => (b.uptimePercentage ?? 100) - (a.uptimePercentage ?? 100))
+    } else if (sortBy === 'name') {
+      list.sort((a, b) => getHostDisplayName(a).localeCompare(getHostDisplayName(b)))
+    }
+    return list
+  }, [hosts, networkFilter, tagFilter, offlineOnly, sortBy])
+
   if (loading) return <LoadingSpinner fullPage />
 
-  const avg = hosts.length
-    ? hosts.reduce((s, h) => s + (h.uptimePercentage ?? 100), 0) / hosts.length
+  const avg = filtered.length
+    ? filtered.reduce((s, h) => s + (h.uptimePercentage ?? 100), 0) / filtered.length
     : 100
 
   return (
@@ -39,6 +85,30 @@ function UptimeDashboard() {
         <div className="error-message"><AlertIcon size={18} /><span>{error}</span></div>
       )}
 
+      <div className="filters" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
+        <select value={networkFilter} onChange={(e) => setNetworkFilter(e.target.value)}>
+          <option value="all">{t('pages.uptime.allNetworks')}</option>
+          {networks.map(([id, name]) => (
+            <option key={id} value={String(id)}>{name}</option>
+          ))}
+        </select>
+        <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
+          <option value="all">{t('pages.uptime.allTags')}</option>
+          {tags.map(([id, name]) => (
+            <option key={id} value={id}>{name}</option>
+          ))}
+        </select>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <option value="worst">{t('pages.uptime.sortWorst')}</option>
+          <option value="best">{t('pages.uptime.sortBest')}</option>
+          <option value="name">{t('pages.uptime.sortName')}</option>
+        </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+          <input type="checkbox" checked={offlineOnly} onChange={(e) => setOfflineOnly(e.target.checked)} />
+          <span>{t('pages.uptime.offlineOnly')}</span>
+        </label>
+      </div>
+
       <div className="stats" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
         <div className="stat-item">
           <p className="stat-label">{t('pages.uptime.avgUptime')}</p>
@@ -46,11 +116,11 @@ function UptimeDashboard() {
         </div>
         <div className="stat-item">
           <p className="stat-label">{t('pages.uptime.trackedHosts')}</p>
-          <p className="stat-value">{hosts.length}</p>
+          <p className="stat-value">{filtered.length}</p>
         </div>
       </div>
 
-      {hosts.length === 0 ? (
+      {filtered.length === 0 ? (
         <EmptyState icon="device" title={t('pages.uptime.noHosts')} />
       ) : (
         <div className="table-container">
@@ -59,16 +129,30 @@ function UptimeDashboard() {
               <tr>
                 <th>{t('common.name')}</th>
                 <th>{t('common.ip')}</th>
+                <th>{t('common.network')}</th>
                 <th>{t('common.status')}</th>
                 <th>{t('pages.uptime.uptime24h')}</th>
                 <th>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {hosts.map((host) => (
+              {filtered.map((host) => (
                 <tr key={host.id}>
-                  <td><strong>{host.name}</strong></td>
+                  <td>
+                    <strong>{getHostDisplayName(host)}</strong>
+                    {host.vendor && host.name !== getHostDisplayName(host) && (
+                      <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+                        {host.name}
+                      </div>
+                    )}
+                    {host.device_category && (
+                      <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+                        {t(`deviceCategories.${host.device_category}`)}
+                      </div>
+                    )}
+                  </td>
                   <td><IpAddress>{host.ip}</IpAddress></td>
+                  <td>{host.networkName || '—'}</td>
                   <td>
                     <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
                       {host.status === 'online' ? t('common.online') : t('common.offline')}

@@ -1,1910 +1,221 @@
-import { useState, useEffect, useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { apiGet, apiPost, apiDelete, apiPut } from '../utils/api'
-import { calculateIPRange, getLastOctet, isIPInInclusiveRange, isValidIP, filterStaticAvailableIps } from '../utils/networkUtils'
-import { getDescription, parseSystemDiscoveryTcpPort } from '../utils/descriptionUtils'
-import { useAuth } from '../contexts/AuthContext'
-import { useTags } from '../hooks/useTags'
-import { useTranslation } from '../hooks/useTranslation'
-import { useLanguage } from '../contexts/LanguageContext'
+import { useNavigate } from 'react-router-dom'
 import LoadingSpinner from '../components/LoadingSpinner'
-import IpAddress from '../components/IpAddress'
 import EmptyState from '../components/EmptyState'
-import ScanProgressBar from '../components/ScanProgressBar'
 import HostHistoryModal from '../components/HostHistoryModal'
 import Modal from '../components/Modal'
-import { useToast } from '../components/Toast'
-import { useConfirmDialog } from '../hooks/useConfirmDialog'
-import {
-  ScanIcon,
-  RefreshIcon,
-  DeleteIcon,
-  EditIcon,
-  StarIcon,
-  CheckIcon,
-  CloseIcon,
-  DeviceIcon,
-  OnlineIcon,
-  OfflineIcon,
-  AlertIcon,
-  InfoIcon,
-  NetworkIcon,
-  ChevronLeftIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  ChartIcon
-} from '../components/Icons'
-import { COMMON_TCP_SCAN_PORTS } from '@shared/scanTcpPorts.js'
-import { formatClientError, toastApiError } from '../utils/formatClientError'
-
-const DAY_MS = 24 * 60 * 60 * 1000
-const AUTO_SCAN_INTERVAL_MS_OPTIONS = [5, 10, 15, 20, 30, 45, 60].map((m) => m * 60 * 1000)
-const OFFLINE_RELEASE_OPTIONS = [
-  { ms: null, labelKey: 'pages.networkView.offlineReleaseNever' },
-  { ms: 3 * DAY_MS, labelKey: 'pages.networkView.offlineRelease3d' },
-  { ms: 7 * DAY_MS, labelKey: 'pages.networkView.offlineRelease7d' },
-  { ms: 14 * DAY_MS, labelKey: 'pages.networkView.offlineRelease14d' },
-  { ms: 30 * DAY_MS, labelKey: 'pages.networkView.offlineRelease30d' },
-  { ms: 60 * DAY_MS, labelKey: 'pages.networkView.offlineRelease60d' },
-  { ms: 90 * DAY_MS, labelKey: 'pages.networkView.offlineRelease90d' }
-]
-
-const ALLOWED_OFFLINE_MS_SET = new Set(
-  OFFLINE_RELEASE_OPTIONS.filter((o) => o.ms !== null).map((o) => o.ms)
-)
-const HOST_PAGE_SIZE = 50
+import { DeviceIcon, AlertIcon } from '../components/Icons'
+import { useNetworkView } from './networkView/useNetworkView'
+import NetworkInfoCard from './networkView/NetworkInfoCard'
+import ScanMethodCard from './networkView/ScanMethodCard'
+import ScanToolbar from './networkView/ScanToolbar'
+import DiscoveryPanels from './networkView/DiscoveryPanels'
+import HostsTableSection from './networkView/HostsTableSection'
+import IpAddressGrid from './networkView/IpAddressGrid'
 
 function NetworkView() {
   const navigate = useNavigate()
-  const { id } = useParams()
-  const { isAdmin, userType } = useAuth()
-  const [network, setNetwork] = useState(null)
-  const [hosts, setHosts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [scanning, setScanning] = useState(false)
-  const [scanProgress, setScanProgress] = useState(null)
-  const [historyHost, setHistoryHost] = useState(null)
-  const [tablePage, setTablePage] = useState(1)
-  const [error, setError] = useState(null)
-  const [ipRange, setIpRange] = useState(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [tagFilter, setTagFilter] = useState(null)
-  const [sortBy, setSortBy] = useState('name')
-  const [sortOrder, setSortOrder] = useState('asc')
-  const { tags: availableTags } = useTags()
-  const { t } = useTranslation()
-  const { language, isRTL } = useLanguage()
-  const toast = useToast()
-  const { confirm, confirmDialogSlot } = useConfirmDialog()
-  const [editingHostId, setEditingHostId] = useState(null)
-  const [editFormData, setEditFormData] = useState({ tagIds: [] })
-  const [activeTab, setActiveTab] = useState('devices')
-  const [favorites, setFavorites] = useState([])
-  const [newHosts, setNewHosts] = useState([])
-  const [hiddenNewHosts, setHiddenNewHosts] = useState(new Set())
-  const [autoScanEnabled, setAutoScanEnabled] = useState(false)
-  const [autoScanInterval, setAutoScanInterval] = useState(300000)
-  const [autoScanResults, setAutoScanResults] = useState({ newDevices: [], disconnected: [] })
-  const [loadingAutoScan, setLoadingAutoScan] = useState(false)
-  const [scanUsePing, setScanUsePing] = useState(true)
-  const [scanUseTcp, setScanUseTcp] = useState(true)
-  const [savingScanPrefs, setSavingScanPrefs] = useState(false)
-  const [selectedHostIds, setSelectedHostIds] = useState([])
-  const [bulkEditingIds, setBulkEditingIds] = useState(null)
-  const [bulkWorking, setBulkWorking] = useState(false)
-  const [scanResultModal, setScanResultModal] = useState(null)
-  const [manualNewHostsExpanded, setManualNewHostsExpanded] = useState(false)
-  const [autoNewDevicesExpanded, setAutoNewDevicesExpanded] = useState(false)
-  const [disconnectedExpanded, setDisconnectedExpanded] = useState(false)
-  const [offlineReleaseAfterMs, setOfflineReleaseAfterMs] = useState(null)
-  const [networkInfoExpanded, setNetworkInfoExpanded] = useState(false)
-  const [scanMethodExpanded, setScanMethodExpanded] = useState(false)
+  const nv = useNetworkView()
 
-  useEffect(() => {
-    fetchNetwork()
-    fetchHosts()
-    fetchFavorites()
-  }, [id])
-
-  useEffect(() => {
-    if (network) {
-      setAutoScanEnabled(network.auto_scan_enabled === 1)
-      const rawInterval = network.auto_scan_interval || 300000
-      setAutoScanInterval(
-        AUTO_SCAN_INTERVAL_MS_OPTIONS.includes(rawInterval) ? rawInterval : 300000
-      )
-      const orv = network.offline_release_after_ms
-      const parsed =
-        orv === undefined || orv === null ? null : Number(orv)
-      setOfflineReleaseAfterMs(parsed !== null && ALLOWED_OFFLINE_MS_SET.has(parsed) ? parsed : null)
-      setScanUsePing((network.scan_use_ping ?? 1) === 1)
-      setScanUseTcp((network.scan_use_tcp ?? 1) === 1)
-      fetchAutoScanResults()
-    }
-  }, [network])
-
-  useEffect(() => {
-    setSelectedHostIds([])
-  }, [searchQuery, statusFilter, tagFilter])
-
-  useEffect(() => {
-    setSelectedHostIds([])
-    setManualNewHostsExpanded(false)
-    setAutoNewDevicesExpanded(false)
-    setDisconnectedExpanded(false)
-    setNetworkInfoExpanded(false)
-    setScanMethodExpanded(false)
-  }, [id])
-
-  const fetchFavorites = async () => {
-    try {
-      const data = await apiGet('/favorites')
-      setFavorites(data)
-    } catch (err) {
-      console.error('Error fetching favorites:', err)
-    }
-  }
-
-  const isHostFavorite = (hostId) => {
-    return favorites.some(fav => fav.hostId === hostId)
-  }
-
-  const handleAddToFavorites = async (hostId) => {
-    try {
-      await apiPost('/favorites', { hostId: parseInt(hostId) })
-      await fetchFavorites()
-      toast.success(t('messages.success.addedToFavorites'))
-    } catch (err) {
-      toastApiError(toast, t, err)
-    }
-  }
-
-  const handleRemoveFromFavorites = async (hostId) => {
-    try {
-      const favorite = favorites.find(fav => fav.hostId === hostId)
-      if (favorite) {
-        await apiDelete(`/favorites/${favorite.id}`)
-        await fetchFavorites()
-        toast.success(t('messages.success.removedFromFavorites'))
-      }
-    } catch (err) {
-      toastApiError(toast, t, err)
-    }
-  }
-
-  const handleHideNewHost = (hostId) => {
-    setHiddenNewHosts(prev => new Set([...prev, hostId]))
-  }
-
-  const handleHideAllNewHosts = () => {
-    const allNewHostIds = newHosts.map(h => h.id)
-    setHiddenNewHosts(new Set(allNewHostIds))
-  }
-
-  const visibleNewHosts = newHosts.filter(host => !hiddenNewHosts.has(host.id))
-
-  const fetchNetwork = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await apiGet(`/networks/${id}`)
-      setNetwork(data)
-      
-      if (data) {
-        const range = calculateIPRange(data.network_id, data.subnet)
-        setIpRange(range)
-      }
-    } catch (err) {
-      setError(formatClientError(err, t))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchHosts = async () => {
-    try {
-      const data = await apiGet(`/networks/${id}/hosts`)
-      setHosts(data)
-    } catch (err) {
-      console.error('Error fetching hosts:', err)
-    }
-  }
-
-  const fetchAutoScanResults = async () => {
-    try {
-      const newDevices = await apiGet(`/networks/${id}/auto-scan-results?type=new_device`)
-      const disconnected = await apiGet(`/networks/${id}/auto-scan-results?type=disconnected`)
-      setAutoScanResults({ 
-        newDevices: newDevices.filter(r => r.host), 
-        disconnected: disconnected.filter(r => r.host) 
-      })
-    } catch (err) {
-      console.error('Error fetching auto scan results:', err)
-    }
-  }
-
-  const handleToggleAutoScan = async () => {
-    try {
-      setLoadingAutoScan(true)
-      const newState = !autoScanEnabled
-      const result = await apiPost(`/networks/${id}/auto-scan`, {
-        enabled: newState,
-        interval: autoScanInterval
-      })
-      setAutoScanEnabled(newState)
-      setNetwork(result)
-      toast.success(newState ? t('pages.networkView.autoScanEnabled') : t('pages.networkView.autoScanDisabled'))
-    } catch (err) {
-      toastApiError(toast, t, err)
-    } finally {
-      setLoadingAutoScan(false)
-    }
-  }
-
-  const handleAutoScanIntervalChange = async (ms) => {
-    setAutoScanInterval(ms)
-    if (!network || !isAdmin) return
-    try {
-      setLoadingAutoScan(true)
-      await apiPost(`/networks/${id}/auto-scan`, {
-        enabled: autoScanEnabled,
-        interval: ms
-      })
-      await fetchNetwork()
-    } catch (err) {
-      toastApiError(toast, t, err)
-    } finally {
-      setLoadingAutoScan(false)
-    }
-  }
-
-  const handleSaveScanPreferences = async () => {
-    if (!network || !isAdmin) return
-    if (!scanUsePing && !scanUseTcp) {
-      toast.warning(t('pages.networkView.scanNeedOneMethod'))
-      return
-    }
-    try {
-      setSavingScanPrefs(true)
-      await apiPut(`/networks/${id}`, {
-        name: network.name,
-        networkId: network.network_id,
-        subnet: network.subnet,
-        scan_use_ping: scanUsePing,
-        scan_use_tcp: scanUseTcp,
-        offline_release_after_ms: offlineReleaseAfterMs,
-        dhcp_range_start: network.dhcp_range_start ?? null,
-        dhcp_range_end: network.dhcp_range_end ?? null
-      })
-      await fetchNetwork()
-      toast.success(t('pages.networkView.scanPreferencesSaved'))
-    } catch (err) {
-      toastApiError(toast, t, err)
-    } finally {
-      setSavingScanPrefs(false)
-    }
-  }
-
-  const formatDiscoveryCell = (host) => {
-    const method = host.discovery_method
-    const tcpPort = parseSystemDiscoveryTcpPort(host.description)
-    if (!method) return <span style={{ color: 'var(--text-tertiary)' }}>—</span>
-    if (method === 'ping') return t('pages.networkView.discoveryPing')
-    if (method === 'port') {
-      return tcpPort != null
-        ? t('pages.networkView.discoveryTcpOnPort', { port: tcpPort })
-        : t('pages.networkView.discoveryPort')
-    }
-    if (method === 'both') {
-      return tcpPort != null
-        ? t('pages.networkView.discoveryBothOnPort', { port: tcpPort })
-        : t('pages.networkView.discoveryBoth')
-    }
-    return method
-  }
-
-  const handleScan = async () => {
-    if (!scanUsePing && !scanUseTcp) {
-      toast.warning(t('pages.networkView.scanNeedOneMethod'))
-      return
-    }
-    let poll = null
-    try {
-      setError(null)
-      setScanning(true)
-      setScanProgress({ status: 'running', scanned: 0, total: 0, found: 0 })
-
-      poll = setInterval(async () => {
-        try {
-          const p = await apiGet(`/networks/${id}/scan/progress`)
-          setScanProgress(p)
-          if (p.status === 'done' || p.status === 'error' || p.status === 'idle') {
-            clearInterval(poll)
-            poll = null
-          }
-        } catch {
-          /* ignore poll errors */
-        }
-      }, 600)
-      
-      const hostsBeforeScan = [...hosts]
-      const existingIPs = new Set(hostsBeforeScan.map(h => h.ip))
-      
-      const result = await apiPost(`/networks/${id}/scan`, {
-        timeout: 2,
-        addHosts: true,
-        language: language,
-        usePing: scanUsePing,
-        useTcpPorts: scanUseTcp
-      })
-      
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      await fetchNetwork()
-      const updatedHosts = await apiGet(`/networks/${id}/hosts`)
-      setHosts(updatedHosts)
-      
-      await fetchAutoScanResults()
-      
-      if (result.addedCount > 0) {
-        const newHostsList = updatedHosts.filter(host => !existingIPs.has(host.ip))
-        
-        if (newHostsList.length > 0) {
-          setNewHosts(newHostsList)
-          setHiddenNewHosts(new Set())
-        }
-      }
-      
-      if (result.hosts && result.hosts.length > 0) {
-        const addedCount = result.addedCount ?? result.hosts.length
-        const ds = result.detectionSummary
-        const paragraphs = [
-          t('pages.networkView.scanResult', { total: result.hosts.length, added: addedCount })
-        ]
-        if (ds) {
-          paragraphs.push(
-            t('pages.networkView.detectionSummaryLine', {
-              ping: ds.ping,
-              port: ds.port,
-              both: ds.both
-            })
-          )
-        }
-        setScanResultModal({
-          title: t('pages.networkView.scanResultModalTitle'),
-          paragraphs
-        })
-      } else {
-        setScanResultModal({
-          title: t('pages.networkView.scanResultModalTitle'),
-          paragraphs: [t('pages.networkView.scanResultNoDevices')]
-        })
-      }
-    } catch (err) {
-      console.error('Scan error:', err)
-      setError(formatClientError(err, t))
-      toastApiError(toast, t, err)
-    } finally {
-      if (poll) clearInterval(poll)
-      setScanning(false)
-    }
-  }
-
-  const handleClearNetworkHosts = async () => {
-    const ok = await confirm({
-      title: t('common.confirm'),
-      message: t('messages.confirm.clearAllHosts'),
-      confirmText: t('common.delete'),
-      cancelText: t('common.cancel'),
-      confirmClassName: 'btn-danger'
-    })
-    if (!ok) return
-
-    try {
-      setError(null)
-      const result = await apiDelete(`/networks/${id}/hosts`)
-      
-      await fetchHosts()
-      await fetchNetwork()
-      
-      toast.success(result.message || t('messages.success.hostsDeleted'))
-    } catch (err) {
-      setError(formatClientError(err, t))
-    }
-  }
-
-  const handleDeleteHost = async (hostId) => {
-    const ok = await confirm({
-      title: t('common.confirm'),
-      message: t('messages.confirm.deleteHost'),
-      confirmText: t('common.delete'),
-      cancelText: t('common.cancel'),
-      confirmClassName: 'btn-danger'
-    })
-    if (!ok) return
-
-    try {
-      setError(null)
-      await apiDelete(`/hosts/${hostId}`)
-      
-      await fetchHosts()
-      await fetchNetwork()
-      setSelectedHostIds((prev) => prev.filter((hid) => hid !== hostId))
-    } catch (err) {
-      setError(formatClientError(err, t))
-    }
-  }
-
-  const handleEditHost = (host) => {
-    setBulkEditingIds(null)
-    setEditingHostId(host.id)
-    const tagIds = host.tags && Array.isArray(host.tags) 
-      ? host.tags.map(tag => typeof tag === 'object' ? tag.id : tag)
-      : []
-    setEditFormData({ tagIds: tagIds })
-  }
-
-  const handleCancelEdit = () => {
-    setEditingHostId(null)
-    setBulkEditingIds(null)
-    setEditFormData({ tagIds: [] })
-  }
-
-  const handleUpdateHost = async (e) => {
-    e.preventDefault()
-
-    try {
-      setError(null)
-
-      if (bulkEditingIds && bulkEditingIds.length > 0) {
-        await apiPut('/hosts/bulk-tags', {
-          ids: bulkEditingIds,
-          tagIds: editFormData.tagIds
-        })
-        await fetchHosts()
-        handleCancelEdit()
-        setSelectedHostIds([])
-        toast.success(t('pages.networkView.bulkTagsSuccess', { count: bulkEditingIds.length }))
-        return
-      }
-
-      if (!editingHostId) return
-
-      const host = hosts.find(h => h.id === editingHostId)
-      if (!host) return
-
-      await apiPut(`/hosts/${editingHostId}`, {
-        name: host.name,
-        ip: host.ip,
-        description: host.description || '',
-        url: host.url || '',
-        status: host.status,
-        tagIds: editFormData.tagIds
-      })
-      
-      await fetchHosts()
-      handleCancelEdit()
-    } catch (err) {
-      setError(formatClientError(err, t))
-    }
-  }
-
-  const toggleHostSelected = (hostId) => {
-    setSelectedHostIds((prev) =>
-      prev.includes(hostId) ? prev.filter((id) => id !== hostId) : [...prev, hostId]
-    )
-  }
-
-  const handleBulkDelete = async () => {
-    if (!isAdmin || selectedHostIds.length === 0) return
-    const ok = await confirm({
-      title: t('common.confirm'),
-      message: t('pages.networkView.bulkDeleteConfirm', { count: selectedHostIds.length }),
-      confirmText: t('common.delete'),
-      cancelText: t('common.cancel'),
-      confirmClassName: 'btn-danger'
-    })
-    if (!ok) return
-    try {
-      setBulkWorking(true)
-      setError(null)
-      await apiPost(`/networks/${id}/hosts/bulk-delete`, { ids: selectedHostIds })
-      await fetchHosts()
-      await fetchNetwork()
-      setSelectedHostIds([])
-      toast.success(t('pages.networkView.bulkDeleteSuccess'))
-    } catch (err) {
-      setError(formatClientError(err, t))
-      toastApiError(toast, t, err)
-    } finally {
-      setBulkWorking(false)
-    }
-  }
-
-  const handleBulkFavoritesAdd = async () => {
-    if (selectedHostIds.length === 0) return
-    try {
-      setBulkWorking(true)
-      const result = await apiPost('/favorites/bulk', { hostIds: selectedHostIds, action: 'add' })
-      await fetchFavorites()
-      toast.success(t('pages.networkView.bulkFavoritesAddResult', { affected: result.affected, skipped: result.skipped }))
-    } catch (err) {
-      toastApiError(toast, t, err)
-    } finally {
-      setBulkWorking(false)
-    }
-  }
-
-  const handleBulkFavoritesRemove = async () => {
-    if (selectedHostIds.length === 0) return
-    try {
-      setBulkWorking(true)
-      const result = await apiPost('/favorites/bulk', { hostIds: selectedHostIds, action: 'remove' })
-      await fetchFavorites()
-      toast.success(t('pages.networkView.bulkFavoritesRemoveResult', { affected: result.affected, skipped: result.skipped }))
-    } catch (err) {
-      toastApiError(toast, t, err)
-    } finally {
-      setBulkWorking(false)
-    }
-  }
-
-  const handleOpenBulkEditTags = () => {
-    if (!isAdmin || selectedHostIds.length === 0) return
-    setEditingHostId(null)
-    setBulkEditingIds([...selectedHostIds])
-    setEditFormData({ tagIds: [] })
-  }
-
-  const filteredHosts = useMemo(() => {
-    let filtered = hosts.filter(host => {
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase()
-        const matchesName = host.name?.toLowerCase().includes(query)
-        const matchesIP = host.ip?.toLowerCase().includes(query)
-        if (!matchesName && !matchesIP) {
-          return false
-        }
-      }
-      
-      if (statusFilter !== 'all' && host.status !== statusFilter) {
-        return false
-      }
-      
-      if (tagFilter) {
-        const hostTagIds = host.tags?.map(t => typeof t === 'object' ? t.id : t) || []
-        if (!hostTagIds.includes(parseInt(tagFilter))) {
-          return false
-        }
-      }
-      
-      return true
-    })
-    
-    const collator = new Intl.Collator('ar', { numeric: true, sensitivity: 'base' })
-    return filtered.sort((a, b) => {
-      let aValue, bValue
-      switch (sortBy) {
-        case 'name':
-          aValue = a.name.toLowerCase()
-          bValue = b.name.toLowerCase()
-          const nameComparison = collator.compare(aValue, bValue)
-          return sortOrder === 'asc' ? nameComparison : -nameComparison
-        case 'ip':
-          const aParts = a.ip.split('.').map(Number)
-          const bParts = b.ip.split('.').map(Number)
-          for (let i = 0; i < 4; i++) {
-            if (aParts[i] !== bParts[i]) {
-              return sortOrder === 'asc' ? aParts[i] - bParts[i] : bParts[i] - aParts[i]
-            }
-          }
-          return 0
-        case 'status':
-          aValue = a.status === 'online' ? 1 : 0
-          bValue = b.status === 'online' ? 1 : 0
-          return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
-        case 'lastChecked':
-          aValue = (a.lastChecked || a.last_checked) ? new Date(a.lastChecked || a.last_checked).getTime() : 0
-          bValue = (b.lastChecked || b.last_checked) ? new Date(b.lastChecked || b.last_checked).getTime() : 0
-          return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
-        default:
-          return 0
-      }
-    })
-  }, [hosts, searchQuery, statusFilter, tagFilter, sortBy, sortOrder])
-
-  useEffect(() => {
-    setTablePage(1)
-  }, [searchQuery, statusFilter, tagFilter, sortBy, sortOrder])
-
-  const totalTablePages = Math.max(1, Math.ceil(filteredHosts.length / HOST_PAGE_SIZE))
-  const paginatedHosts = useMemo(() => {
-    const start = (tablePage - 1) * HOST_PAGE_SIZE
-    return filteredHosts.slice(start, start + HOST_PAGE_SIZE)
-  }, [filteredHosts, tablePage])
-
-  const toggleSelectAllFiltered = () => {
-    const fids = filteredHosts.map((h) => h.id)
-    const allOn = fids.length > 0 && fids.every((id) => selectedHostIds.includes(id))
-    if (allOn) {
-      setSelectedHostIds((prev) => prev.filter((id) => !fids.includes(id)))
-    } else {
-      setSelectedHostIds((prev) => [...new Set([...prev, ...fids])])
-    }
-  }
-
-  const selectOfflineFiltered = () => {
-    setSelectedHostIds(filteredHosts.filter((h) => h.status === 'offline').map((h) => h.id))
-  }
-
-  const getIPStatus = (ip) => {
-    const host = hosts.find(h => h.ip === ip)
-    if (!host) return 'empty'
-    return host.status === 'online' ? 'online' : 'offline'
-  }
-
-  const dhcpRangeStart = network?.dhcp_range_start?.trim?.() || null
-  const dhcpRangeEnd = network?.dhcp_range_end?.trim?.() || null
-  const hasDhcpRange = Boolean(
-    dhcpRangeStart &&
-      dhcpRangeEnd &&
-      isValidIP(dhcpRangeStart) &&
-      isValidIP(dhcpRangeEnd) &&
-      isIPInInclusiveRange(dhcpRangeStart, dhcpRangeStart, dhcpRangeEnd) &&
-      isIPInInclusiveRange(dhcpRangeEnd, dhcpRangeStart, dhcpRangeEnd)
-  )
-
-  const ipCellColors = (ip, status) => {
-    const inDhcpPool =
-      hasDhcpRange && isIPInInclusiveRange(ip, dhcpRangeStart, dhcpRangeEnd)
-    if (status === 'online') {
-      return {
-        bgColor: 'var(--success-light)',
-        borderColor: 'var(--success)',
-        color: 'var(--success)'
-      }
-    }
-    if (status === 'offline' && inDhcpPool) {
-      return {
-        bgColor: 'var(--dhcp-pool-light)',
-        borderColor: 'var(--dhcp-pool)',
-        color: 'var(--dhcp-pool)'
-      }
-    }
-    if (status === 'offline') {
-      return {
-        bgColor: 'var(--danger-light)',
-        borderColor: 'var(--danger)',
-        color: 'var(--danger)'
-      }
-    }
-    if (inDhcpPool) {
-      return {
-        bgColor: 'var(--dhcp-pool-light)',
-        borderColor: 'var(--dhcp-pool)',
-        color: 'var(--dhcp-pool)'
-      }
-    }
-    return {
-      bgColor: 'var(--bg-primary)',
-      borderColor: 'var(--border-color)',
-      color: 'var(--text-primary)'
-    }
-  }
-
-  const groupIPsByThirdOctet = (networkId, subnet, allIPs) => {
-    const networkParts = networkId.split('.').map(Number)
-    const networkNum = (networkParts[0] << 24) + (networkParts[1] << 16) + (networkParts[2] << 8) + networkParts[3]
-    const hostBits = 32 - subnet
-    const mask = 0xFFFFFFFF << hostBits
-    const networkBase = networkNum & mask
-    const broadcastIP = networkBase + Math.pow(2, hostBits) - 1
-    
-    const networkIP = `${(networkBase >>> 24) & 0xFF}.${(networkBase >>> 16) & 0xFF}.${(networkBase >>> 8) & 0xFF}.${networkBase & 0xFF}`
-    const broadcastIPStr = `${(broadcastIP >>> 24) & 0xFF}.${(broadcastIP >>> 16) & 0xFF}.${(broadcastIP >>> 8) & 0xFF}.${broadcastIP & 0xFF}`
-    
-    const networkParts2 = networkIP.split('.').map(Number)
-    const broadcastParts = broadcastIPStr.split('.').map(Number)
-    
-    const startThirdOctet = networkParts2[2]
-    const endThirdOctet = broadcastParts[2]
-    
-    const groups = {}
-    
-    for (let thirdOctet = startThirdOctet; thirdOctet <= endThirdOctet; thirdOctet++) {
-      const groupIPs = []
-      
-      let startFourth = 0
-      let endFourth = 255
-      
-      if (thirdOctet === startThirdOctet) {
-        startFourth = 1
-      }
-      
-      if (thirdOctet === endThirdOctet) {
-        endFourth = broadcastParts[3] - 1
-      }
-      
-      for (let fourthOctet = startFourth; fourthOctet <= endFourth; fourthOctet++) {
-        const ip = `${networkParts2[0]}.${networkParts2[1]}.${thirdOctet}.${fourthOctet}`
-        groupIPs.push(ip)
-      }
-      
-      if (groupIPs.length > 0) {
-        groups[thirdOctet] = groupIPs
-      }
-    }
-    
-    return groups
-  }
-
-  if (loading) {
+  if (nv.loading) {
     return <LoadingSpinner fullPage />
   }
 
-  if (!network) {
+  if (!nv.network) {
     return (
       <div className="container">
         <EmptyState
           icon="network"
-          title={t('pages.networkView.title')}
+          title={nv.t('pages.networkView.title')}
           action={() => navigate('/networks')}
-          actionLabel={t('common.back')}
+          actionLabel={nv.t('common.back')}
         />
       </div>
     )
   }
 
-  const range = ipRange || calculateIPRange(network.network_id, network.subnet)
-  const displayRange = range.range.length > 0 ? range.range : []
-
   return (
     <div className="container">
       <div className="header">
-        <h1>{network.name}</h1>
+        <h1>{nv.network.name}</h1>
       </div>
 
-      {/* Network info — collapsible */}
-      <div className="card" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
-        <button
-          type="button"
-          className="btn-ghost"
-          onClick={() => setNetworkInfoExpanded((v) => !v)}
-          aria-expanded={networkInfoExpanded}
-          aria-label={
-            networkInfoExpanded
-              ? t('pages.networkView.collapseNetworkDetails')
-              : t('pages.networkView.expandNetworkDetails')
-          }
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-sm)',
-            justifyContent: 'start',
-            fontWeight: 'var(--font-weight-semibold)',
-            fontSize: 'var(--font-size-base)',
-            color: 'var(--text-primary)',
-            padding: 'var(--spacing-xs) var(--spacing-sm)',
-            borderRadius: 'var(--radius-md)',
-            textAlign: 'start'
-          }}
-        >
-          <NetworkIcon size={20} />
-          <span
-            style={{
-              flex: '1 1 auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--spacing-sm)',
-              flexWrap: 'wrap',
-              justifyContent: 'start',
-              minWidth: 0,
-              textAlign: 'start'
-            }}
-          >
-            <span>{t('pages.networkView.networkDetailsTitle')}</span>
-            {!networkInfoExpanded && (
-              <IpAddress className="ip-badge">
-                {network.network_id}/{network.subnet}
-              </IpAddress>
-            )}
-          </span>
-          {networkInfoExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
-        </button>
-        {networkInfoExpanded && (
-          <div
-            style={{
-              display: 'grid',
-              gap: 'var(--spacing-sm)',
-              marginBlockStart: 'var(--spacing-md)',
-              paddingBlockStart: 'var(--spacing-md)',
-              borderTop: '1px solid var(--border-color-light)'
-            }}
-          >
-            <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap', textAlign: 'start' }}>
-              <strong>{t('forms.networkId')}:</strong>
-              <IpAddress className="ip-badge">{network.network_id}</IpAddress>
-            </p>
-            <p style={{ margin: 0 }}>
-              <strong>{t('forms.subnet')}:</strong> /{network.subnet}
-            </p>
-            <p style={{ margin: 0 }}>
-              <strong>{t('pages.networkView.range')}:</strong>{' '}
-              <IpAddress as="span">{range.start} - {range.end}</IpAddress> ({range.count}{' '}
-              {t('pages.networkView.addresses')})
-            </p>
-            {hasDhcpRange && (
-              <p
-                style={{
-                  margin: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--spacing-sm)',
-                  flexWrap: 'wrap'
-                }}
-              >
-                <strong>{t('pages.networkView.dhcpPool')}</strong>
-                {isRTL ? '\u200e : ' : ': '}
-                <IpAddress className="ip-badge ip-badge-dhcp">
-                  {dhcpRangeStart} – {dhcpRangeEnd}
-                </IpAddress>
-              </p>
-            )}
-            {network.last_scanned && (
-              <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-                <strong>{t('pages.networksList.lastScanned')}:</strong>{' '}
-                {new Date(network.last_scanned).toLocaleString()}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+      <NetworkInfoCard
+        network={nv.network}
+        networkInfoExpanded={nv.networkInfoExpanded}
+        onToggleExpanded={() => nv.setNetworkInfoExpanded((v) => !v)}
+        range={nv.range}
+        hasDhcpRange={nv.hasDhcpRange}
+        dhcpRangeStart={nv.dhcpRangeStart}
+        dhcpRangeEnd={nv.dhcpRangeEnd}
+        isRTL={nv.isRTL}
+        t={nv.t}
+      />
 
-      {isAdmin && (
-        <div className="card" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
-          <button
-            type="button"
-            className="btn-ghost"
-            onClick={() => setScanMethodExpanded((v) => !v)}
-            aria-expanded={scanMethodExpanded}
-            aria-label={
-              scanMethodExpanded
-                ? t('pages.networkView.collapseScanMethod')
-                : t('pages.networkView.expandScanMethod')
-            }
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--spacing-sm)',
-              justifyContent: 'start',
-              fontWeight: 'var(--font-weight-semibold)',
-              fontSize: 'var(--font-size-base)',
-              color: 'var(--text-primary)',
-              padding: 'var(--spacing-xs) var(--spacing-sm)',
-              borderRadius: 'var(--radius-md)',
-              textAlign: 'start'
-            }}
-          >
-            <ScanIcon size={20} />
-            <span style={{ flex: '1 1 auto', textAlign: 'start' }}>{t('pages.networkView.scanMethodTitle')}</span>
-            {scanMethodExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
-          </button>
-          {scanMethodExpanded && (
-            <div
-              style={{
-                marginBlockStart: 'var(--spacing-md)',
-                paddingBlockStart: 'var(--spacing-md)',
-                borderTop: '1px solid var(--border-color-light)'
-              }}
-            >
-              <p
-                style={{
-                  margin: '0 0 var(--spacing-md) 0',
-                  fontSize: 'var(--font-size-sm)',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                {t('pages.networkView.scanMethodIntro')}
-              </p>
-              <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={scanUsePing}
-                    onChange={(e) => setScanUsePing(e.target.checked)}
-                    style={{ marginTop: '4px' }}
-                  />
-                  <span>
-                    <strong>{t('pages.networkView.scanMethodPingLabel')}</strong>
-                    <span
-                      style={{
-                        display: 'block',
-                        fontSize: 'var(--font-size-xs)',
-                        color: 'var(--text-tertiary)',
-                        fontWeight: 'normal',
-                        marginTop: '4px'
-                      }}
-                    >
-                      {t('pages.networkView.scanMethodPingHelp')}
-                    </span>
-                  </span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={scanUseTcp}
-                    onChange={(e) => setScanUseTcp(e.target.checked)}
-                    style={{ marginTop: '4px' }}
-                  />
-                  <span>
-                    <strong>{t('pages.networkView.scanMethodTcpLabel')}</strong>
-                    <span
-                      style={{
-                        display: 'block',
-                        fontSize: 'var(--font-size-xs)',
-                        color: 'var(--text-tertiary)',
-                        fontWeight: 'normal',
-                        marginTop: '4px'
-                      }}
-                    >
-                      {t('pages.networkView.scanMethodTcpHelp')}
-                    </span>
-                    <span
-                      className="ip-address"
-                      style={{
-                        display: 'block',
-                        fontSize: 'var(--font-size-xs)',
-                        color: 'var(--text-tertiary)',
-                        fontWeight: 'normal',
-                        marginTop: '6px',
-                        lineHeight: 1.45,
-                        wordBreak: 'break-word'
-                      }}
-                    >
-                      {t('pages.networkView.scanMethodTcpPortsLine', { ports: COMMON_TCP_SCAN_PORTS.join(', ') })}
-                    </span>
-                  </span>
-                </label>
-              </div>
-              {!scanUsePing && !scanUseTcp && (
-                <p style={{ margin: 'var(--spacing-sm) 0 0 0', fontSize: 'var(--font-size-sm)', color: 'var(--warning)' }}>
-                  {t('pages.networkView.scanNeedOneMethod')}
-                </p>
-              )}
-              <div style={{ marginTop: 'var(--spacing-md)' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBlockEnd: 'var(--spacing-xs)',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontSize: 'var(--font-size-sm)'
-                  }}
-                >
-                  {t('pages.networkView.offlineReleaseLabel')}
-                </label>
-                <p
-                  style={{
-                    margin: '0 0 var(--spacing-sm)',
-                    fontSize: 'var(--font-size-xs)',
-                    color: 'var(--text-tertiary)',
-                    maxWidth: '520px',
-                    lineHeight: 1.45
-                  }}
-                >
-                  {t('pages.networkView.offlineReleaseHelp')}
-                </p>
-                <select
-                  value={offlineReleaseAfterMs === null ? '' : String(offlineReleaseAfterMs)}
-                  onChange={(e) =>
-                    setOfflineReleaseAfterMs(e.target.value === '' ? null : Number(e.target.value))
-                  }
-                  style={{
-                    padding: 'var(--spacing-xs) var(--spacing-sm)',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-color)',
-                    backgroundColor: 'var(--bg-primary)',
-                    color: 'var(--text-primary)',
-                    minWidth: 'min(100%, 280px)'
-                  }}
-                >
-                  {OFFLINE_RELEASE_OPTIONS.map((opt) => (
-                    <option key={opt.ms === null ? 'never' : String(opt.ms)} value={opt.ms === null ? '' : String(opt.ms)}>
-                      {t(opt.labelKey)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ marginTop: 'var(--spacing-md)' }}>
-                <button
-                  type="button"
-                  onClick={handleSaveScanPreferences}
-                  disabled={savingScanPrefs || (!scanUsePing && !scanUseTcp)}
-                  className="btn-secondary btn-small"
-                >
-                  {savingScanPrefs ? t('common.loading') : t('pages.networkView.scanSavePreferences')}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+      {nv.isAdmin && (
+        <ScanMethodCard
+          scanMethodExpanded={nv.scanMethodExpanded}
+          onToggleExpanded={() => nv.setScanMethodExpanded((v) => !v)}
+          scanUsePing={nv.scanUsePing}
+          onScanUsePingChange={nv.setScanUsePing}
+          scanUseTcp={nv.scanUseTcp}
+          onScanUseTcpChange={nv.setScanUseTcp}
+          offlineReleaseAfterMs={nv.offlineReleaseAfterMs}
+          onOfflineReleaseAfterMsChange={nv.setOfflineReleaseAfterMs}
+          savingScanPrefs={nv.savingScanPrefs}
+          onSaveScanPreferences={nv.handleSaveScanPreferences}
+          t={nv.t}
+        />
       )}
 
-      {error && (
+      {nv.error && (
         <div className="error-message">
           <AlertIcon size={18} />
-          <span>{error}</span>
+          <span>{nv.error}</span>
         </div>
       )}
 
-      {isAdmin && (
-        <div className="controls">
-          <button onClick={handleScan} disabled={scanning || (!scanUsePing && !scanUseTcp)} className="btn-primary">
-            {scanning ? (
-              <>
-                <RefreshIcon size={18} className="spinner" />
-                <span>{t('pages.networkView.scanning')}</span>
-              </>
-            ) : (
-              <>
-                <ScanIcon size={18} />
-                <span>{t('pages.networkView.scan')}</span>
-              </>
-            )}
-          </button>
-          {(scanning || scanProgress?.status === 'running') && (
-            <ScanProgressBar progress={scanProgress} />
-          )}
-          
-          {/* Auto scan */}
-          <div style={{ 
-            display: 'flex', 
-            flexWrap: 'wrap',
-            alignItems: 'center', 
-            gap: 'var(--spacing-md)',
-            padding: 'var(--spacing-sm) var(--spacing-md)',
-            backgroundColor: 'var(--bg-primary)',
-            borderRadius: 'var(--radius-md)',
-            border: `1px solid ${autoScanEnabled ? 'var(--success)' : 'var(--border-color)'}`
-          }}>
-            <label style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 'var(--spacing-sm)',
-              cursor: 'pointer',
-              fontWeight: 'var(--font-weight-medium)',
-              fontSize: 'var(--font-size-sm)'
-            }}>
-              <input
-                type="checkbox"
-                checked={autoScanEnabled}
-                onChange={handleToggleAutoScan}
-                disabled={loadingAutoScan}
-              />
-              <span>{t('pages.networkView.autoScan')}</span>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)' }}>
-              <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{t('pages.networkView.autoScanIntervalLabel')}</span>
-              <select
-                value={autoScanInterval}
-                onChange={(e) => handleAutoScanIntervalChange(Number(e.target.value))}
-                disabled={loadingAutoScan}
-                style={{
-                  padding: 'var(--spacing-xs) var(--spacing-sm)',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)'
-                }}
-              >
-                {AUTO_SCAN_INTERVAL_MS_OPTIONS.map((ms) => (
-                  <option key={ms} value={ms}>
-                    {t('pages.networkView.autoScanIntervalOption', { minutes: ms / 60000 })}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          
-          <button onClick={handleClearNetworkHosts} className="btn-danger">
-            <DeleteIcon size={18} />
-            <span>{t('pages.networkView.clearAllHosts')}</span>
-          </button>
-        </div>
+      {nv.isAdmin && (
+        <ScanToolbar
+          scanning={nv.scanning}
+          scanProgress={nv.scanProgress}
+          scanUsePing={nv.scanUsePing}
+          scanUseTcp={nv.scanUseTcp}
+          onScan={nv.handleScan}
+          autoScanEnabled={nv.autoScanEnabled}
+          autoScanInterval={nv.autoScanInterval}
+          loadingAutoScan={nv.loadingAutoScan}
+          onToggleAutoScan={nv.handleToggleAutoScan}
+          onAutoScanIntervalChange={nv.handleAutoScanIntervalChange}
+          onClearNetworkHosts={nv.handleClearNetworkHosts}
+          t={nv.t}
+        />
       )}
 
-      {/* Tabs */}
       <div className="tabs" style={{ marginBlockStart: 'var(--spacing-lg)' }}>
         <button
-          onClick={() => setActiveTab('devices')}
-          className={`tab ${activeTab === 'devices' ? 'active' : ''}`}
+          onClick={() => nv.setActiveTab('devices')}
+          className={`tab ${nv.activeTab === 'devices' ? 'active' : ''}`}
         >
           <DeviceIcon size={16} />
-          <span>{t('pages.networkView.devices')}</span>
+          <span>{nv.t('pages.networkView.devices')}</span>
         </button>
         <button
-          onClick={() => setActiveTab('ips')}
-          className={`tab ${activeTab === 'ips' ? 'active' : ''}`}
+          onClick={() => nv.setActiveTab('ips')}
+          className={`tab ${nv.activeTab === 'ips' ? 'active' : ''}`}
         >
-          <span>{t('pages.networkView.ipAddresses')}</span>
+          <span>{nv.t('pages.networkView.ipAddresses')}</span>
         </button>
       </div>
 
-      {/* Devices Tab */}
-      {activeTab === 'devices' && (
+      {nv.activeTab === 'devices' && (
         <>
-          {/* New Hosts Section (manual scan) — collapsed summary */}
-          {visibleNewHosts.length > 0 && (
-            <div style={{ 
-              marginBlockEnd: 'var(--spacing-xl)',
-              padding: 'var(--spacing-lg)',
-              backgroundColor: 'var(--success-light)',
-              border: '1px solid var(--success)',
-              borderRadius: 'var(--radius-lg)'
-            }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)', justifyContent: 'space-between' }}>
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => setManualNewHostsExpanded((v) => !v)}
-                  aria-expanded={manualNewHostsExpanded}
-                  aria-label={manualNewHostsExpanded ? t('pages.networkView.collapseDeviceList') : t('pages.networkView.expandDeviceList')}
-                  style={{
-                    flex: '1 1 220px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--spacing-sm)',
-                    justifyContent: 'start',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontSize: 'var(--font-size-lg)',
-                    color: 'var(--success)',
-                    padding: 'var(--spacing-xs) var(--spacing-sm)',
-                    borderRadius: 'var(--radius-md)'
-                  }}
-                >
-                  <OnlineIcon size={20} />
-                  <span style={{ flex: 1, textAlign: 'start' }}>
-                    {t('pages.networkView.newDevicesManual')} ({visibleNewHosts.length})
-                  </span>
-                  {manualNewHostsExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
-                </button>
-                <button type="button" onClick={handleHideAllNewHosts} className="btn-success btn-small">
-                  <CheckIcon size={14} />
-                  <span>{t('pages.networkView.hideAll')}</span>
-                </button>
-              </div>
-              
-              {manualNewHostsExpanded && (
-                <div
-                  style={{
-                    marginBlockStart: 'var(--spacing-md)',
-                    maxHeight: 'min(55vh, 440px)',
-                    overflowY: 'auto',
-                    paddingInlineEnd: 'var(--spacing-xs)'
-                  }}
-                >
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
-                    {visibleNewHosts.map(host => (
-                      <div key={host.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
-                          <div style={{ flex: 1 }}>
-                            <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)', fontSize: 'var(--font-size-base)' }}>{host.name}</h3>
-                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{host.ip}</IpAddress></p>
-                          </div>
-                          <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
-                            {host.status === 'online' ? t('common.online') : t('common.offline')}
-                          </span>
-                        </div>
-                        
-                        {getDescription(host.description, language) && (
-                          <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                            {getDescription(host.description, language)}
-                          </p>
-                        )}
-                        
-                        <div style={{ display: 'flex', gap: 'var(--spacing-xs)', marginBlockStart: 'var(--spacing-sm)' }}>
-                          {isAdmin && (
-                            <>
-                              <button type="button" onClick={() => handleEditHost(host)} className="btn-primary btn-small" style={{ flex: 1 }}>
-                                <EditIcon size={14} />
-                                <span>{t('common.edit')}</span>
-                              </button>
-                              <button type="button" onClick={() => handleHideNewHost(host.id)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.viewed')}>
-                                <CheckIcon size={14} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <DiscoveryPanels
+            visibleNewHosts={nv.visibleNewHosts}
+            manualNewHostsExpanded={nv.manualNewHostsExpanded}
+            onToggleManualNewHosts={() => nv.setManualNewHostsExpanded((v) => !v)}
+            onHideAllNewHosts={nv.handleHideAllNewHosts}
+            onHideNewHost={nv.handleHideNewHost}
+            onEditHost={nv.handleEditHost}
+            autoScanResults={nv.autoScanResults}
+            autoNewDevicesExpanded={nv.autoNewDevicesExpanded}
+            onToggleAutoNewDevices={() => nv.setAutoNewDevicesExpanded((v) => !v)}
+            onClearAutoNewDevices={nv.handleClearAutoNewDevices}
+            disconnectedExpanded={nv.disconnectedExpanded}
+            onToggleDisconnected={() => nv.setDisconnectedExpanded((v) => !v)}
+            onClearDisconnected={nv.handleClearDisconnected}
+            isAdmin={nv.isAdmin}
+            language={nv.language}
+            t={nv.t}
+          />
 
-          {/* Auto-discovered devices section */}
-          {autoScanResults.newDevices.length > 0 && (
-            <div style={{ 
-              marginBlockEnd: 'var(--spacing-xl)',
-              padding: 'var(--spacing-lg)',
-              backgroundColor: 'var(--success-light)',
-              border: '1px solid var(--success)',
-              borderRadius: 'var(--radius-lg)'
-            }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)', justifyContent: 'space-between' }}>
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => setAutoNewDevicesExpanded((v) => !v)}
-                  aria-expanded={autoNewDevicesExpanded}
-                  aria-label={autoNewDevicesExpanded ? t('pages.networkView.collapseDeviceList') : t('pages.networkView.expandDeviceList')}
-                  style={{
-                    flex: '1 1 220px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--spacing-sm)',
-                    justifyContent: 'start',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontSize: 'var(--font-size-lg)',
-                    color: 'var(--success)',
-                    padding: 'var(--spacing-xs) var(--spacing-sm)',
-                    borderRadius: 'var(--radius-md)'
-                  }}
-                >
-                  <OnlineIcon size={20} />
-                  <span style={{ flex: 1, textAlign: 'start' }}>
-                    {t('pages.networkView.newDevicesAutoScan')} ({autoScanResults.newDevices.length})
-                  </span>
-                  {autoNewDevicesExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
-                </button>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await apiDelete(`/networks/${id}/auto-scan-results?type=new_device`)
-                        await fetchAutoScanResults()
-                      } catch (err) {
-                        toastApiError(toast, t, err)
-                      }
-                    }}
-                    className="btn-success btn-small"
-                  >
-                    {t('pages.networkView.clearList')}
-                  </button>
-                )}
-              </div>
-              
-              {autoNewDevicesExpanded && (
-                <div
-                  style={{
-                    marginBlockStart: 'var(--spacing-md)',
-                    maxHeight: 'min(55vh, 440px)',
-                    overflowY: 'auto',
-                    paddingInlineEnd: 'var(--spacing-xs)'
-                  }}
-                >
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
-                    {autoScanResults.newDevices.map(result => (
-                      <div key={result.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
-                          <div style={{ flex: 1 }}>
-                            <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host?.name || t('common.unknown')}</h3>
-                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{result.host?.ip || t('common.unknown')}</IpAddress></p>
-                            <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                              {new Date(result.discovered_at).toLocaleString()}
-                            </p>
-                          </div>
-                          <span className={`status-badge ${result.host?.status === 'online' ? 'status-online' : 'status-offline'}`}>
-                            {result.host?.status === 'online' ? t('common.online') : t('common.offline')}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <HostsTableSection
+            hosts={nv.hosts}
+            filteredHosts={nv.filteredHosts}
+            paginatedHosts={nv.paginatedHosts}
+            totalTablePages={nv.totalTablePages}
+            tablePage={nv.tablePage}
+            onTablePageChange={nv.setTablePage}
+            searchQuery={nv.searchQuery}
+            onSearchQueryChange={nv.setSearchQuery}
+            statusFilter={nv.statusFilter}
+            onStatusFilterChange={nv.setStatusFilter}
+            tagFilter={nv.tagFilter}
+            onTagFilterChange={nv.setTagFilter}
+            availableTags={nv.availableTags}
+            sortBy={nv.sortBy}
+            sortOrder={nv.sortOrder}
+            onSortChange={nv.handleSortChange}
+            selectedHostIds={nv.selectedHostIds}
+            onToggleHostSelected={nv.toggleHostSelected}
+            onToggleSelectAllFiltered={nv.toggleSelectAllFiltered}
+            onSelectOfflineFiltered={nv.selectOfflineFiltered}
+            onBulkFavoritesAdd={nv.handleBulkFavoritesAdd}
+            onBulkFavoritesRemove={nv.handleBulkFavoritesRemove}
+            onOpenBulkEditTags={nv.handleOpenBulkEditTags}
+            onBulkDelete={nv.handleBulkDelete}
+            onClearSelection={() => nv.setSelectedHostIds([])}
+            bulkWorking={nv.bulkWorking}
+            isAdmin={nv.isAdmin}
+            userType={nv.userType}
+            isHostFavorite={nv.isHostFavorite}
+            onAddToFavorites={nv.handleAddToFavorites}
+            onRemoveFromFavorites={nv.handleRemoveFromFavorites}
+            onEditHost={nv.handleEditHost}
+            onDeleteHost={nv.handleDeleteHost}
+            onViewHistory={nv.setHistoryHost}
+            editingHostId={nv.editingHostId}
+            bulkEditingIds={nv.bulkEditingIds}
+            editFormData={nv.editFormData}
+            onEditFormDataChange={nv.setEditFormData}
+            onUpdateHost={nv.handleUpdateHost}
+            onCancelEdit={nv.handleCancelEdit}
+            language={nv.language}
+            t={nv.t}
+          />
 
-          {/* Disconnected devices section */}
-          {autoScanResults.disconnected.length > 0 && (
-            <div style={{ 
-              marginBlockEnd: 'var(--spacing-xl)',
-              padding: 'var(--spacing-lg)',
-              backgroundColor: 'var(--danger-light)',
-              border: '1px solid var(--danger)',
-              borderRadius: 'var(--radius-lg)'
-            }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)', justifyContent: 'space-between' }}>
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => setDisconnectedExpanded((v) => !v)}
-                  aria-expanded={disconnectedExpanded}
-                  aria-label={disconnectedExpanded ? t('pages.networkView.collapseDeviceList') : t('pages.networkView.expandDeviceList')}
-                  style={{
-                    flex: '1 1 220px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--spacing-sm)',
-                    justifyContent: 'start',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontSize: 'var(--font-size-lg)',
-                    color: 'var(--danger)',
-                    padding: 'var(--spacing-xs) var(--spacing-sm)',
-                    borderRadius: 'var(--radius-md)'
-                  }}
-                >
-                  <OfflineIcon size={20} />
-                  <span style={{ flex: 1, textAlign: 'start' }}>
-                    {t('pages.networkView.disconnected')} ({autoScanResults.disconnected.length})
-                  </span>
-                  {disconnectedExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
-                </button>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await apiDelete(`/networks/${id}/auto-scan-results?type=disconnected`)
-                        await fetchAutoScanResults()
-                      } catch (err) {
-                        toastApiError(toast, t, err)
-                      }
-                    }}
-                    className="btn-danger btn-small"
-                  >
-                    {t('pages.networkView.clearList')}
-                  </button>
-                )}
-              </div>
-              
-              {disconnectedExpanded && (
-                <div
-                  style={{
-                    marginBlockStart: 'var(--spacing-md)',
-                    maxHeight: 'min(55vh, 440px)',
-                    overflowY: 'auto',
-                    paddingInlineEnd: 'var(--spacing-xs)'
-                  }}
-                >
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
-                    {autoScanResults.disconnected.map(result => (
-                      <div key={result.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
-                          <div style={{ flex: 1 }}>
-                            <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host?.name || t('common.unknown')}</h3>
-                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{result.host?.ip || t('common.unknown')}</IpAddress></p>
-                            <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                              {new Date(result.discovered_at).toLocaleString()}
-                            </p>
-                          </div>
-                          <span className="status-badge status-offline">{t('common.offline')}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Hosts Table */}
-          {hosts.length > 0 && (
-            <div style={{ marginBlockStart: 'var(--spacing-xl)' }}>
-              <h2 style={{ marginBlockEnd: 'var(--spacing-md)', fontSize: 'var(--font-size-lg)' }}>
-                {t('pages.networkView.devices')} ({filteredHosts.length} / {hosts.length})
-              </h2>
-              
-              {/* Filters */}
-              <div className="filters">
-                <input
-                  type="text"
-                  placeholder={t('pages.networkView.search')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ flex: '1 1 auto', minWidth: '200px', maxWidth: '400px' }}
-                />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  style={{ width: '180px', flexShrink: 0 }}
-                >
-                  <option value="all">{t('common.all')}</option>
-                  <option value="online">{t('common.online')}</option>
-                  <option value="offline">{t('common.offline')}</option>
-                </select>
-                <select
-                  value={tagFilter || 'all'}
-                  onChange={(e) => setTagFilter(e.target.value === 'all' ? null : e.target.value)}
-                  style={{ width: '180px', flexShrink: 0 }}
-                >
-                  <option value="all">{t('common.all')}</option>
-                  {availableTags.map(tag => (
-                    <option key={tag.id} value={tag.id}>{tag.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {userType !== 'visitor' && selectedHostIds.length > 0 && (
-                <div
-                  className="card"
-                  style={{
-                    marginBlockEnd: 'var(--spacing-md)',
-                    padding: 'var(--spacing-md)',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: 'var(--spacing-sm)',
-                    border: '1px solid var(--primary)',
-                    backgroundColor: 'var(--bg-secondary)'
-                  }}
-                >
-                  <span style={{ fontWeight: 'var(--font-weight-semibold)', marginInlineEnd: 'var(--spacing-sm)' }}>
-                    {t('pages.networkView.bulkSelected', { count: selectedHostIds.length })}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleBulkFavoritesAdd}
-                    disabled={bulkWorking}
-                    className="btn-secondary btn-small"
-                  >
-                    {t('pages.networkView.bulkAddFavorites')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleBulkFavoritesRemove}
-                    disabled={bulkWorking}
-                    className="btn-secondary btn-small"
-                  >
-                    {t('pages.networkView.bulkRemoveFavorites')}
-                  </button>
-                  {isAdmin && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleOpenBulkEditTags}
-                        disabled={bulkWorking}
-                        className="btn-secondary btn-small"
-                      >
-                        {t('pages.networkView.bulkEditTags')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleBulkDelete}
-                        disabled={bulkWorking}
-                        className="btn-danger btn-small"
-                      >
-                        {t('pages.networkView.bulkDelete')}
-                      </button>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedHostIds([])}
-                    className="btn-ghost btn-small"
-                  >
-                    {t('pages.networkView.bulkClearSelection')}
-                  </button>
-                </div>
-              )}
-
-              {userType !== 'visitor' && filteredHosts.length > 0 && (
-                <div style={{ marginBlockEnd: 'var(--spacing-sm)', display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
-                  <button type="button" onClick={selectOfflineFiltered} className="btn-ghost btn-small">
-                    {t('pages.networkView.selectOfflineFiltered')}
-                  </button>
-                </div>
-              )}
-              
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      {userType !== 'visitor' && (
-                        <th style={{ width: '40px' }}>
-                          <input
-                            type="checkbox"
-                            checked={
-                              filteredHosts.length > 0 &&
-                              filteredHosts.every((h) => selectedHostIds.includes(h.id))
-                            }
-                            onChange={toggleSelectAllFiltered}
-                            title={t('pages.networkView.selectAllFiltered')}
-                          />
-                        </th>
-                      )}
-                      <th onClick={() => { if (sortBy === 'name') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('name'); setSortOrder('asc') } }}>
-                        {t('common.name')} {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th onClick={() => { if (sortBy === 'ip') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('ip'); setSortOrder('asc') } }}>
-                        {t('common.ip')} {sortBy === 'ip' && (sortOrder === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th onClick={() => { if (sortBy === 'status') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('status'); setSortOrder('asc') } }}>
-                        {t('common.status')} {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th>{t('pages.networkView.uptime24h')}</th>
-                      <th>{t('pages.networkView.discoveryMethod')}</th>
-                      <th>{t('common.description')}</th>
-                      <th>{t('common.tags')}</th>
-                      <th onClick={() => { if (sortBy === 'lastChecked') { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') } else { setSortBy('lastChecked'); setSortOrder('asc') } }}>
-                        {t('pages.networksList.lastScanned')} {sortBy === 'lastChecked' && (sortOrder === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th>{t('common.actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedHosts.map(host => (
-                      <tr key={host.id}>
-                        {userType !== 'visitor' && (
-                          <td>
-                            <input
-                              type="checkbox"
-                              checked={selectedHostIds.includes(host.id)}
-                              onChange={() => toggleHostSelected(host.id)}
-                            />
-                          </td>
-                        )}
-                        <td><strong>{host.name}</strong></td>
-                        <td><IpAddress>{host.ip}</IpAddress></td>
-                        <td>
-                          <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
-                            {host.status === 'online' ? (
-                              <><OnlineIcon size={12} /> {t('common.online')}</>
-                            ) : (
-                              <><OfflineIcon size={12} /> {t('common.offline')}</>
-                            )}
-                          </span>
-                        </td>
-                        <td style={{ whiteSpace: 'nowrap' }}>
-                          {(host.uptimePercentage ?? 100).toFixed(1)}%
-                        </td>
-                        <td style={{ fontSize: 'var(--font-size-sm)', whiteSpace: 'nowrap' }}>
-                          {formatDiscoveryCell(host)}
-                        </td>
-                        <td>
-                          {(() => {
-                            const desc = getDescription(host.description, language);
-                            return desc ? (
-                              <span
-                                style={{
-                                  whiteSpace: 'normal',
-                                  wordBreak: 'break-word',
-                                  lineHeight: 1.45
-                                }}
-                              >
-                                {desc}
-                              </span>
-                            ) : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>);
-                          })()}
-                        </td>
-                        <td>
-                          {host.tags && Array.isArray(host.tags) && host.tags.length > 0 ? (
-                            <div className="tags-inline">
-                              {host.tags.map(tag => (
-                                <span 
-                                  key={typeof tag === 'object' ? tag.id : tag}
-                                  className="tag-badge"
-                                  style={{ backgroundColor: typeof tag === 'object' ? (tag.color || 'var(--primary)') : 'var(--primary)' }}
-                                >
-                                  {typeof tag === 'object' ? tag.name : tag}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)}
-                        </td>
-                        <td style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
-                          {host.lastChecked || host.last_checked ? new Date(host.lastChecked || host.last_checked).toLocaleString() : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)}
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: 'var(--spacing-xs)', flexWrap: 'wrap' }}>
-                            <button type="button" onClick={() => setHistoryHost(host)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.viewHistory')}>
-                              <ChartIcon size={14} />
-                            </button>
-                            {userType !== 'visitor' && (
-                              <>
-                              {isHostFavorite(host.id) ? (
-                                <button onClick={() => handleRemoveFromFavorites(host.id)} className="btn-warning btn-small btn-icon" title={t('pages.networkView.removeFromFavorites')}>
-                                  <StarIcon size={14} filled />
-                                </button>
-                              ) : (
-                                <button onClick={() => handleAddToFavorites(host.id)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.addToFavorites')}>
-                                  <StarIcon size={14} />
-                                </button>
-                              )}
-                              {isAdmin && (
-                                <>
-                                  <button onClick={() => handleEditHost(host)} className="btn-secondary btn-small btn-icon" title={t('common.edit')}>
-                                    <EditIcon size={14} />
-                                  </button>
-                                  <button onClick={() => handleDeleteHost(host.id)} className="btn-danger btn-small btn-icon" title={t('common.delete')}>
-                                    <DeleteIcon size={14} />
-                                  </button>
-                                </>
-                              )}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {filteredHosts.length > HOST_PAGE_SIZE && (
-                <div className="table-pagination">
-                  <button type="button" className="btn-secondary btn-small" disabled={tablePage <= 1} onClick={() => setTablePage((p) => p - 1)}>
-                    {t('pages.networkView.prevPage')}
-                  </button>
-                  <span>{t('pages.networkView.pageOf', { page: tablePage, total: totalTablePages })}</span>
-                  <button type="button" className="btn-secondary btn-small" disabled={tablePage >= totalTablePages} onClick={() => setTablePage((p) => p + 1)}>
-                    {t('pages.networkView.nextPage')}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {hosts.length === 0 && (
+          {nv.hosts.length === 0 && (
             <EmptyState
               icon="device"
-              title={t('pages.networkView.noHosts')}
-              description={t('pages.networkView.scanToAdd')}
-              action={isAdmin ? handleScan : null}
-              actionLabel={t('pages.networkView.scan')}
+              title={nv.t('pages.networkView.noHosts')}
+              description={nv.t('pages.networkView.scanToAdd')}
+              action={nv.isAdmin ? nv.handleScan : null}
+              actionLabel={nv.t('pages.networkView.scan')}
             />
           )}
         </>
       )}
 
-      {/* IPs Tab */}
-      {activeTab === 'ips' && (
-        <>
-          {network.subnet < 22 ? (
-            <EmptyState
-              icon="network"
-              title={t('pages.networkView.rangeTooLarge', { count: range.count })}
-              description={`${t('pages.networkView.discoveredDevices')}: ${hosts.length}`}
-            />
-          ) : (
-            <>
-              {hasDhcpRange && (
-                <p
-                  style={{
-                    margin: 0,
-                    marginBlockEnd: 'var(--spacing-md)',
-                    fontSize: 'var(--font-size-sm)',
-                    color: 'var(--text-secondary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--spacing-sm)',
-                    flexWrap: 'wrap'
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 14,
-                      height: 14,
-                      borderRadius: 'var(--radius-sm)',
-                      backgroundColor: 'var(--dhcp-pool-light)',
-                      border: '2px solid var(--dhcp-pool)',
-                      flexShrink: 0
-                    }}
-                    aria-hidden
-                  />
-                  {t('pages.networkView.dhcpPoolLegend')}
-                </p>
-              )}
-              {(() => {
-                const ipGroups = groupIPsByThirdOctet(network.network_id, network.subnet, displayRange)
-                const sortedOctets = Object.keys(ipGroups).map(Number).sort((a, b) => a - b)
-                
-                return (
-                  <div style={{ marginBlockStart: 'var(--spacing-lg)' }}>
-                    {sortedOctets.map((thirdOctet) => {
-                      const groupIPs = ipGroups[thirdOctet]
-                      const networkParts = network.network_id.split('.').map(Number)
-                      
-                      return (
-                        <div key={thirdOctet} style={{ marginBlockEnd: 'var(--spacing-xl)' }}>
-                          <h3 style={{ marginBlockEnd: 'var(--spacing-md)', fontWeight: 'var(--font-weight-semibold)' }}>
-                            <IpAddress as="span">{networkParts[0]}.{networkParts[1]}.{thirdOctet}.x</IpAddress>
-                          </h3>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', gap: 'var(--spacing-xs)' }}>
-                            {groupIPs.map((ip) => {
-                              const status = getIPStatus(ip)
-                              const lastOctet = getLastOctet(ip)
-                              const host = hosts.find(h => h.ip === ip)
-                              const inDhcpPool =
-                                hasDhcpRange &&
-                                isIPInInclusiveRange(ip, dhcpRangeStart, dhcpRangeEnd)
-                              const { bgColor, borderColor, color } = ipCellColors(ip, status)
-                              const emptyTitle = inDhcpPool
-                                ? t('pages.networkView.dhcpPoolIp', { ip })
-                                : t('pages.networkView.ipAvailable', { ip })
-                              
-                              return (
-                                <div
-                                  key={ip}
-                                  title={
-                                    host
-                                      ? t('pages.networkView.deviceInfo', {
-                                          name: host.name,
-                                          ip,
-                                          status:
-                                            host.status === 'online'
-                                              ? t('common.online')
-                                              : t('common.offline')
-                                        })
-                                      : emptyTitle
-                                  }
-                                  style={{
-                                    width: '40px',
-                                    height: '40px',
-                                    backgroundColor: bgColor,
-                                    border: `2px solid ${borderColor}`,
-                                    borderRadius: 'var(--radius-sm)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: 'var(--font-size-xs)',
-                                    fontWeight: 'var(--font-weight-semibold)',
-                                    color: color,
-                                    cursor: 'pointer',
-                                    transition: 'transform var(--transition-fast), box-shadow var(--transition-fast)'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'scale(1.1)'
-                                    e.currentTarget.style.boxShadow = 'var(--shadow-sm)'
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'scale(1)'
-                                    e.currentTarget.style.boxShadow = 'none'
-                                  }}
-                                  onClick={() => {
-                                    if (host) {
-                                      toast.info(
-                                        t('pages.networkView.deviceInfo', {
-                                          name: host.name,
-                                          ip,
-                                          status:
-                                            host.status === 'online'
-                                              ? t('common.online')
-                                              : t('common.offline')
-                                        }),
-                                        6000
-                                      )
-                                    } else {
-                                      toast.info(t('pages.networkView.ipAvailable', { ip }), 5000)
-                                    }
-                                  }}
-                                >
-                                  {lastOctet}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })()}
-              
-              {/* Statistics */}
-              <div className="card" style={{ marginBlockStart: 'var(--spacing-xl)' }}>
-                <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-md)' }}>
-                  <InfoIcon size={18} style={{ marginInlineEnd: 'var(--spacing-sm)' }} />
-                  {t('pages.networkView.statistics')}
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--spacing-md)' }}>
-                  <p style={{ margin: 0 }}><OnlineIcon size={16} style={{ color: 'var(--success)' }} /> {t('pages.networkView.onlineDevices')}: <strong>{hosts.filter(h => h.status === 'online').length}</strong></p>
-                  <p style={{ margin: 0 }}><OfflineIcon size={16} style={{ color: 'var(--danger)' }} /> {t('pages.networkView.offlineDevices')}: <strong>{hosts.filter(h => h.status === 'offline').length}</strong></p>
-                  <p style={{ margin: 0 }}><DeviceIcon size={16} /> {t('pages.networkView.totalDevices')}: <strong>{hosts.length}</strong></p>
-                  <p style={{ margin: 0 }}>{t('pages.networkView.availableIPs')}: <strong>{filterStaticAvailableIps(displayRange, hosts.map(h => h.ip), hasDhcpRange ? { start: dhcpRangeStart, end: dhcpRangeEnd } : null).length}</strong></p>
-                </div>
-              </div>
-            </>
-          )}
-        </>
-      )}
-
-      {/* Edit Host Modal (single or bulk tags) */}
-      {(editingHostId || (bulkEditingIds && bulkEditingIds.length > 0)) && (
-        <div className="modal-overlay" onClick={handleCancelEdit}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>
-                {bulkEditingIds && bulkEditingIds.length > 0
-                  ? t('pages.networkView.bulkEditTagsTitle', { count: bulkEditingIds.length })
-                  : t('pages.networkView.editHostTags')}
-              </h2>
-              <button onClick={handleCancelEdit} className="btn-ghost btn-icon">
-                <CloseIcon size={20} />
-              </button>
-            </div>
-            
-            {bulkEditingIds && bulkEditingIds.length > 0 ? (
-              <p style={{ marginBlockEnd: 'var(--spacing-md)', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-                {t('pages.networkView.bulkEditTagsHint')}
-              </p>
-            ) : hosts.find(h => h.id === editingHostId) ? (
-              <div style={{ 
-                marginBlockEnd: 'var(--spacing-lg)', 
-                padding: 'var(--spacing-md)',
-                backgroundColor: 'var(--bg-tertiary)',
-                borderRadius: 'var(--radius-md)'
-              }}>
-                <p style={{ margin: 0 }}><strong>{t('common.name')}:</strong> {hosts.find(h => h.id === editingHostId).name}</p>
-                <p style={{ margin: 0 }}><strong>{t('common.ip')}:</strong> <IpAddress as="span">{hosts.find(h => h.id === editingHostId).ip}</IpAddress></p>
-              </div>
-            ) : null}
-            
-            <form onSubmit={handleUpdateHost}>
-              <div style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
-                <label style={{ display: 'block', marginBlockEnd: 'var(--spacing-sm)', fontWeight: 'var(--font-weight-semibold)' }}>{t('common.tags')}:</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-                  {availableTags.map(tag => (
-                    <label key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={editFormData.tagIds.includes(tag.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setEditFormData({ ...editFormData, tagIds: [...editFormData.tagIds, tag.id] })
-                          } else {
-                            setEditFormData({ ...editFormData, tagIds: editFormData.tagIds.filter(id => id !== tag.id) })
-                          }
-                        }}
-                      />
-                      <span className="tag-badge" style={{ backgroundColor: tag.color || 'var(--primary)' }}>{tag.name}</span>
-                    </label>
-                  ))}
-                  {availableTags.length === 0 && (
-                    <p style={{ color: 'var(--text-secondary)' }}>{t('pages.networkView.noTagsAvailable')}</p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="modal-footer">
-                <button type="button" onClick={handleCancelEdit} className="btn-secondary">
-                  {t('common.cancel')}
-                </button>
-                <button type="submit" className="btn-primary">
-                  {t('common.save')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {nv.activeTab === 'ips' && (
+        <IpAddressGrid
+          network={nv.network}
+          range={nv.range}
+          displayRange={nv.displayRange}
+          hosts={nv.hosts}
+          hasDhcpRange={nv.hasDhcpRange}
+          dhcpRangeStart={nv.dhcpRangeStart}
+          dhcpRangeEnd={nv.dhcpRangeEnd}
+          getIPStatus={nv.getIPStatus}
+          toast={nv.toast}
+          t={nv.t}
+        />
       )}
 
       <Modal
-        isOpen={scanResultModal !== null}
-        onClose={() => setScanResultModal(null)}
-        title={scanResultModal?.title}
+        isOpen={nv.scanResultModal !== null}
+        onClose={() => nv.setScanResultModal(null)}
+        title={nv.scanResultModal?.title}
         size="small"
         closeOnOverlay={false}
         showCloseButton={false}
         footer={
-          <button type="button" className="btn-primary" onClick={() => setScanResultModal(null)}>
-            {t('common.ok')}
+          <button type="button" className="btn-primary" onClick={() => nv.setScanResultModal(null)}>
+            {nv.t('common.ok')}
           </button>
         }
       >
-        {scanResultModal && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--spacing-md)'
-            }}
-          >
-            {scanResultModal.paragraphs.map((line, idx) => (
+        {nv.scanResultModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+            {nv.scanResultModal.paragraphs.map((line, idx) => (
               <p
                 key={idx}
                 style={{
@@ -1920,9 +231,9 @@ function NetworkView() {
           </div>
         )}
       </Modal>
-      {confirmDialogSlot}
-      {historyHost && (
-        <HostHistoryModal host={historyHost} onClose={() => setHistoryHost(null)} />
+      {nv.confirmDialogSlot}
+      {nv.historyHost && (
+        <HostHistoryModal host={nv.historyHost} onClose={() => nv.setHistoryHost(null)} />
       )}
     </div>
   )

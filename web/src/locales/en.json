@@ -75,7 +75,8 @@
     "manageTagsShort": "Tags",
     "uptime": "Uptime",
     "uptimeShort": "Uptime",
-    "manageGroups": "Manage Groups"
+    "manageGroups": "Manage Groups",
+    "settings": "Settings"
   },
   "search": {
     "placeholder": "Search devices…",
@@ -97,12 +98,86 @@
     "exportSuccess": "Backup downloaded",
     "importSuccess": "Data imported successfully"
   },
+  "backup": {
+    "runNow": "Backup now",
+    "runSuccess": "Server backup saved",
+    "lastRun": "Last server backup: {{date}}"
+  },
+  "deviceCategories": {
+    "windows": "Windows PC",
+    "server": "Server",
+    "linux": "Linux",
+    "database": "Database",
+    "desktop": "Desktop",
+    "apple": "Apple device",
+    "mobile": "Mobile",
+    "network": "Network gear",
+    "storage": "NAS / storage",
+    "printer": "Printer",
+    "web": "Web device",
+    "iot": "IoT",
+    "unknown": "Unknown"
+  },
   "webhook": {
     "title": "Alert webhook",
     "help": "POST JSON on auto-scan alerts (new/disconnected devices). Works with Home Assistant, Telegram bots, etc.",
     "urlLabel": "Webhook URL",
     "envLocked": "Configured via WEBHOOK_URL environment variable.",
     "saved": "Webhook URL saved"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Version, changelog, notifications, and admin tools",
+    "about": "About",
+    "serverVersion": "Server version",
+    "uiVersion": "UI bundle version",
+    "serverTime": "Server time",
+    "versionOk": "Running v{{version}} — server and UI match.",
+    "versionMismatch": "Version mismatch: server is v{{server}} but this browser loaded v{{ui}}. Rebuild and redeploy the container.",
+    "healthError": "Could not reach the server health endpoint.",
+    "changelog": "Changelog",
+    "notifications": "Auto-scan notifications",
+    "notificationsHelp": "When auto-scan finds new or disconnected devices, a toast appears in the app. Enable browser notifications for alerts when the tab is in the background.",
+    "browserNotifications": "Browser notifications (PWA / background tab)",
+    "notificationsDenied": "Browser notifications are blocked. Allow them in your browser settings for this site.",
+    "notificationsUnsupported": "Browser notifications are not supported in this environment.",
+    "adminTools": "Admin tools",
+    "alertSummary": "Auto-scan on {{network}}: {{new}} new, {{disconnected}} disconnected"
+  },
+  "telegram": {
+    "title": "Telegram alerts",
+    "help": "Direct message when auto-scan finds new or disconnected devices. Create a bot via @BotFather, then send /start to your bot and use @userinfobot or @getidsbot for chat id.",
+    "botTokenLabel": "Bot token",
+    "chatIdLabel": "Chat ID",
+    "tokenPlaceholderSet": "Leave blank to keep current token",
+    "envLocked": "Configured via TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in environment.",
+    "saved": "Telegram settings saved"
+  },
+  "systemHealth": {
+    "title": "System health",
+    "subtitle": "Database, scans, security, and integrations",
+    "openPage": "Open system health dashboard →",
+    "adminOnly": "System health is available to admins only.",
+    "overview": "Overview",
+    "environment": "Environment",
+    "uptime": "Process uptime",
+    "minutes": "min",
+    "checks": "Checks",
+    "database": "Database",
+    "jwt": "JWT secret",
+    "jwtOk": "Configured",
+    "jwtMissing": "Missing or default",
+    "netRaw": "CAP_NET_RAW (ping scans)",
+    "netRawYes": "Available",
+    "netRawNo": "Not available",
+    "netRawUnknown": "Unknown (non-Linux?)",
+    "data": "Data summary",
+    "scans": "Last network scans",
+    "autoScanNetworks": "{{count}} network(s) with auto-scan enabled",
+    "noScans": "No scans recorded yet",
+    "integrations": "Alert integrations",
+    "webhook": "Webhook",
+    "telegram": "Telegram"
   },
   "history": {
     "title": "Status history — {{name}}",
@@ -190,7 +265,13 @@
       "avgUptime": "Average uptime",
       "trackedHosts": "Tracked devices",
       "uptime24h": "24h uptime",
-      "noHosts": "No devices yet"
+      "noHosts": "No devices yet",
+      "allNetworks": "All networks",
+      "allTags": "All tags",
+      "offlineOnly": "Offline only",
+      "sortWorst": "Worst uptime first",
+      "sortBest": "Best uptime first",
+      "sortName": "Sort by name"
     },
     "networksList": {
       "title": "Manage Networks",

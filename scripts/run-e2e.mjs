@@ -48,6 +48,7 @@ try {
   try {
     const { execSync } = await import('node:child_process')
     execSync(`fuser -k ${PORT}/tcp 2>/dev/null || true`, { stdio: 'ignore' })
+    await new Promise((r) => setTimeout(r, 1000))
   } catch {
     /* optional */
   }

@@ -19,6 +19,12 @@ A modern dashboard for managing and monitoring devices on your network with SQLi
 - 📈 Detailed network view with device grouping
 - 📊 Comprehensive statistics (online/offline devices)
 - 🎯 Modern and responsive user interface
+- 🔎 Global search across hosts and networks
+- 📈 Uptime dashboard with per-host history
+- 🔔 Auto-scan alerts (in-app toasts, optional browser notifications, webhook)
+- 📤 Export/import JSON and scheduled server backups
+- 📱 PWA install support
+- 🏭 MAC vendor (OUI) lookup and device classification on scan
 
 ---
 
@@ -33,6 +39,7 @@ A modern dashboard for managing and monitoring devices on your network with SQLi
 - **Tags Management** - Create and manage tags
 - **Change Admin Password** - Change administrator password
 - **Change Visitor Password** - Change visitor password
+- **Settings** - Version, changelog, notifications, export/import, webhook (admin)
 
 ---
 
@@ -77,6 +84,44 @@ docker compose up --build -d
 ```
 
 The application will be available at: http://your-ip:3001 or http://your-domain:3001
+
+### Upgrade without losing data
+
+```bash
+docker compose down
+docker compose up --build -d
+```
+
+Do **not** use `docker compose down -v` unless you intend to wipe the database volume.
+
+Check the running version in the app: **Settings** (user menu) or `GET /api/health` → `{ "version": "…" }`.
+
+---
+
+## ⚙️ Operations (production)
+
+| Feature | How to configure |
+|--------|-------------------|
+| **JWT signing** | Required in production: `JWT_SECRET` in `.env` (`openssl rand -base64 48`) |
+| **Webhook alerts** | Admin → **Settings** → Webhook URL, or `WEBHOOK_URL` in `.env` (env wins) |
+| **Scheduled backup** | `BACKUP_INTERVAL_HOURS=24` (0 = off), `BACKUP_RETENTION_COUNT=7`, optional `BACKUP_DIR` |
+| **Manual backup** | Admin → **Settings** → Export / “Backup now” |
+| **Uptime tracking** | Automatic on scan; view **Uptime** in the nav bar |
+| **Auto-scan notifications** | Toasts in the UI; optional browser notifications in **Settings** |
+| **Reverse proxy** | Set `TRUST_PROXY=1` when behind nginx/Traefik |
+
+Webhook payload example (`event`: `auto_scan_alert`):
+
+```json
+{
+  "event": "auto_scan_alert",
+  "networkId": 1,
+  "networkName": "LAN",
+  "newDevicesCount": 2,
+  "disconnectedCount": 1,
+  "timestamp": "2026-05-21T12:00:00.000Z"
+}
+```
 
 ---
 

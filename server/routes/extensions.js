@@ -4,6 +4,13 @@ import { requireAdmin, requireVisitor } from '../middleware.js';
 import { jsonInternalError } from '../errorHandler.js';
 import { getScanProgress } from '../scanProgress.js';
 import { isIPInNetwork } from '../networkUtils.js';
+import { listBackups, runBackup } from '../backupService.js';
+import { getAlertsSince } from '../alertService.js';
+import { getSystemHealth } from '../systemHealthService.js';
+import {
+  getTelegramSettings,
+  saveTelegramSettings
+} from '../telegramService.js';
 
 const router = Router();
 
@@ -18,7 +25,9 @@ router.get('/search', requireVisitor, (req, res) => {
     const matches = hosts.filter((h) => {
       const name = (h.name || '').toLowerCase();
       const ip = (h.ip || '').toLowerCase();
-      return name.includes(q) || ip.includes(q);
+      const vendor = (h.vendor || '').toLowerCase();
+      const mac = (h.mac_address || '').toLowerCase();
+      return name.includes(q) || ip.includes(q) || vendor.includes(q) || mac.includes(q);
     });
     res.json(
       matches.slice(0, 25).map((h) => ({
@@ -26,6 +35,8 @@ router.get('/search', requireVisitor, (req, res) => {
         name: h.name,
         ip: h.ip,
         status: h.status,
+        vendor: h.vendor || null,
+        device_category: h.device_category || null,
         networkId: networks.find((n) => isIPInNetwork(h.ip, n.network_id, n.subnet))?.id ?? null
       }))
     );
@@ -94,11 +105,68 @@ router.put('/settings/webhook', requireAdmin, (req, res) => {
   }
 });
 
+router.get('/settings/telegram', requireAdmin, (req, res) => {
+  try {
+    res.json(getTelegramSettings());
+  } catch (error) {
+    res.status(500).json(jsonInternalError(error));
+  }
+});
+
+router.put('/settings/telegram', requireAdmin, (req, res) => {
+  try {
+    if (process.env.TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_CHAT_ID) {
+      return res.status(400).json({ error: 'Telegram is configured via environment variables.' });
+    }
+    const result = saveTelegramSettings({
+      botToken: req.body?.botToken,
+      chatId: req.body?.chatId
+    });
+    res.json({ ...getTelegramSettings(), saved: true, configured: result.configured });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.get('/system-health', requireAdmin, (req, res) => {
+  try {
+    res.json(getSystemHealth());
+  } catch (error) {
+    res.status(500).json(jsonInternalError(error));
+  }
+});
+
 router.get('/networks/:id/scan/progress', requireVisitor, (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const progress = getScanProgress(id);
     res.json(progress || { status: 'idle' });
+  } catch (error) {
+    res.status(500).json(jsonInternalError(error));
+  }
+});
+
+router.get('/backups', requireAdmin, (req, res) => {
+  try {
+    res.json({ backups: listBackups() });
+  } catch (error) {
+    res.status(500).json(jsonInternalError(error));
+  }
+});
+
+router.get('/alerts', requireVisitor, (req, res) => {
+  try {
+    const since = parseInt(String(req.query.since || '0'), 10);
+    res.json(getAlertsSince(Number.isFinite(since) ? since : 0));
+  } catch (error) {
+    res.status(500).json(jsonInternalError(error));
+  }
+});
+
+router.post('/backups/run', requireAdmin, (req, res) => {
+  try {
+    const result = runBackup();
+    res.json({ success: true, ...result });
   } catch (error) {
     res.status(500).json(jsonInternalError(error));
   }

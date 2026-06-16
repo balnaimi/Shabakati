@@ -75,7 +75,8 @@
     "manageTagsShort": "وسوم",
     "uptime": "التشغيل",
     "uptimeShort": "تشغيل",
-    "manageGroups": "إدارة المجموعات"
+    "manageGroups": "إدارة المجموعات",
+    "settings": "الإعدادات"
   },
   "search": {
     "placeholder": "ابحث عن جهاز…",
@@ -97,12 +98,86 @@
     "exportSuccess": "تم تنزيل النسخة الاحتياطية",
     "importSuccess": "تم الاستيراد بنجاح"
   },
+  "backup": {
+    "runNow": "نسخ احتياطي الآن",
+    "runSuccess": "تم حفظ النسخة على السيرفر",
+    "lastRun": "آخر نسخة على السيرفر: {{date}}"
+  },
+  "deviceCategories": {
+    "windows": "جهاز Windows",
+    "server": "سيرفر",
+    "linux": "Linux",
+    "database": "قاعدة بيانات",
+    "desktop": "سطح مكتب",
+    "apple": "جهاز Apple",
+    "mobile": "جوال",
+    "network": "معدات شبكة",
+    "storage": "تخزين / NAS",
+    "printer": "طابعة",
+    "web": "جهاز ويب",
+    "iot": "IoT",
+    "unknown": "غير معروف"
+  },
   "webhook": {
     "title": "Webhook للتنبيهات",
     "help": "يرسل JSON عند تنبيهات البحث التلقائي (أجهزة جديدة/منقطعة). يعمل مع Home Assistant وTelegram وغيرها.",
     "urlLabel": "رابط Webhook",
     "envLocked": "مُعدّ عبر متغير WEBHOOK_URL في البيئة.",
     "saved": "تم حفظ الرابط"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "subtitle": "الإصدار، سجل التغييرات، التنبيهات، وأدوات المسؤول",
+    "about": "حول التطبيق",
+    "serverVersion": "إصدار السيرفر",
+    "uiVersion": "إصدار واجهة المتصفح",
+    "serverTime": "وقت السيرفر",
+    "versionOk": "يعمل v{{version}} — السيرفر والواجهة متطابقان.",
+    "versionMismatch": "اختلاف إصدار: السيرفر v{{server}} بينما المتصفح حمّل v{{ui}}. أعد بناء الحاوية ونشرها.",
+    "healthError": "تعذّر الوصول إلى نقطة صحة السيرفر.",
+    "changelog": "سجل التغييرات",
+    "notifications": "تنبيهات المسح التلقائي",
+    "notificationsHelp": "عند اكتشاف أجهزة جديدة أو منقطعة في المسح التلقائي، يظهر تنبيه داخل التطبيق. فعّل تنبيهات المتصفح للحصول على إشعار عندما تكون التبويبة في الخلفية.",
+    "browserNotifications": "تنبيهات المتصفح (PWA / تبويبة بالخلفية)",
+    "notificationsDenied": "تنبيهات المتصفح محظورة. اسمح بها من إعدادات المتصفح لهذا الموقع.",
+    "notificationsUnsupported": "تنبيهات المتصفح غير مدعومة في هذا البيئة.",
+    "adminTools": "أدوات المسؤول",
+    "alertSummary": "مسح تلقائي على {{network}}: {{new}} جديد، {{disconnected}} منقطع"
+  },
+  "telegram": {
+    "title": "تنبيهات Telegram",
+    "help": "رسالة مباشرة عند اكتشاف أجهزة جديدة أو منقطعة في المسح التلقائي. أنشئ bot عبر @BotFather ثم أرسل /start واستخدم chat id من @userinfobot.",
+    "botTokenLabel": "Bot token",
+    "chatIdLabel": "Chat ID",
+    "tokenPlaceholderSet": "اتركه فارغاً للإبقاء على الرمز الحالي",
+    "envLocked": "مُعدّ عبر TELEGRAM_BOT_TOKEN و TELEGRAM_CHAT_ID في البيئة.",
+    "saved": "تم حفظ إعدادات Telegram"
+  },
+  "systemHealth": {
+    "title": "صحة النظام",
+    "subtitle": "قاعدة البيانات، المسح، الأمان، والتكاملات",
+    "openPage": "فتح لوحة صحة النظام ←",
+    "adminOnly": "صحة النظام متاحة للمسؤول فقط.",
+    "overview": "نظرة عامة",
+    "environment": "البيئة",
+    "uptime": "مدة تشغيل العملية",
+    "minutes": "د",
+    "checks": "الفحوصات",
+    "database": "قاعدة البيانات",
+    "jwt": "JWT secret",
+    "jwtOk": "مُعدّ",
+    "jwtMissing": "غير مُعدّ أو افتراضي",
+    "netRaw": "CAP_NET_RAW (مسح ping)",
+    "netRawYes": "متاح",
+    "netRawNo": "غير متاح",
+    "netRawUnknown": "غير معروف",
+    "data": "ملخص البيانات",
+    "scans": "آخر مسح للشبكات",
+    "autoScanNetworks": "{{count}} شبكة بمسح تلقائي مفعّل",
+    "noScans": "لا يوجد مسح مسجّل بعد",
+    "integrations": "تكاملات التنبيه",
+    "webhook": "Webhook",
+    "telegram": "Telegram"
   },
   "history": {
     "title": "سجل الحالة — {{name}}",
@@ -190,7 +265,13 @@
       "avgUptime": "متوسط التشغيل",
       "trackedHosts": "الأجهزة المتتبعة",
       "uptime24h": "تشغيل 24 س",
-      "noHosts": "لا توجد أجهزة بعد"
+      "noHosts": "لا توجد أجهزة بعد",
+      "allNetworks": "كل الشبكات",
+      "allTags": "كل الوسوم",
+      "offlineOnly": "غير المتصل فقط",
+      "sortWorst": "أسوأ uptime أولاً",
+      "sortBest": "أفضل uptime أولاً",
+      "sortName": "ترتيب بالاسم"
     },
     "networksList": {
       "title": "إدارة الشبكات",

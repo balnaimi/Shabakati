@@ -1,0 +1,70 @@
+[
+  {
+    "version": "1.8.3",
+    "date": "2026-05-21",
+    "en": [
+      "Updated npm dependencies to latest stable patch/minor releases",
+      "React 18, Vite 7, Express 4 — no major-version breaking changes"
+    ],
+    "ar": [
+      "تحديث حزم npm إلى أحدث إصدارات patch/minor المستقرة",
+      "React 18 و Vite 7 و Express 4 — بدون قفزات major كاسرة"
+    ]
+  },
+  {
+    "version": "1.8.0",
+    "date": "2026-05-21",
+    "en": [
+      "Refactored NetworkView and server routes for easier maintenance",
+      "Vendor-based host names, port classification, uptime filters",
+      "Telegram bot alerts and system health dashboard"
+    ],
+    "ar": [
+      "إعادة هيكلة NetworkView ومسارات السيرفر لصيانة أسهل",
+      "أسماء من المصنّع، تصنيف بالمنافذ، فلاتر uptime",
+      "تنبيهات Telegram ولوحة صحة النظام"
+    ]
+  },
+  {
+    "version": "1.7.0",
+    "date": "2026-05-21",
+    "en": [
+      "Settings page with live server version and changelog",
+      "In-app and browser notifications for auto-scan alerts",
+      "Updated documentation (uptime, webhook, backups, MAC/OUI)"
+    ],
+    "ar": [
+      "صفحة إعدادات تعرض إصدار السيرفر وسجل التغييرات",
+      "تنبيهات داخل التطبيق والمتصفح لنتائج المسح التلقائي",
+      "تحديث التوثيق (uptime، webhook، النسخ الاحتياطي، MAC/OUI)"
+    ]
+  },
+  {
+    "version": "1.6.0",
+    "date": "2026-05-21",
+    "en": [
+      "ESLint in CI to catch frontend bugs before deploy",
+      "Scheduled JSON backups on the server",
+      "MAC/OUI vendor lookup and device classification on scan"
+    ],
+    "ar": [
+      "فحص ESLint في CI لاكتشاف أخطاء الواجهة قبل النشر",
+      "نسخ احتياطي JSON مجدول على السيرفر",
+      "تعرف على المصنّع (OUI) وتصنيف الأجهزة أثناء المسح"
+    ]
+  },
+  {
+    "version": "1.5.0",
+    "date": "2026-05-21",
+    "en": [
+      "Global search, uptime dashboard, export/import",
+      "Webhook alerts, scan progress, host history",
+      "Onboarding wizard and PWA install support"
+    ],
+    "ar": [
+      "بحث عالمي، لوحة uptime، تصدير/استيراد",
+      "Webhook للتنبيهات، تقدم المسح، سجل حالة المضيف",
+      "معالج أول استخدام ودعم PWA"
+    ]
+  }
+]

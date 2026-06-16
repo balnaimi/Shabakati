@@ -26,6 +26,27 @@ const MIGRATIONS = [
         )
       `)
     }
+  },
+  {
+    version: 3,
+    name: 'host_mac_vendor_category',
+    up(db) {
+      try {
+        db.exec('ALTER TABLE hosts ADD COLUMN mac_address TEXT')
+      } catch {
+        /* exists */
+      }
+      try {
+        db.exec('ALTER TABLE hosts ADD COLUMN vendor TEXT')
+      } catch {
+        /* exists */
+      }
+      try {
+        db.exec('ALTER TABLE hosts ADD COLUMN device_category TEXT')
+      } catch {
+        /* exists */
+      }
+    }
   }
 ]
 

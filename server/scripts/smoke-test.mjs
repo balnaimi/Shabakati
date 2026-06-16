@@ -405,6 +405,15 @@ async function main() {
     ok('GET /api/uptime');
     await req('GET', '/api/metrics', { token: visitorToken, expectStatus: 200 });
     ok('GET /api/metrics');
+    const { data: health } = await req('GET', '/api/health', { expectStatus: 200 });
+    if (!health?.version) throw new Error('health missing version');
+    ok('GET /api/health includes version');
+    await req('GET', '/api/backups', { expectStatus: 401 });
+    ok('GET /api/backups without admin → 401');
+    await req('GET', '/api/backups', { token: adminToken, expectStatus: 200 });
+    ok('GET /api/backups (admin)');
+    await req('POST', '/api/backups/run', { token: adminToken, expectStatus: 200 });
+    ok('POST /api/backups/run (admin)');
     if (exportData?.hosts?.length) {
       await req('POST', '/api/import', {
         token: adminToken,
