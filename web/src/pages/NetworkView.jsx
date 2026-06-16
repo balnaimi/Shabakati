@@ -12,6 +12,7 @@ import IpAddress from '../components/IpAddress'
 import EmptyState from '../components/EmptyState'
 import ScanProgressBar from '../components/ScanProgressBar'
 import HostHistoryModal from '../components/HostHistoryModal'
+import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
 import { useConfirmDialog } from '../hooks/useConfirmDialog'
 import {
