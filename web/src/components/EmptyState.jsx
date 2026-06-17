@@ -35,14 +35,14 @@ function EmptyState({
       )}
       
       {(action || secondaryAction) && (
-        <div style={{ display: 'flex', gap: 'var(--spacing-sm)', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div className="empty-state-actions">
           {action && (
-            <button onClick={action} className="btn-primary">
+            <button type="button" onClick={action} className="btn-primary">
               {actionLabel}
             </button>
           )}
           {secondaryAction && (
-            <button onClick={secondaryAction} className="btn-secondary">
+            <button type="button" onClick={secondaryAction} className="btn-secondary">
               {secondaryActionLabel}
             </button>
           )}

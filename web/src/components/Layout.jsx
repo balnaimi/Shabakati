@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
+import { cn } from '../utils/cn'
 import AuthButton from './AuthButton'
 import ThemeToggle from './ThemeToggle'
 import LanguageToggle from './LanguageToggle'
@@ -59,9 +60,10 @@ function Layout({ children }) {
                     key={link.path}
                     type="button"
                     onClick={() => navigate(link.path)}
-                    className={`nav-link ${active ? 'active' : ''}`}
+                    className={cn('nav-link', active && 'active')}
                     title={link.label}
                     aria-label={link.label}
+                    aria-current={active ? 'page' : undefined}
                   >
                     <Icon size={18} aria-hidden />
                     <span className="nav-link-label-full">{link.label}</span>

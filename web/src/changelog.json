@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.9.3",
+    "date": "2026-05-21",
+    "en": [
+      "Professional UI polish: auth pages, tables, nav a11y, design tokens",
+      "Project skill shabakati-ui for consistent front-end work"
+    ],
+    "ar": [
+      "تحسين احترافي للواجهة: تسجيل الدخول، الجداول، إمكانية الوصول",
+      "skill مشروع shabakati-ui لتوحيد عمل الواجهة"
+    ]
+  },
+  {
     "version": "1.9.2",
     "date": "2026-05-21",
     "en": [

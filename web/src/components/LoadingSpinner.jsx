@@ -31,17 +31,7 @@ function LoadingSpinner({ text, size = 'medium', fullPage = false }) {
   
   if (fullPage) {
     return (
-      <div 
-        style={{
-          position: 'fixed',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'var(--bg-secondary)',
-          zIndex: 'var(--z-modal)'
-        }}
-      >
+      <div className="loading-overlay">
         {content}
       </div>
     )
