@@ -6,6 +6,7 @@ import LoadingSpinner from './LoadingSpinner'
 import IpAddress from './IpAddress'
 import { formatClientError } from '../utils/formatClientError'
 import { formatDateTime } from '../utils/dateFormat'
+import HostTags from './HostTags'
 
 function HostHistoryModal({ host, onClose }) {
   const { t, language } = useTranslation()
@@ -38,14 +39,15 @@ function HostHistoryModal({ host, onClose }) {
       onClose={onClose}
       title={t('history.title', { name: host.name })}
     >
-      <p style={{ margin: '0 0 var(--spacing-md)', color: 'var(--text-secondary)' }}>
+      <div style={{ margin: '0 0 var(--spacing-md)', color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
         <IpAddress>{host.ip}</IpAddress>
         {host.uptimePercentage != null && (
-          <span style={{ marginInlineStart: 'var(--spacing-md)' }}>
+          <span>
             {t('history.uptime24h')}: <strong>{host.uptimePercentage.toFixed(1)}%</strong>
           </span>
         )}
-      </p>
+        <HostTags tags={host.tags} compact />
+      </div>
       {loading && <LoadingSpinner />}
       {error && <div className="error-message"><span>{error}</span></div>}
       {!loading && !error && history.length === 0 && (
@@ -53,7 +55,7 @@ function HostHistoryModal({ host, onClose }) {
       )}
       {!loading && history.length > 0 && (
         <div className="table-container" style={{ maxHeight: '50vh', overflow: 'auto' }}>
-          <table>
+          <table className="table-compact">
             <thead>
               <tr>
                 <th>{t('common.status')}</th>

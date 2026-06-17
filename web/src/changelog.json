@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.9.0",
+    "date": "2026-05-21",
+    "en": [
+      "Tags visible on all device views (uptime, discovery, favorites, history)",
+      "Compact device tables and lists — less scrolling with many hosts"
+    ],
+    "ar": [
+      "عرض الوسوم في كل شاشات الأجهزة (الحالة، الاكتشاف، المفضلة، السجل)",
+      "جداول وقوائم أجهزة مضغوطة — تمرير أقل مع عدد كبير من الأجهزة"
+    ]
+  },
+  {
     "version": "1.8.5",
     "date": "2026-05-21",
     "en": [

@@ -173,15 +173,7 @@ export function formatDeviceIntel(host, t) {
   if (!parts.length) return null
   return React.createElement(
     'span',
-    {
-      className: 'device-intel-meta',
-      style: {
-        fontSize: 'var(--font-size-xs)',
-        color: 'var(--text-tertiary)',
-        display: 'block',
-        marginBlockStart: '2px'
-      }
-    },
+    { className: 'device-intel-meta' },
     parts.join(' · ')
   )
 }

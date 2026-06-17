@@ -1,5 +1,4 @@
 import IpAddress from '../../components/IpAddress'
-import { getDescription } from '../../utils/descriptionUtils'
 import { getHostDisplayName } from '../../utils/hostDisplay'
 import {
   OnlineIcon,
@@ -13,6 +12,7 @@ import {
 import { formatDiscoveryCell, formatDeviceIntel } from './utils'
 import { HOST_PAGE_SIZE } from './constants'
 import { formatDateTime } from '../../utils/dateFormat'
+import DeviceSummaryCell from '../../components/DeviceSummaryCell'
 
 export default function HostsTableSection({
   hosts,
@@ -169,11 +169,11 @@ export default function HostsTableSection({
           )}
 
           <div className="table-container">
-            <table>
+            <table className="table-compact">
               <thead>
                 <tr>
                   {userType !== 'visitor' && (
-                    <th style={{ width: '40px' }}>
+                    <th style={{ width: '32px' }}>
                       <input
                         type="checkbox"
                         checked={
@@ -195,10 +195,7 @@ export default function HostsTableSection({
                     {t('common.status')} {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th>{t('pages.networkView.uptime24h')}</th>
-                  <th>{t('pages.networkView.discoveryMethod')}</th>
-                  <th>{t('common.description')}</th>
-                  <th>{t('common.tags')}</th>
-                  <th onClick={() => onSortChange('lastChecked')}>
+                  <th className="col-hide-md" onClick={() => onSortChange('lastChecked')}>
                     {t('pages.networksList.lastScanned')} {sortBy === 'lastChecked' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th>{t('common.actions')}</th>
@@ -217,81 +214,46 @@ export default function HostsTableSection({
                       </td>
                     )}
                     <td>
-                      <strong>{getHostDisplayName(host)}</strong>
-                      {formatDeviceIntel(host, t)}
+                      <DeviceSummaryCell host={host} language={language} t={t} />
                     </td>
                     <td><IpAddress>{host.ip}</IpAddress></td>
                     <td>
-                      <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
+                      <span className={`status-badge status-badge-compact ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
                         {host.status === 'online' ? (
-                          <><OnlineIcon size={12} /> {t('common.online')}</>
+                          <><OnlineIcon size={11} /> {t('common.online')}</>
                         ) : (
-                          <><OfflineIcon size={12} /> {t('common.offline')}</>
+                          <><OfflineIcon size={11} /> {t('common.offline')}</>
                         )}
                       </span>
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: 'var(--font-size-xs)' }}>
                       {(host.uptimePercentage ?? 100).toFixed(1)}%
                     </td>
-                    <td style={{ fontSize: 'var(--font-size-sm)', whiteSpace: 'nowrap' }}>
-                      {formatDiscoveryCell(host, t)}
-                    </td>
-                    <td>
-                      {(() => {
-                        const desc = getDescription(host.description, language)
-                        return desc ? (
-                          <span
-                            style={{
-                              whiteSpace: 'normal',
-                              wordBreak: 'break-word',
-                              lineHeight: 1.45
-                            }}
-                          >
-                            {desc}
-                          </span>
-                        ) : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)
-                      })()}
-                    </td>
-                    <td>
-                      {host.tags && Array.isArray(host.tags) && host.tags.length > 0 ? (
-                        <div className="tags-inline">
-                          {host.tags.map(tag => (
-                            <span
-                              key={typeof tag === 'object' ? tag.id : tag}
-                              className="tag-badge"
-                              style={{ backgroundColor: typeof tag === 'object' ? (tag.color || 'var(--primary)') : 'var(--primary)' }}
-                            >
-                              {typeof tag === 'object' ? tag.name : tag}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)}
-                    </td>
-                    <td style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
+                    <td className="col-hide-md" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                       {host.lastChecked || host.last_checked ? formatDateTime(host.lastChecked || host.last_checked, language) : (<span style={{ color: 'var(--text-tertiary)' }}>-</span>)}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 'var(--spacing-xs)', flexWrap: 'wrap' }}>
-                        <button type="button" onClick={() => onViewHistory(host)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.viewHistory')}>
+                      <div className="table-actions">
+                        <button type="button" onClick={() => onViewHistory(host)} className="btn-secondary btn-icon-small" title={t('pages.networkView.viewHistory')}>
                           <ChartIcon size={14} />
                         </button>
                         {userType !== 'visitor' && (
                           <>
                           {isHostFavorite(host.id) ? (
-                            <button onClick={() => onRemoveFromFavorites(host.id)} className="btn-warning btn-small btn-icon" title={t('pages.networkView.removeFromFavorites')}>
+                            <button onClick={() => onRemoveFromFavorites(host.id)} className="btn-warning btn-icon-small" title={t('pages.networkView.removeFromFavorites')}>
                               <StarIcon size={14} filled />
                             </button>
                           ) : (
-                            <button onClick={() => onAddToFavorites(host.id)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.addToFavorites')}>
+                            <button onClick={() => onAddToFavorites(host.id)} className="btn-secondary btn-icon-small" title={t('pages.networkView.addToFavorites')}>
                               <StarIcon size={14} />
                             </button>
                           )}
                           {isAdmin && (
                             <>
-                              <button onClick={() => onEditHost(host)} className="btn-secondary btn-small btn-icon" title={t('common.edit')}>
+                              <button onClick={() => onEditHost(host)} className="btn-secondary btn-icon-small" title={t('common.edit')}>
                                 <EditIcon size={14} />
                               </button>
-                              <button onClick={() => onDeleteHost(host.id)} className="btn-danger btn-small btn-icon" title={t('common.delete')}>
+                              <button onClick={() => onDeleteHost(host.id)} className="btn-danger btn-icon-small" title={t('common.delete')}>
                                 <DeleteIcon size={14} />
                               </button>
                             </>

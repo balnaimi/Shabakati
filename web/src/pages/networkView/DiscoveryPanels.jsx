@@ -1,6 +1,3 @@
-import IpAddress from '../../components/IpAddress'
-import { getDescription } from '../../utils/descriptionUtils'
-import { getHostDisplayName } from '../../utils/hostDisplay'
 import {
   OnlineIcon,
   OfflineIcon,
@@ -9,7 +6,7 @@ import {
   EditIcon,
   CheckIcon
 } from '../../components/Icons'
-import { formatDeviceIntel } from './utils'
+import DiscoveryDeviceList from '../../components/DiscoveryDeviceList'
 import { formatDateTime } from '../../utils/dateFormat'
 
 export default function DiscoveryPanels({
@@ -30,41 +27,43 @@ export default function DiscoveryPanels({
   language,
   t
 }) {
+  const panelHeaderBtnStyle = {
+    flex: '1 1 220px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--spacing-sm)',
+    justifyContent: 'start',
+    fontWeight: 'var(--font-weight-semibold)',
+    fontSize: 'var(--font-size-base)',
+    padding: 'var(--spacing-xs) var(--spacing-sm)',
+    borderRadius: 'var(--radius-md)'
+  }
+
+  const listScrollStyle = {
+    marginBlockStart: 'var(--spacing-sm)',
+    maxHeight: 'min(55vh, 440px)',
+    overflowY: 'auto',
+    paddingInlineEnd: 'var(--spacing-xs)'
+  }
+
   return (
     <>
       {visibleNewHosts.length > 0 && (
-        <div style={{
-          marginBlockEnd: 'var(--spacing-xl)',
-          padding: 'var(--spacing-lg)',
-          backgroundColor: 'var(--success-light)',
-          border: '1px solid var(--success)',
-          borderRadius: 'var(--radius-lg)'
-        }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)', justifyContent: 'space-between' }}>
+        <div className="discovery-panel discovery-panel-success">
+          <div className="discovery-panel-header">
             <button
               type="button"
               className="btn-ghost"
               onClick={onToggleManualNewHosts}
               aria-expanded={manualNewHostsExpanded}
               aria-label={manualNewHostsExpanded ? t('pages.networkView.collapseDeviceList') : t('pages.networkView.expandDeviceList')}
-              style={{
-                flex: '1 1 220px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--spacing-sm)',
-                justifyContent: 'start',
-                fontWeight: 'var(--font-weight-semibold)',
-                fontSize: 'var(--font-size-lg)',
-                color: 'var(--success)',
-                padding: 'var(--spacing-xs) var(--spacing-sm)',
-                borderRadius: 'var(--radius-md)'
-              }}
+              style={{ ...panelHeaderBtnStyle, color: 'var(--success)' }}
             >
-              <OnlineIcon size={20} />
+              <OnlineIcon size={18} />
               <span style={{ flex: 1, textAlign: 'start' }}>
                 {t('pages.networkView.newDevicesManual')} ({visibleNewHosts.length})
               </span>
-              {manualNewHostsExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
+              {manualNewHostsExpanded ? <ChevronUpIcon size={20} /> : <ChevronDownIcon size={20} />}
             </button>
             <button type="button" onClick={onHideAllNewHosts} className="btn-success btn-small">
               <CheckIcon size={14} />
@@ -73,202 +72,97 @@ export default function DiscoveryPanels({
           </div>
 
           {manualNewHostsExpanded && (
-            <div
-              style={{
-                marginBlockStart: 'var(--spacing-md)',
-                maxHeight: 'min(55vh, 440px)',
-                overflowY: 'auto',
-                paddingInlineEnd: 'var(--spacing-xs)'
-              }}
-            >
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
-                {visibleNewHosts.map(host => (
-                  <div key={host.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)', fontSize: 'var(--font-size-base)' }}>{getHostDisplayName(host)}</h3>
-                        {formatDeviceIntel(host, t)}
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{host.ip}</IpAddress></p>
-                      </div>
-                      <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
-                        {host.status === 'online' ? t('common.online') : t('common.offline')}
-                      </span>
-                    </div>
-
-                    {getDescription(host.description, language) && (
-                      <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                        {getDescription(host.description, language)}
-                      </p>
-                    )}
-
-                    <div style={{ display: 'flex', gap: 'var(--spacing-xs)', marginBlockStart: 'var(--spacing-sm)' }}>
-                      {isAdmin && (
-                        <>
-                          <button type="button" onClick={() => onEditHost(host)} className="btn-primary btn-small" style={{ flex: 1 }}>
-                            <EditIcon size={14} />
-                            <span>{t('common.edit')}</span>
-                          </button>
-                          <button type="button" onClick={() => onHideNewHost(host.id)} className="btn-secondary btn-small btn-icon" title={t('pages.networkView.viewed')}>
-                            <CheckIcon size={14} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div style={listScrollStyle}>
+              <DiscoveryDeviceList
+                items={visibleNewHosts}
+                t={t}
+                renderActions={(_, host) => isAdmin ? (
+                  <>
+                    <button type="button" onClick={() => onEditHost(host)} className="btn-primary btn-icon-small" title={t('common.edit')}>
+                      <EditIcon size={14} />
+                    </button>
+                    <button type="button" onClick={() => onHideNewHost(host.id)} className="btn-secondary btn-icon-small" title={t('pages.networkView.viewed')}>
+                      <CheckIcon size={14} />
+                    </button>
+                  </>
+                ) : null}
+              />
             </div>
           )}
         </div>
       )}
 
       {autoScanResults.newDevices.length > 0 && (
-        <div style={{
-          marginBlockEnd: 'var(--spacing-xl)',
-          padding: 'var(--spacing-lg)',
-          backgroundColor: 'var(--success-light)',
-          border: '1px solid var(--success)',
-          borderRadius: 'var(--radius-lg)'
-        }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)', justifyContent: 'space-between' }}>
+        <div className="discovery-panel discovery-panel-success">
+          <div className="discovery-panel-header">
             <button
               type="button"
               className="btn-ghost"
               onClick={onToggleAutoNewDevices}
               aria-expanded={autoNewDevicesExpanded}
               aria-label={autoNewDevicesExpanded ? t('pages.networkView.collapseDeviceList') : t('pages.networkView.expandDeviceList')}
-              style={{
-                flex: '1 1 220px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--spacing-sm)',
-                justifyContent: 'start',
-                fontWeight: 'var(--font-weight-semibold)',
-                fontSize: 'var(--font-size-lg)',
-                color: 'var(--success)',
-                padding: 'var(--spacing-xs) var(--spacing-sm)',
-                borderRadius: 'var(--radius-md)'
-              }}
+              style={{ ...panelHeaderBtnStyle, color: 'var(--success)' }}
             >
-              <OnlineIcon size={20} />
+              <OnlineIcon size={18} />
               <span style={{ flex: 1, textAlign: 'start' }}>
                 {t('pages.networkView.newDevicesAutoScan')} ({autoScanResults.newDevices.length})
               </span>
-              {autoNewDevicesExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
+              {autoNewDevicesExpanded ? <ChevronUpIcon size={20} /> : <ChevronDownIcon size={20} />}
             </button>
             {isAdmin && (
-              <button
-                type="button"
-                onClick={onClearAutoNewDevices}
-                className="btn-success btn-small"
-              >
+              <button type="button" onClick={onClearAutoNewDevices} className="btn-success btn-small">
                 {t('pages.networkView.clearList')}
               </button>
             )}
           </div>
 
           {autoNewDevicesExpanded && (
-            <div
-              style={{
-                marginBlockStart: 'var(--spacing-md)',
-                maxHeight: 'min(55vh, 440px)',
-                overflowY: 'auto',
-                paddingInlineEnd: 'var(--spacing-xs)'
-              }}
-            >
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
-                {autoScanResults.newDevices.map(result => (
-                  <div key={result.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host ? getHostDisplayName(result.host) : t('common.unknown')}</h3>
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{result.host?.ip || t('common.unknown')}</IpAddress></p>
-                        <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                          {formatDateTime(result.discovered_at, language)}
-                        </p>
-                      </div>
-                      <span className={`status-badge ${result.host?.status === 'online' ? 'status-online' : 'status-offline'}`}>
-                        {result.host?.status === 'online' ? t('common.online') : t('common.offline')}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div style={listScrollStyle}>
+              <DiscoveryDeviceList
+                items={autoScanResults.newDevices}
+                t={t}
+                renderExtra={(item) => item.discovered_at ? (
+                  <span className="device-list-date">{formatDateTime(item.discovered_at, language)}</span>
+                ) : null}
+              />
             </div>
           )}
         </div>
       )}
 
       {autoScanResults.disconnected.length > 0 && (
-        <div style={{
-          marginBlockEnd: 'var(--spacing-xl)',
-          padding: 'var(--spacing-lg)',
-          backgroundColor: 'var(--danger-light)',
-          border: '1px solid var(--danger)',
-          borderRadius: 'var(--radius-lg)'
-        }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-sm)', justifyContent: 'space-between' }}>
+        <div className="discovery-panel discovery-panel-danger">
+          <div className="discovery-panel-header">
             <button
               type="button"
               className="btn-ghost"
               onClick={onToggleDisconnected}
               aria-expanded={disconnectedExpanded}
               aria-label={disconnectedExpanded ? t('pages.networkView.collapseDeviceList') : t('pages.networkView.expandDeviceList')}
-              style={{
-                flex: '1 1 220px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--spacing-sm)',
-                justifyContent: 'start',
-                fontWeight: 'var(--font-weight-semibold)',
-                fontSize: 'var(--font-size-lg)',
-                color: 'var(--danger)',
-                padding: 'var(--spacing-xs) var(--spacing-sm)',
-                borderRadius: 'var(--radius-md)'
-              }}
+              style={{ ...panelHeaderBtnStyle, color: 'var(--danger)' }}
             >
-              <OfflineIcon size={20} />
+              <OfflineIcon size={18} />
               <span style={{ flex: 1, textAlign: 'start' }}>
                 {t('pages.networkView.disconnected')} ({autoScanResults.disconnected.length})
               </span>
-              {disconnectedExpanded ? <ChevronUpIcon size={22} /> : <ChevronDownIcon size={22} />}
+              {disconnectedExpanded ? <ChevronUpIcon size={20} /> : <ChevronDownIcon size={20} />}
             </button>
             {isAdmin && (
-              <button
-                type="button"
-                onClick={onClearDisconnected}
-                className="btn-danger btn-small"
-              >
+              <button type="button" onClick={onClearDisconnected} className="btn-danger btn-small">
                 {t('pages.networkView.clearList')}
               </button>
             )}
           </div>
 
           {disconnectedExpanded && (
-            <div
-              style={{
-                marginBlockStart: 'var(--spacing-md)',
-                maxHeight: 'min(55vh, 440px)',
-                overflowY: 'auto',
-                paddingInlineEnd: 'var(--spacing-xs)'
-              }}
-            >
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--spacing-md)' }}>
-                {autoScanResults.disconnected.map(result => (
-                  <div key={result.id} className="card" style={{ padding: 'var(--spacing-md)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBlockEnd: 'var(--spacing-sm)' }}>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, marginBlockEnd: 'var(--spacing-xs)' }}>{result.host ? getHostDisplayName(result.host) : t('common.unknown')}</h3>
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)' }}><IpAddress>{result.host?.ip || t('common.unknown')}</IpAddress></p>
-                        <p style={{ margin: 'var(--spacing-xs) 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                          {formatDateTime(result.discovered_at, language)}
-                        </p>
-                      </div>
-                      <span className="status-badge status-offline">{t('common.offline')}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div style={listScrollStyle}>
+              <DiscoveryDeviceList
+                items={autoScanResults.disconnected}
+                t={t}
+                renderExtra={(item) => item.discovered_at ? (
+                  <span className="device-list-date">{formatDateTime(item.discovered_at, language)}</span>
+                ) : null}
+              />
             </div>
           )}
         </div>

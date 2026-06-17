@@ -5,12 +5,13 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
 import IpAddress from '../components/IpAddress'
 import HostHistoryModal from '../components/HostHistoryModal'
+import DeviceSummaryCell from '../components/DeviceSummaryCell'
 import { getHostDisplayName } from '../utils/hostDisplay'
 import { formatClientError } from '../utils/formatClientError'
 import { ChartIcon, AlertIcon } from '../components/Icons'
 
 function UptimeDashboard() {
-  const { t } = useTranslation()
+  const { t, language } = useTranslation()
   const [hosts, setHosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -124,12 +125,12 @@ function UptimeDashboard() {
         <EmptyState icon="device" title={t('pages.uptime.noHosts')} />
       ) : (
         <div className="table-container">
-          <table>
+          <table className="table-compact">
             <thead>
               <tr>
                 <th>{t('common.name')}</th>
                 <th>{t('common.ip')}</th>
-                <th>{t('common.network')}</th>
+                <th className="col-hide-md">{t('common.network')}</th>
                 <th>{t('common.status')}</th>
                 <th>{t('pages.uptime.uptime24h')}</th>
                 <th>{t('common.actions')}</th>
@@ -139,22 +140,12 @@ function UptimeDashboard() {
               {filtered.map((host) => (
                 <tr key={host.id}>
                   <td>
-                    <strong>{getHostDisplayName(host)}</strong>
-                    {host.vendor && host.name !== getHostDisplayName(host) && (
-                      <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
-                        {host.name}
-                      </div>
-                    )}
-                    {host.device_category && (
-                      <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
-                        {t(`deviceCategories.${host.device_category}`)}
-                      </div>
-                    )}
+                    <DeviceSummaryCell host={host} language={language} t={t} showDiscovery={false} showDescription={false} />
                   </td>
                   <td><IpAddress>{host.ip}</IpAddress></td>
-                  <td>{host.networkName || '—'}</td>
+                  <td className="col-hide-md">{host.networkName || '—'}</td>
                   <td>
-                    <span className={`status-badge ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
+                    <span className={`status-badge status-badge-compact ${host.status === 'online' ? 'status-online' : 'status-offline'}`}>
                       {host.status === 'online' ? t('common.online') : t('common.offline')}
                     </span>
                   </td>
@@ -173,13 +164,12 @@ function UptimeDashboard() {
                           }}
                         />
                       </div>
-                      <span>{(host.uptimePercentage ?? 100).toFixed(1)}%</span>
+                      <span style={{ fontSize: 'var(--font-size-xs)' }}>{(host.uptimePercentage ?? 100).toFixed(1)}%</span>
                     </div>
                   </td>
                   <td>
-                    <button type="button" className="btn-secondary btn-small" onClick={() => setHistoryHost(host)}>
+                    <button type="button" className="btn-secondary btn-icon-small" onClick={() => setHistoryHost(host)} title={t('history.view')}>
                       <ChartIcon size={14} />
-                      <span>{t('history.view')}</span>
                     </button>
                   </td>
                 </tr>

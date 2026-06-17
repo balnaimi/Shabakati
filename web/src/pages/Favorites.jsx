@@ -28,6 +28,8 @@ import {
 import OnboardingBanner from '../components/OnboardingBanner'
 import { formatClientError } from '../utils/formatClientError'
 import { formatDateTime } from '../utils/dateFormat'
+import HostTags from '../components/HostTags'
+import DiscoveryDeviceList from '../components/DiscoveryDeviceList'
 
 function Favorites() {
   const navigate = useNavigate()
@@ -569,19 +571,13 @@ function Favorites() {
                               paddingInlineEnd: 'var(--spacing-xs)'
                             }}
                           >
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'var(--spacing-sm)' }}>
-                              {net.newDevices.map((result) => (
-                                <div key={result.id} className="card" style={{ padding: 'var(--spacing-sm)' }}>
-                                  <div style={{ fontWeight: 'var(--font-weight-medium)' }}>{result.host?.name || t('common.unknown')}</div>
-                                  <div className="ip-line" style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-                                    <IpAddress>{result.host?.ip}</IpAddress>
-                                  </div>
-                                  <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBlockStart: 'var(--spacing-xs)' }}>
-                                    {formatDateTime(result.discovered_at, language)}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                          <DiscoveryDeviceList
+                            items={net.newDevices}
+                            t={t}
+                            renderExtra={(item) => item.discovered_at ? (
+                              <span className="device-list-date">{formatDateTime(item.discovered_at, language)}</span>
+                            ) : null}
+                          />
                           </div>
                         </div>
                       )}
@@ -597,19 +593,13 @@ function Favorites() {
                               paddingInlineEnd: 'var(--spacing-xs)'
                             }}
                           >
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'var(--spacing-sm)' }}>
-                              {net.disconnected.map((result) => (
-                                <div key={result.id} className="card" style={{ padding: 'var(--spacing-sm)' }}>
-                                  <div style={{ fontWeight: 'var(--font-weight-medium)' }}>{result.host?.name || t('common.unknown')}</div>
-                                  <div className="ip-line" style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-                                    <IpAddress>{result.host?.ip}</IpAddress>
-                                  </div>
-                                  <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)', marginBlockStart: 'var(--spacing-xs)' }}>
-                                    {formatDateTime(result.discovered_at, language)}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                          <DiscoveryDeviceList
+                            items={net.disconnected}
+                            t={t}
+                            renderExtra={(item) => item.discovered_at ? (
+                              <span className="device-list-date">{formatDateTime(item.discovered_at, language)}</span>
+                            ) : null}
+                          />
                           </div>
                         </div>
                       )}
@@ -729,79 +719,72 @@ function Favorites() {
                           display: 'flex', 
                           justifyContent: 'space-between', 
                           alignItems: 'start', 
-                          marginBlockEnd: 'var(--spacing-sm)' 
+                          marginBlockEnd: 'var(--spacing-xs)' 
                         }}>
-                          <div style={{ flex: 1 }}>
-                            <h3 style={{ 
-                              margin: 0, 
-                              marginBlockEnd: 'var(--spacing-xs)', 
-                              color: 'var(--text-primary)',
-                              fontSize: 'var(--font-size-lg)',
-                              fontWeight: 'var(--font-weight-semibold)'
-                            }}>
-                              {favorite.customName || favorite.host.name}
-                            </h3>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                              <h3 style={{ 
+                                margin: 0, 
+                                color: 'var(--text-primary)',
+                                fontSize: 'var(--font-size-base)',
+                                fontWeight: 'var(--font-weight-semibold)'
+                              }}>
+                                {favorite.customName || favorite.host.name}
+                              </h3>
+                              <HostTags tags={favorite.host.tags} compact />
+                            </div>
                             <p className="ip-line" style={{ 
+                              margin: '2px 0 0',
                               color: 'var(--text-secondary)', 
-                              fontSize: 'var(--font-size-sm)' 
+                              fontSize: 'var(--font-size-xs)' 
                             }}>
                               <IpAddress>{favorite.host.ip}</IpAddress>
                             </p>
                           </div>
-                          <span className={`status-badge ${favorite.host.status === 'online' ? 'status-online' : 'status-offline'}`}>
+                          <span className={`status-badge status-badge-compact ${favorite.host.status === 'online' ? 'status-online' : 'status-offline'}`}>
                             {favorite.host.status === 'online' ? (
-                              <><OnlineIcon size={12} /> {t('common.online')}</>
+                              <><OnlineIcon size={11} /> {t('common.online')}</>
                             ) : (
-                              <><OfflineIcon size={12} /> {t('common.offline')}</>
+                              <><OfflineIcon size={11} /> {t('common.offline')}</>
                             )}
                           </span>
                         </div>
 
                         {favorite.description && (
                           <p style={{ 
-                            margin: 'var(--spacing-xs) 0', 
-                            fontSize: 'var(--font-size-sm)', 
+                            margin: '2px 0', 
+                            fontSize: 'var(--font-size-xs)', 
                             color: 'var(--text-secondary)', 
-                            fontStyle: 'italic' 
-                          }}>
+                            fontStyle: 'italic',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }} title={favorite.description}>
                             {favorite.description}
                           </p>
                         )}
 
                         {favorite.url && (
                           <p style={{ 
-                            margin: 'var(--spacing-xs) 0', 
+                            margin: '2px 0', 
                             fontSize: 'var(--font-size-xs)', 
                             color: 'var(--primary)',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 'var(--spacing-xs)'
+                            gap: 'var(--spacing-xs)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
                           }}>
                             <ExternalLinkIcon size={12} />
                             {favorite.url}
                           </p>
                         )}
 
-                        {favorite.host.tags && favorite.host.tags.length > 0 && (
-                          <div className="tags-inline" style={{ marginBlockStart: 'var(--spacing-sm)' }}>
-                            {favorite.host.tags.map(tag => (
-                              <span
-                                key={typeof tag === 'object' ? tag.id : tag}
-                                className="tag-badge"
-                                style={{
-                                  backgroundColor: typeof tag === 'object' ? (tag.color || 'var(--primary)') : 'var(--primary)'
-                                }}
-                              >
-                                {typeof tag === 'object' ? tag.name : tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
                         <div style={{ 
                           display: 'flex', 
                           gap: 'var(--spacing-xs)', 
-                          marginBlockStart: 'var(--spacing-md)' 
+                          marginBlockStart: 'var(--spacing-xs)' 
                         }}>
                           <button
                             onClick={(e) => {
