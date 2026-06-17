@@ -144,19 +144,22 @@ function AvailableIPs() {
       ) : (
         <>
           {networks.length > 1 && (
-            <div className="form-group" style={{ marginBlockEnd: 'var(--spacing-lg)', maxWidth: '320px' }}>
-              <label>{t('pages.availableIPs.selectNetwork')}</label>
-              <select
-                value={selectedNetworkId ?? ''}
-                onChange={(e) => setSelectedNetworkId(e.target.value ? parseInt(e.target.value) : null)}
-              >
-                <option value="">{t('pages.availableIPs.chooseNetwork')}</option>
-                {networks.map(network => (
-                  <option key={network.id} value={network.id}>
-                    {network.name} ({'\u200e'}{network.network_id}/{network.subnet})
-                  </option>
-                ))}
-              </select>
+            <div className="filter-bar">
+              <label className="filter-inline-label">
+                <span>{t('pages.availableIPs.selectNetwork')}</span>
+                <select
+                  className="filter-select filter-select-wide"
+                  value={selectedNetworkId ?? ''}
+                  onChange={(e) => setSelectedNetworkId(e.target.value ? parseInt(e.target.value) : null)}
+                >
+                  <option value="">{t('pages.availableIPs.chooseNetwork')}</option>
+                  {networks.map(network => (
+                    <option key={network.id} value={network.id}>
+                      {network.name} ({'\u200e'}{network.network_id}/{network.subnet})
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           )}
 

@@ -17,16 +17,16 @@ export default function ScanToolbar({
   t
 }) {
   return (
-    <div className="controls">
-      <button onClick={onScan} disabled={scanning || (!scanUsePing && !scanUseTcp)} className="btn-primary">
+    <div className="controls-bar">
+      <button onClick={onScan} disabled={scanning || (!scanUsePing && !scanUseTcp)} className="btn-primary btn-small">
         {scanning ? (
           <>
-            <RefreshIcon size={18} className="spinner" />
+            <RefreshIcon size={16} className="spinner" />
             <span>{t('pages.networkView.scanning')}</span>
           </>
         ) : (
           <>
-            <ScanIcon size={18} />
+            <ScanIcon size={16} />
             <span>{t('pages.networkView.scan')}</span>
           </>
         )}
@@ -35,24 +35,8 @@ export default function ScanToolbar({
         <ScanProgressBar progress={scanProgress} />
       )}
 
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        gap: 'var(--spacing-md)',
-        padding: 'var(--spacing-sm) var(--spacing-md)',
-        backgroundColor: 'var(--bg-primary)',
-        borderRadius: 'var(--radius-md)',
-        border: `1px solid ${autoScanEnabled ? 'var(--success)' : 'var(--border-color)'}`
-      }}>
-        <label style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--spacing-sm)',
-          cursor: 'pointer',
-          fontWeight: 'var(--font-weight-medium)',
-          fontSize: 'var(--font-size-sm)'
-        }}>
+      <div className={`controls-inline-group ${autoScanEnabled ? 'is-active' : ''}`}>
+        <label className="filter-check">
           <input
             type="checkbox"
             checked={autoScanEnabled}
@@ -61,19 +45,14 @@ export default function ScanToolbar({
           />
           <span>{t('pages.networkView.autoScan')}</span>
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)' }}>
-          <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{t('pages.networkView.autoScanIntervalLabel')}</span>
+        <label className="filter-inline-label">
+          <span>{t('pages.networkView.autoScanIntervalLabel')}</span>
           <select
+            className="filter-select"
             value={autoScanInterval}
             onChange={(e) => onAutoScanIntervalChange(Number(e.target.value))}
             disabled={loadingAutoScan}
-            style={{
-              padding: 'var(--spacing-xs) var(--spacing-sm)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-color)',
-              backgroundColor: 'var(--bg-secondary)',
-              color: 'var(--text-primary)'
-            }}
+            aria-label={t('pages.networkView.autoScanIntervalLabel')}
           >
             {AUTO_SCAN_INTERVAL_MS_OPTIONS.map((ms) => (
               <option key={ms} value={ms}>
@@ -84,8 +63,8 @@ export default function ScanToolbar({
         </label>
       </div>
 
-      <button onClick={onClearNetworkHosts} className="btn-danger">
-        <DeleteIcon size={18} />
+      <button onClick={onClearNetworkHosts} className="btn-danger btn-small">
+        <DeleteIcon size={16} />
         <span>{t('pages.networkView.clearAllHosts')}</span>
       </button>
     </div>

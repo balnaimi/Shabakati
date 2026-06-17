@@ -150,18 +150,11 @@ export default function ScanMethodCard({
               {t('pages.networkView.offlineReleaseHelp')}
             </p>
             <select
+              className="filter-select filter-select-wide"
               value={offlineReleaseAfterMs === null ? '' : String(offlineReleaseAfterMs)}
               onChange={(e) =>
                 onOfflineReleaseAfterMsChange(e.target.value === '' ? null : Number(e.target.value))
               }
-              style={{
-                padding: 'var(--spacing-xs) var(--spacing-sm)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-primary)',
-                color: 'var(--text-primary)',
-                minWidth: 'min(100%, 280px)'
-              }}
             >
               {OFFLINE_RELEASE_OPTIONS.map((opt) => (
                 <option key={opt.ms === null ? 'never' : String(opt.ms)} value={opt.ms === null ? '' : String(opt.ms)}>

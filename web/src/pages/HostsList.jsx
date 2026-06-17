@@ -89,21 +89,21 @@ function HostsList() {
           <p>{t('pages.hostsList.subtitle')}</p>
         </div>
         {isAdmin && (
-          <div className="controls">
-            <button onClick={() => navigate('/settings')} className="btn-secondary">
-              <SettingsIcon size={18} />
+          <div className="controls controls-compact">
+            <button onClick={() => navigate('/settings')} className="btn-secondary btn-small">
+              <SettingsIcon size={16} />
               <span>{t('settings.title')}</span>
             </button>
-            <button onClick={() => navigate('/networks')} className="btn-primary">
-              <SettingsIcon size={18} />
+            <button onClick={() => navigate('/networks')} className="btn-primary btn-small">
+              <SettingsIcon size={16} />
               <span>{t('pages.hostsList.manageNetworks')}</span>
             </button>
-            <button onClick={() => navigate('/tags')} className="btn-primary">
-              <TagIcon size={18} />
+            <button onClick={() => navigate('/tags')} className="btn-primary btn-small">
+              <TagIcon size={16} />
               <span>{t('pages.hostsList.manageTags')}</span>
             </button>
-            <button onClick={handleClearAllData} className="btn-danger">
-              <DeleteIcon size={18} />
+            <button onClick={handleClearAllData} className="btn-danger btn-small">
+              <DeleteIcon size={16} />
               <span>{t('pages.hostsList.clearAllData')}</span>
             </button>
           </div>

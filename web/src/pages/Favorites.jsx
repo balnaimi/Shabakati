@@ -399,40 +399,41 @@ function Favorites() {
     <div className="container">
       <div className="header">
         <h1>{t('pages.favorites.title')}</h1>
-        {isAdmin && (
-          <div className="controls">
-            <button onClick={() => setShowAddModal(true)} className="btn-success">
-              <PlusIcon size={18} />
-              <span>{t('pages.favorites.addDevice')}</span>
+        <div className="filter-bar">
+          <div className="filter-bar-main stats-inline">
+            <button
+              type="button"
+              className="stat-item stat-item-clickable"
+              onClick={() => navigate('/networks')}
+            >
+              <span className="stat-label">{t('pages.favorites.totalNetworks')}</span>
+              <span className="stat-value">{stats.totalNetworks}</span>
             </button>
-            <button onClick={() => setShowGroupModal(true)} className="btn-primary">
-              <FolderIcon size={18} />
-              <span>{t('pages.favorites.manageGroups')}</span>
-            </button>
+            <div className="stat-item">
+              <span className="stat-label">{t('pages.favorites.totalHosts')}</span>
+              <span className="stat-value">{stats.totalHosts}</span>
+            </div>
+            <div className="stat-item stat-item-success">
+              <span className="stat-label">{t('pages.favorites.onlineHosts')}</span>
+              <span className="stat-value">{stats.onlineHosts}</span>
+            </div>
+            <div className="stat-item stat-item-danger">
+              <span className="stat-label">{t('pages.favorites.offlineHosts')}</span>
+              <span className="stat-value">{stats.offlineHosts}</span>
+            </div>
           </div>
-        )}
-        
-        <div className="stats">
-          <button
-            type="button"
-            className="stat-item stat-item-clickable"
-            onClick={() => navigate('/networks')}
-          >
-            <p className="stat-label">{t('pages.favorites.totalNetworks')}</p>
-            <p className="stat-value">{stats.totalNetworks}</p>
-          </button>
-          <div className="stat-item">
-            <p className="stat-label">{t('pages.favorites.totalHosts')}</p>
-            <p className="stat-value">{stats.totalHosts}</p>
-          </div>
-          <div className="stat-item stat-item-success">
-            <p className="stat-label">{t('pages.favorites.onlineHosts')}</p>
-            <p className="stat-value">{stats.onlineHosts}</p>
-          </div>
-          <div className="stat-item stat-item-danger">
-            <p className="stat-label">{t('pages.favorites.offlineHosts')}</p>
-            <p className="stat-value">{stats.offlineHosts}</p>
-          </div>
+          {isAdmin && (
+            <div className="controls controls-compact">
+              <button onClick={() => setShowAddModal(true)} className="btn-success btn-small">
+                <PlusIcon size={16} />
+                <span>{t('pages.favorites.addDevice')}</span>
+              </button>
+              <button onClick={() => setShowGroupModal(true)} className="btn-primary btn-small">
+                <FolderIcon size={16} />
+                <span>{t('pages.favorites.manageGroups')}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

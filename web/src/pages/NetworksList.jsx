@@ -108,15 +108,17 @@ function NetworksList() {
       )}
 
       {isAdmin && (
-        <div className="controls">
-          <button onClick={() => {
-            setShowAddForm(true)
-            setEditingNetworkId(null)
-            setFormData({ name: '', networkId: '', subnet: '', dhcpRangeStart: '', dhcpRangeEnd: '' })
-          }} className="btn-success">
-            <PlusIcon size={18} />
-            <span>{t('pages.networksList.addNetwork')}</span>
-          </button>
+        <div className="filter-bar filter-bar-end">
+          <div className="controls controls-compact">
+            <button onClick={() => {
+              setShowAddForm(true)
+              setEditingNetworkId(null)
+              setFormData({ name: '', networkId: '', subnet: '', dhcpRangeStart: '', dhcpRangeEnd: '' })
+            }} className="btn-success btn-small">
+              <PlusIcon size={16} />
+              <span>{t('pages.networksList.addNetwork')}</span>
+            </button>
+          </div>
         </div>
       )}
 

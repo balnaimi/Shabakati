@@ -9,7 +9,6 @@ import {
   ChartIcon,
   CloseIcon
 } from '../../components/Icons'
-import { formatDiscoveryCell, formatDeviceIntel } from './utils'
 import { HOST_PAGE_SIZE } from './constants'
 import { formatDateTime } from '../../utils/dateFormat'
 import DeviceSummaryCell from '../../components/DeviceSummaryCell'
@@ -68,33 +67,37 @@ export default function HostsTableSection({
             {t('pages.networkView.devices')} ({filteredHosts.length} / {hosts.length})
           </h2>
 
-          <div className="filters">
-            <input
-              type="text"
-              placeholder={t('pages.networkView.search')}
-              value={searchQuery}
-              onChange={(e) => onSearchQueryChange(e.target.value)}
-              style={{ flex: '1 1 auto', minWidth: '200px', maxWidth: '400px' }}
-            />
-            <select
-              value={statusFilter}
-              onChange={(e) => onStatusFilterChange(e.target.value)}
-              style={{ width: '180px', flexShrink: 0 }}
-            >
-              <option value="all">{t('common.all')}</option>
-              <option value="online">{t('common.online')}</option>
-              <option value="offline">{t('common.offline')}</option>
-            </select>
-            <select
-              value={tagFilter || 'all'}
-              onChange={(e) => onTagFilterChange(e.target.value === 'all' ? null : e.target.value)}
-              style={{ width: '180px', flexShrink: 0 }}
-            >
-              <option value="all">{t('common.all')}</option>
-              {availableTags.map(tag => (
-                <option key={tag.id} value={tag.id}>{tag.name}</option>
-              ))}
-            </select>
+          <div className="filter-bar">
+            <div className="filters filters-compact">
+              <input
+                type="text"
+                className="filter-search"
+                placeholder={t('pages.networkView.search')}
+                value={searchQuery}
+                onChange={(e) => onSearchQueryChange(e.target.value)}
+              />
+              <select
+                className="filter-select"
+                value={statusFilter}
+                onChange={(e) => onStatusFilterChange(e.target.value)}
+                aria-label={t('common.status')}
+              >
+                <option value="all">{t('common.all')}</option>
+                <option value="online">{t('common.online')}</option>
+                <option value="offline">{t('common.offline')}</option>
+              </select>
+              <select
+                className="filter-select"
+                value={tagFilter || 'all'}
+                onChange={(e) => onTagFilterChange(e.target.value === 'all' ? null : e.target.value)}
+                aria-label={t('common.tags')}
+              >
+                <option value="all">{t('common.all')}</option>
+                {availableTags.map(tag => (
+                  <option key={tag.id} value={tag.id}>{tag.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {userType !== 'visitor' && selectedHostIds.length > 0 && (

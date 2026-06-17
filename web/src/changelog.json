@@ -1,5 +1,25 @@
 [
   {
+    "version": "1.9.2",
+    "date": "2026-05-21",
+    "en": [
+      "Unified compact filter bars and dropdowns across all pages"
+    ],
+    "ar": [
+      "توحيد أشرطة الفلاتر والقوائم المضغوطة في كل الصفحات"
+    ]
+  },
+  {
+    "version": "1.9.1",
+    "date": "2026-05-21",
+    "en": [
+      "Uptime dashboard: filters and stats in one compact horizontal toolbar"
+    ],
+    "ar": [
+      "لوحة التشغيل: الفلاتر والإحصائيات في شريط أفقي مضغوط"
+    ]
+  },
+  {
     "version": "1.9.0",
     "date": "2026-05-21",
     "en": [

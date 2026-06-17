@@ -106,15 +106,17 @@ function TagsManagement() {
       )}
 
       {isAdmin && (
-        <div className="controls">
-          <button onClick={() => { 
-            setShowAddForm(true); 
-            setEditingTag(null); 
-            setFormData({ name: '', color: '#3b82f6' }) 
-          }} className="btn-success">
-            <PlusIcon size={18} />
-            <span>{t('pages.tagsManagement.addTag')}</span>
-          </button>
+        <div className="filter-bar filter-bar-end">
+          <div className="controls controls-compact">
+            <button onClick={() => { 
+              setShowAddForm(true); 
+              setEditingTag(null); 
+              setFormData({ name: '', color: '#3b82f6' }) 
+            }} className="btn-success btn-small">
+              <PlusIcon size={16} />
+              <span>{t('pages.tagsManagement.addTag')}</span>
+            </button>
+          </div>
         </div>
       )}
 

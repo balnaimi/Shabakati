@@ -86,38 +86,37 @@ function UptimeDashboard() {
         <div className="error-message"><AlertIcon size={18} /><span>{error}</span></div>
       )}
 
-      <div className="filters" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
-        <select value={networkFilter} onChange={(e) => setNetworkFilter(e.target.value)}>
-          <option value="all">{t('pages.uptime.allNetworks')}</option>
-          {networks.map(([id, name]) => (
-            <option key={id} value={String(id)}>{name}</option>
-          ))}
-        </select>
-        <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
-          <option value="all">{t('pages.uptime.allTags')}</option>
-          {tags.map(([id, name]) => (
-            <option key={id} value={id}>{name}</option>
-          ))}
-        </select>
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="worst">{t('pages.uptime.sortWorst')}</option>
-          <option value="best">{t('pages.uptime.sortBest')}</option>
-          <option value="name">{t('pages.uptime.sortName')}</option>
-        </select>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-          <input type="checkbox" checked={offlineOnly} onChange={(e) => setOfflineOnly(e.target.checked)} />
-          <span>{t('pages.uptime.offlineOnly')}</span>
-        </label>
-      </div>
-
-      <div className="stats" style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
-        <div className="stat-item">
-          <p className="stat-label">{t('pages.uptime.avgUptime')}</p>
-          <p className="stat-value">{avg.toFixed(1)}%</p>
+      <div className="filter-bar">
+        <div className="filters filters-compact uptime-filters">
+          <select className="filter-select" value={networkFilter} onChange={(e) => setNetworkFilter(e.target.value)} aria-label={t('pages.uptime.allNetworks')}>
+            <option value="all">{t('pages.uptime.allNetworks')}</option>
+            {networks.map(([id, name]) => (
+              <option key={id} value={String(id)}>{name}</option>
+            ))}
+          </select>
+          <select className="filter-select" value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} aria-label={t('pages.uptime.allTags')}>
+            <option value="all">{t('pages.uptime.allTags')}</option>
+            {tags.map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </select>
+          <select className="filter-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={t('pages.uptime.sortWorst')}>
+            <option value="worst">{t('pages.uptime.sortWorst')}</option>
+            <option value="best">{t('pages.uptime.sortBest')}</option>
+            <option value="name">{t('pages.uptime.sortName')}</option>
+          </select>
+          <label className="filter-check">
+            <input type="checkbox" checked={offlineOnly} onChange={(e) => setOfflineOnly(e.target.checked)} />
+            <span>{t('pages.uptime.offlineOnly')}</span>
+          </label>
         </div>
-        <div className="stat-item">
-          <p className="stat-label">{t('pages.uptime.trackedHosts')}</p>
-          <p className="stat-value">{filtered.length}</p>
+        <div className="filter-bar-aside" aria-label={t('pages.uptime.title')}>
+          <span className="toolbar-stat-chip">
+            {t('pages.uptime.avgUptime')}: <strong>{avg.toFixed(1)}%</strong>
+          </span>
+          <span className="toolbar-stat-chip">
+            {t('pages.uptime.trackedHosts')}: <strong>{filtered.length}</strong>
+          </span>
         </div>
       </div>
 
