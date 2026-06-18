@@ -13,7 +13,8 @@
     "passwordRequired": "يرجى إدخال كلمة المرور.",
     "adminPasswordRequired": "يرجى إدخال كلمة مرور المسؤول.",
     "deviceRequired": "يرجى اختيار جهاز.",
-    "groupNameRequired": "يرجى إدخال اسم المجموعة."
+    "groupNameRequired": "يرجى إدخال اسم المجموعة.",
+    "hostNameRequired": "يرجى إدخال اسم للجهاز."
   },
   "common": {
     "loading": "جاري التحميل...",
@@ -326,6 +327,9 @@
       "deleteHost": "حذف الجهاز",
       "clearAllHosts": "حذف جميع الأجهزة",
       "hostName": "اسم الجهاز",
+      "hostNameHint": "أدخل اسماً يميّز الجهاز إذا لم يُكتشَف اسمه تلقائياً (مثل: طابعة المكتب، راوتر الصالة).",
+      "detectedLabel": "الاسم المكتشف",
+      "hostUpdated": "تم تحديث الجهاز",
       "hostIP": "عنوان الجهاز على الشبكة",
       "hostDescription": "الوصف",
       "hostURL": "URL",

@@ -39,7 +39,7 @@ export function useNetworkView() {
   const toast = useToast()
   const { confirm, confirmDialogSlot } = useConfirmDialog()
   const [editingHostId, setEditingHostId] = useState(null)
-  const [editFormData, setEditFormData] = useState({ tagIds: [] })
+  const [editFormData, setEditFormData] = useState({ name: '', tagIds: [] })
   const [activeTab, setActiveTab] = useState('devices')
   const [favorites, setFavorites] = useState([])
   const [newHosts, setNewHosts] = useState([])
@@ -378,13 +378,13 @@ export function useNetworkView() {
     const tagIds = host.tags && Array.isArray(host.tags)
       ? host.tags.map(tag => typeof tag === 'object' ? tag.id : tag)
       : []
-    setEditFormData({ tagIds })
+    setEditFormData({ name: host.name || '', tagIds })
   }
 
   const handleCancelEdit = () => {
     setEditingHostId(null)
     setBulkEditingIds(null)
-    setEditFormData({ tagIds: [] })
+    setEditFormData({ name: '', tagIds: [] })
   }
 
   const handleUpdateHost = async (e) => {
@@ -410,8 +410,14 @@ export function useNetworkView() {
       const host = hosts.find(h => h.id === editingHostId)
       if (!host) return
 
+      const trimmedName = editFormData.name?.trim() || ''
+      if (!trimmedName) {
+        setError(t('validation.hostNameRequired'))
+        return
+      }
+
       await apiPut(`/hosts/${editingHostId}`, {
-        name: host.name,
+        name: trimmedName,
         ip: host.ip,
         description: host.description || '',
         url: host.url || '',
@@ -421,6 +427,7 @@ export function useNetworkView() {
 
       await fetchHosts()
       handleCancelEdit()
+      toast.success(t('pages.networkView.hostUpdated'))
     } catch (err) {
       setError(formatClientError(err, t))
     }
@@ -490,7 +497,7 @@ export function useNetworkView() {
     if (!isAdmin || selectedHostIds.length === 0) return
     setEditingHostId(null)
     setBulkEditingIds([...selectedHostIds])
-    setEditFormData({ tagIds: [] })
+    setEditFormData({ name: '', tagIds: [] })
   }
 
   const filteredHosts = useMemo(

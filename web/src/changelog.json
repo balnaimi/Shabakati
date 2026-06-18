@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.9.4",
+    "date": "2026-05-21",
+    "en": [
+      "Rename hosts from the edit dialog when discovery could not resolve a useful name"
+    ],
+    "ar": [
+      "إمكانية تغيير اسم الجهاز من نافذة التعديل عندما لا يُكتشَف اسمه تلقائياً"
+    ]
+  },
+  {
     "version": "1.9.3",
     "date": "2026-05-21",
     "en": [

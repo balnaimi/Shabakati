@@ -650,6 +650,21 @@ select:disabled {
   font-size: var(--font-size-sm);
 }
 
+.form-hint {
+  display: block;
+  margin-block-start: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  line-height: var(--line-height-relaxed);
+}
+
+.host-edit-meta {
+  margin-block-end: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+}
+
 .form-actions {
   display: flex;
   gap: var(--spacing-sm);

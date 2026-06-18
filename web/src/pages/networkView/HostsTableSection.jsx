@@ -1,5 +1,6 @@
 import IpAddress from '../../components/IpAddress'
 import { getHostDisplayName } from '../../utils/hostDisplay'
+import { isGenericHostName } from '@shared/suggestHostName.js'
 import {
   OnlineIcon,
   OfflineIcon,
@@ -253,7 +254,7 @@ export default function HostsTableSection({
                           )}
                           {isAdmin && (
                             <>
-                              <button onClick={() => onEditHost(host)} className="btn-secondary btn-icon-small" title={t('common.edit')}>
+                              <button onClick={() => onEditHost(host)} className="btn-secondary btn-icon-small" title={t('pages.networkView.editHost')}>
                                 <EditIcon size={14} />
                               </button>
                               <button onClick={() => onDeleteHost(host.id)} className="btn-danger btn-icon-small" title={t('common.delete')}>
@@ -291,9 +292,9 @@ export default function HostsTableSection({
               <h2>
                 {bulkEditingIds && bulkEditingIds.length > 0
                   ? t('pages.networkView.bulkEditTagsTitle', { count: bulkEditingIds.length })
-                  : t('pages.networkView.editHostTags')}
+                  : t('pages.networkView.editHost')}
               </h2>
-              <button onClick={onCancelEdit} className="btn-ghost btn-icon">
+              <button type="button" onClick={onCancelEdit} className="btn-ghost btn-icon" aria-label={t('common.cancel')}>
                 <CloseIcon size={20} />
               </button>
             </div>
@@ -303,18 +304,39 @@ export default function HostsTableSection({
                 {t('pages.networkView.bulkEditTagsHint')}
               </p>
             ) : editingHost ? (
-              <div style={{
-                marginBlockEnd: 'var(--spacing-lg)',
-                padding: 'var(--spacing-md)',
-                backgroundColor: 'var(--bg-tertiary)',
-                borderRadius: 'var(--radius-md)'
-              }}>
-                <p style={{ margin: 0 }}><strong>{t('common.name')}:</strong> {getHostDisplayName(editingHost)}</p>
-                <p style={{ margin: 0 }}><strong>{t('common.ip')}:</strong> <IpAddress as="span">{editingHost.ip}</IpAddress></p>
+              <div className="host-edit-meta">
+                <p style={{ margin: 0 }}>
+                  <strong>{t('common.ip')}:</strong>{' '}
+                  <IpAddress as="span">{editingHost.ip}</IpAddress>
+                </p>
+                {getHostDisplayName(editingHost) !== (editFormData.name || editingHost.name) && (
+                  <p style={{ margin: 'var(--spacing-xs) 0 0', fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+                    {t('pages.networkView.detectedLabel')}: {getHostDisplayName(editingHost)}
+                  </p>
+                )}
               </div>
             ) : null}
 
             <form onSubmit={onUpdateHost}>
+              {!bulkEditingIds?.length && editingHost && (
+                <div className="form-group">
+                  <label htmlFor="host-edit-name">{t('pages.networkView.hostName')}</label>
+                  <input
+                    id="host-edit-name"
+                    type="text"
+                    value={editFormData.name}
+                    onChange={(e) => onEditFormDataChange({ ...editFormData, name: e.target.value })}
+                    placeholder={getHostDisplayName(editingHost)}
+                    maxLength={100}
+                    autoFocus
+                    required
+                  />
+                  {isGenericHostName(editFormData.name || editingHost.name) && (
+                    <small className="form-hint">{t('pages.networkView.hostNameHint')}</small>
+                  )}
+                </div>
+              )}
+
               <div style={{ marginBlockEnd: 'var(--spacing-lg)' }}>
                 <label style={{ display: 'block', marginBlockEnd: 'var(--spacing-sm)', fontWeight: 'var(--font-weight-semibold)' }}>{t('common.tags')}:</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>

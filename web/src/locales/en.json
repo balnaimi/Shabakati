@@ -13,7 +13,8 @@
     "passwordRequired": "Please enter your password.",
     "adminPasswordRequired": "Please enter the admin password.",
     "deviceRequired": "Please select a device.",
-    "groupNameRequired": "Please enter a group name."
+    "groupNameRequired": "Please enter a group name.",
+    "hostNameRequired": "Please enter a host name."
   },
   "common": {
     "loading": "Loading...",
@@ -326,6 +327,9 @@
       "deleteHost": "Delete Host",
       "clearAllHosts": "Clear All Hosts",
       "hostName": "Host Name",
+      "hostNameHint": "Enter a name to identify this device if auto-discovery did not find one (e.g. Office Printer, Living Room Router).",
+      "detectedLabel": "Detected label",
+      "hostUpdated": "Host updated",
       "hostIP": "IP Address",
       "hostDescription": "Description",
       "hostURL": "URL",

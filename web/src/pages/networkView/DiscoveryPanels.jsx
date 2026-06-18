@@ -78,7 +78,7 @@ export default function DiscoveryPanels({
                 t={t}
                 renderActions={(_, host) => isAdmin ? (
                   <>
-                    <button type="button" onClick={() => onEditHost(host)} className="btn-primary btn-icon-small" title={t('common.edit')}>
+                    <button type="button" onClick={() => onEditHost(host)} className="btn-primary btn-icon-small" title={t('pages.networkView.editHost')}>
                       <EditIcon size={14} />
                     </button>
                     <button type="button" onClick={() => onHideNewHost(host.id)} className="btn-secondary btn-icon-small" title={t('pages.networkView.viewed')}>
